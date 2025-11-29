@@ -27,6 +27,7 @@ local UPDATE_INTERVAL = 0.1          -- seconds between updates
 
 -- 🔹 Internal data store
 local playerData = {}
+local hasSubscriber = {}
 
 ------------------------------------------------------------
 -- Player Management
@@ -52,6 +53,14 @@ SprintEvent.OnServerEvent:Connect(function(player, wantSprint)
 	local data = playerData[player]
 	if not data then return end
 
+	-- Handle initial subscription signal from client
+	if typeof(wantSprint) == "string" and wantSprint == "subscribe" then
+		hasSubscriber[player] = true
+		-- Send an immediate state snapshot
+		SprintEvent:FireClient(player, data.IsSprinting, data.Stamina)
+		return
+	end
+
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
@@ -76,6 +85,10 @@ end)
 task.spawn(function()
 	while true do
 		for player, data in pairs(playerData) do
+			-- Only send updates if client subscribed (listener connected)
+			if not hasSubscriber[player] then
+				continue
+			end
 			local now = tick()
 			local dt = now - (data.LastUpdate or now)
 			data.LastUpdate = now

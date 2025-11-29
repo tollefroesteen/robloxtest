@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SprintEvent = ReplicatedStorage:WaitForChild("SprintEvent")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
@@ -60,6 +61,13 @@ end)
 -- Require ButtonEffects AFTER connecting listener (to avoid delay)
 local ButtonEffects = require(script.Parent:WaitForChild("ButtonEffects"))
 
+-- Signal subscription to server so it knows this client is ready to receive updates
+task.spawn(function()
+    -- small yield to ensure the RemoteEvent exists
+    task.wait()
+    SprintEvent:FireServer("subscribe")
+end)
+
 function RunButtonController.Init()
     local playerGui = player:WaitForChild("PlayerGui")
     local actionsGui = playerGui:WaitForChild("ActionsGui", 5)
@@ -93,6 +101,23 @@ function RunButtonController.Init()
     runButton.MouseButton1Up:Connect(function()
         sprintButtonDown = false
         requestSprint(false)
+    end)
+
+    -- Keyboard support: hold Shift to sprint
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+            sprintButtonDown = true
+            requestSprint(true)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+            sprintButtonDown = false
+            requestSprint(false)
+        end
     end)
 
     updateButton()

@@ -1,17 +1,15 @@
 local ServerScriptService = game:GetService("ServerScriptService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
-local eventsFolder = ServerScriptService:FindFirstChild("ServerEvents")
-local TimerEndedEvent = eventsFolder:WaitForChild("TimerEndedEvent")
-local StartGameEvent = eventsFolder:WaitForChild("StartGameEvent")
-local spawnEvent = eventsFolder:FindFirstChild("FlockSpawnedEvent")
+local ServerEvents = require(ServerScriptService.Server.ServerEvents)
+local TimerEndedEvent = ServerEvents.TimerEndedEvent
+local StartGameEvent = ServerEvents.StartGameEvent
+local spawnEvent = ServerEvents.FlockSpawnedEvent
 local animalsFolder = ServerScriptService.Server.Animal
 local PartLibrary = require(animalsFolder:WaitForChild("AnimalLibraryModule"))
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local AnimalTemplate = ReplicatedStorage:WaitForChild("AnimalSystem"):WaitForChild("AnimalTemplate")
-local AnimalSpawnedEvent = ReplicatedStorage:WaitForChild("AnimalSystem"):WaitForChild("AnimalSpawnedEvent")
+local AnimalTemplate = ReplicatedStorage:WaitForChild("AnimalTemplate")
+local AnimalSpawnedEvent = ReplicatedStorage:WaitForChild("AnimalSpawnedEvent")
 
 
 local UFOModel = workspace.UFO

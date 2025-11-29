@@ -1,6 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TrapController = require(game.ServerScriptService.Server.TrapController)
+local TrapController = require(game.ServerScriptService.Server.Game.TrapController)
 local Flock = workspace:WaitForChild("Flock")
 
 local ResetGameEvent = ReplicatedStorage:WaitForChild("ResetGameEvent")

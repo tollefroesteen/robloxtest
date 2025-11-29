@@ -1,17 +1,18 @@
+--!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local RemoteEvents = require(ReplicatedStorage.Shared.RemoteEvents)
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 
-local player = Players.LocalPlayer
+local player: Player = Players.LocalPlayer
 
 local HealthController = {}
 
 local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-local barFill = nil
+local barFill: Frame? = nil
 
-local function updateHealthBar(currentHealth, maxHealth)
+local function updateHealthBar(currentHealth: number, maxHealth: number): nil
     if not barFill then return end
     
     local ratio = math.clamp(currentHealth / maxHealth, 0, 1)
@@ -29,7 +30,7 @@ RemoteEvents.HealthEvent.OnClientEvent:Connect(function(currentHealth, maxHealth
     updateHealthBar(currentHealth, maxHealth)
 end)
 
-function HealthController.Init()
+function HealthController.Init(): nil
     local playerGui = player:WaitForChild("PlayerGui")
     
     local healthGui = playerGui:WaitForChild("HealthGui", 5)

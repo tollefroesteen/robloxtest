@@ -1,13 +1,21 @@
+--!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local resetGameEvent = ReplicatedStorage:WaitForChild("ResetGameEvent")
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local resetGameEvent = RemoteEvents.ResetGameEvent
 local ButtonEffects = require(script.Parent:WaitForChild("ButtonEffects"))
 
-local player = Players.LocalPlayer
+local player: Player = Players.LocalPlayer
+
+-- Simple whitelist for who can see/use Reset button
+local ALLOWED_USERS: {[string]: boolean} = {
+    flemmingopingo = true,
+    -- Add more usernames here as needed
+}
 
 local ResetButtonController = {}
 
-function ResetButtonController.Init()
+function ResetButtonController.Init(): nil
     local playerGui = player:WaitForChild("PlayerGui")
     local actionsGui = playerGui:WaitForChild("ActionsGui", 5)
     if not actionsGui then
@@ -21,19 +29,18 @@ function ResetButtonController.Init()
         return
     end
 
-    local resetButton = frame:WaitForChild("ResetButton", 5)
+    local resetButton: TextButton? = frame:WaitForChild("ResetButton", 5)
     if not resetButton then
         warn("[ResetButtonController] ResetButton not found under Frame")
         return
     end
 
-    -- Only show button if the player's name matches
-    if player.Name ~= "flemmingopingo" then
+    -- Only show button if the player's name is allowed
+    if not ALLOWED_USERS[player.Name] then
         resetButton.Visible = false
         return
-    else
-        resetButton.Visible = true
     end
+    resetButton.Visible = true
 
     -- Add press effect
     ButtonEffects.AddPressEffect(resetButton)

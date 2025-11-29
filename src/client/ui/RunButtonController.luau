@@ -1,24 +1,26 @@
+--!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SprintEvent = ReplicatedStorage:WaitForChild("SprintEvent")
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local SprintEvent = RemoteEvents.SprintEvent
 local UserInputService = game:GetService("UserInputService")
 
-local player = Players.LocalPlayer
+local player: Player = Players.LocalPlayer
 
 -- Config
-local RESUME_THRESHOLD = 20
+local RESUME_THRESHOLD: number = 20
 
 -- State
-local sprinting = false
-local requestInFlight = false
-local currentStamina = 100
-local sprintButtonDown = false
+local sprinting: boolean = false
+local requestInFlight: boolean = false
+local currentStamina: number = 100
+local sprintButtonDown: boolean = false
 
 local RunButtonController = {}
 
-local runButton = nil
+local runButton: TextButton? = nil
 
-local function requestSprint(state)
+local function requestSprint(state: boolean): nil
     if requestInFlight or state == sprinting then
         return
     end
@@ -68,7 +70,7 @@ task.spawn(function()
     SprintEvent:FireServer("subscribe")
 end)
 
-function RunButtonController.Init()
+function RunButtonController.Init(): nil
     local playerGui = player:WaitForChild("PlayerGui")
     local actionsGui = playerGui:WaitForChild("ActionsGui", 5)
     if not actionsGui then

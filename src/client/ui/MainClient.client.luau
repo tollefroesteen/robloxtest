@@ -6,7 +6,7 @@ local ResetButtonController = require(script.Parent:WaitForChild("ResetButtonCon
 local ScoreController = require(script.Parent:WaitForChild("ScoreController"))
 local StaminaController = require(script.Parent:WaitForChild("StaminaController"))
 local HealthController = require(script.Parent:WaitForChild("HealthController"))
-local AnimalAnimationController = require(script.Parent.Parent:WaitForChild("AnimalAnimationController"))
+local AnimalAnimationController = require(script.Parent.Parent:WaitForChild("controllers"):WaitForChild("AnimalController"))
 
 local player = Players.LocalPlayer
 

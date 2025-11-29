@@ -1,10 +1,14 @@
-local UFOModel = workspace.UFO
-local ufo = UFOModel.PrimaryPart -- Make sure PrimaryPart is set
 local ServerScriptService = game:GetService("ServerScriptService")
-local eventsFolder = ServerScriptService:FindFirstChild("ServerEvents")
-local spawnEvent = eventsFolder:FindFirstChild("FlockSpawnedEvent")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Beam configuration
+local UFOModel = workspace:WaitForChild("UFO")
+assert(UFOModel.PrimaryPart, "UFO model must have a PrimaryPart")
+local ufo = UFOModel.PrimaryPart
+
+-- Use server-only BindableEvents from the module, not a folder
+local ServerEvents = require(ServerScriptService.Server.ServerEvents)
+local spawnEvent = ServerEvents.FlockSpawnedEvent
+
 local sphereCount = 50
 local spacing = 1.5
 local baseSize = Vector3.new(1, 1, 1)
@@ -14,12 +18,10 @@ local maxScale = 20
 local vibrationAmount = 0.2
 local beamDuration = 3          -- seconds to show the beam after spawn
 
--- Storage
 local spheres = {}
 local beamActive = false
 local beamEndTime = 0
 
--- Create spheres (hidden initially)
 for i = 1, sphereCount do
 	local sphere = Instance.new("Part")
 	sphere.Shape = Enum.PartType.Ball
@@ -35,7 +37,6 @@ end
 
 local RunService = game:GetService("RunService")
 
--- Function to activate beam
 local function activateBeam()
 	beamActive = true
 	beamEndTime = tick() + beamDuration
@@ -46,7 +47,6 @@ end
 
 spawnEvent.Event:Connect(activateBeam)
 
--- Update loop
 RunService.Heartbeat:Connect(function(dt)
 	if not beamActive then return end
 

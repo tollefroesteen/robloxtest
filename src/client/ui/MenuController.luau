@@ -1,13 +1,15 @@
+--!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ShootEvent = ReplicatedStorage:WaitForChild("ShootEvent")
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local ShootEvent = RemoteEvents.ShootEvent
 local ButtonEffects = require(script.Parent:WaitForChild("ButtonEffects"))
 
-local player = Players.LocalPlayer
+local player: Player = Players.LocalPlayer
 
 local MenuController = {}
 
-function MenuController.Init()
+function MenuController.Init(): nil
     local playerGui = player:WaitForChild("PlayerGui")
     local actionsGui = playerGui:WaitForChild("ActionsGui", 5)
     if not actionsGui then
@@ -21,7 +23,7 @@ function MenuController.Init()
         return
     end
 
-    local shootButton = frame:WaitForChild("ShootButton", 5)
+    local shootButton: TextButton? = frame:WaitForChild("ShootButton", 5)
     if not shootButton then
         warn("[MenuController] ShootButton not found under Frame")
         return

@@ -1,3 +1,4 @@
+--!strict
 --========================================================--
 -- SprintWithStaminaServer.lua
 --========================================================--
@@ -8,32 +9,34 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
--- 🔹 Create or get the RemoteEvent used for sprint communication
-local SprintEvent = ReplicatedStorage:FindFirstChild("SprintEvent") or Instance.new("RemoteEvent")
-SprintEvent.Name = "SprintEvent"
-SprintEvent.Parent = ReplicatedStorage
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local SprintEvent: RemoteEvent = RemoteEvents.SprintEvent
 
 -- 🔹 Sprint parameters
-local NORMAL_SPEED = 17
-local SPRINT_SPEED = 30
+local NORMAL_SPEED: number = 17
+local SPRINT_SPEED: number = 30
 
 -- 🔹 Stamina configuration
-local MAX_STAMINA = 100
-local STAMINA_DRAIN_RATE = 15        -- points per second while sprinting
-local STAMINA_RECOVERY_RATE = 10     -- points per second while not sprinting
-local UPDATE_INTERVAL = 0.1          -- seconds between updates
+local MAX_STAMINA: number = 100
+local STAMINA_DRAIN_RATE: number = 15        -- points per second while sprinting
+local STAMINA_RECOVERY_RATE: number = 10     -- points per second while not sprinting
+local UPDATE_INTERVAL: number = 0.1          -- seconds between updates
        
 
 -- 🔹 Internal data store
-local playerData = {}
-local hasSubscriber = {}
+type PlayerState = {
+	Stamina: number,
+	IsSprinting: boolean,
+	LastUpdate: number,
+}
+local playerData: {[Player]: PlayerState} = {}
+local hasSubscriber: {[Player]: boolean} = {}
 
 ------------------------------------------------------------
 -- Player Management
 ------------------------------------------------------------
 
-Players.PlayerAdded:Connect(function(player)
+Players.PlayerAdded:Connect(function(player: Player)
 	playerData[player] = {
 		Stamina = MAX_STAMINA,
 		IsSprinting = false,
@@ -41,7 +44,7 @@ Players.PlayerAdded:Connect(function(player)
 	}
 end)
 
-Players.PlayerRemoving:Connect(function(player)
+Players.PlayerRemoving:Connect(function(player: Player)
 	playerData[player] = nil
 end)
 
@@ -49,20 +52,22 @@ end)
 -- Handle sprint toggle requests from clients
 ------------------------------------------------------------
 
-SprintEvent.OnServerEvent:Connect(function(player, wantSprint)
+SprintEvent.OnServerEvent:Connect(function(player: Player, wantSprintAny)
 	local data = playerData[player]
 	if not data then return end
 
 	-- Handle initial subscription signal from client
-	if typeof(wantSprint) == "string" and wantSprint == "subscribe" then
+	if typeof(wantSprintAny) == "string" and wantSprintAny == "subscribe" then
 		hasSubscriber[player] = true
 		-- Send an immediate state snapshot
 		SprintEvent:FireClient(player, data.IsSprinting, data.Stamina)
 		return
 	end
 
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local wantSprint: boolean = (typeof(wantSprintAny) == "boolean" and wantSprintAny) or false
+
+	local character: Model? = player.Character
+	local humanoid: Humanoid? = character and character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
 	-- If trying to sprint with no stamina, deny request
@@ -71,7 +76,7 @@ SprintEvent.OnServerEvent:Connect(function(player, wantSprint)
 	end
 
 	data.IsSprinting = wantSprint
-	local newSpeed = wantSprint and SPRINT_SPEED or NORMAL_SPEED
+	local newSpeed: number = wantSprint and SPRINT_SPEED or NORMAL_SPEED
 	humanoid.WalkSpeed = newSpeed
 
 	-- 🔹 Tell the client what the server actually applied
@@ -84,17 +89,17 @@ end)
 
 task.spawn(function()
 	while true do
-		for player, data in pairs(playerData) do
+		for player: Player, data: PlayerState in pairs(playerData) do
 			-- Only send updates if client subscribed (listener connected)
 			if not hasSubscriber[player] then
 				continue
 			end
-			local now = tick()
-			local dt = now - (data.LastUpdate or now)
+			local now: number = tick()
+			local dt: number = now - (data.LastUpdate or now)
 			data.LastUpdate = now
 
-			local character = player.Character
-			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			local character: Model? = player.Character
+			local humanoid: Humanoid? = character and character:FindFirstChildOfClass("Humanoid")
 
 			if data.IsSprinting then
 				-- Drain stamina

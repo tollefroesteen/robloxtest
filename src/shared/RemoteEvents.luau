@@ -5,39 +5,23 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RemoteEvents = {}
 
-local endGameEvent = Instance.new("RemoteEvent")
-endGameEvent.Name = "EndGameEvent"
-endGameEvent.Parent = ReplicatedStorage
-RemoteEvents.EndGameEvent = endGameEvent
+local function getOrCreate(name: string)
+	local existing = ReplicatedStorage:FindFirstChild(name)
+	if existing and existing:IsA("RemoteEvent") then
+		return existing
+	end
+	local ev = Instance.new("RemoteEvent")
+	ev.Name = name
+	ev.Parent = ReplicatedStorage
+	return ev
+end
 
-local healthEvent = Instance.new("RemoteEvent")
-healthEvent.Name = "HealthEvent"
-healthEvent.Parent = ReplicatedStorage
-RemoteEvents.HealthEvent = healthEvent
-
-local resetGameEvent = Instance.new("RemoteEvent")
-resetGameEvent.Name = "ResetGameEvent"
-resetGameEvent.Parent = ReplicatedStorage
-RemoteEvents.ResetGameEvent = resetGameEvent
-
-local scoreEvent = Instance.new("RemoteEvent")
-scoreEvent.Name = "ScoreEvent"
-scoreEvent.Parent = ReplicatedStorage
-RemoteEvents.ScoreEvent = scoreEvent
-
-local ShootEvent = Instance.new("RemoteEvent")
-ShootEvent.Name = "ShootEvent"
-ShootEvent.Parent = ReplicatedStorage
-RemoteEvents.ShootEvent = ShootEvent
-
-local sprintEvent = Instance.new("RemoteEvent")
-sprintEvent.Name = "SprintEvent"
-sprintEvent.Parent = ReplicatedStorage
-RemoteEvents.SprintEvent = sprintEvent
-
-local AnimalSpawnedEvent = Instance.new("RemoteEvent")
-AnimalSpawnedEvent.Name = "AnimalSpawnedEvent"
-AnimalSpawnedEvent.Parent = ReplicatedStorage
-RemoteEvents.AnimalSpawnedEvent = AnimalSpawnedEvent
+RemoteEvents.EndGameEvent = getOrCreate("EndGameEvent")
+RemoteEvents.HealthEvent = getOrCreate("HealthEvent")
+RemoteEvents.ResetGameEvent = getOrCreate("ResetGameEvent")
+RemoteEvents.ScoreEvent = getOrCreate("ScoreEvent")
+RemoteEvents.ShootEvent = getOrCreate("ShootEvent")
+RemoteEvents.SprintEvent = getOrCreate("SprintEvent")
+RemoteEvents.AnimalSpawnedEvent = getOrCreate("AnimalSpawnedEvent")
 
 return RemoteEvents

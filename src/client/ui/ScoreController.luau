@@ -1,16 +1,18 @@
+--!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ScoreEvent = ReplicatedStorage:WaitForChild("ScoreEvent")
-local ResetGameEvent = ReplicatedStorage:WaitForChild("ResetGameEvent")
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local ScoreEvent = RemoteEvents.ScoreEvent
+local ResetGameEvent = RemoteEvents.ResetGameEvent
 
-local player = Players.LocalPlayer
+local player: Player = Players.LocalPlayer
 
 local ScoreController = {}
 
-local textLabel = nil
-local totals = {} -- trapType -> number
+local textLabel: TextLabel? = nil
+local totals: {[string]: number} = {} -- trapType -> number
 
-local function updateScoreUI()
+local function updateScoreUI(): nil
     if not textLabel then return end
     
     local lines = {"Score:"}
@@ -36,7 +38,7 @@ ResetGameEvent.OnClientEvent:Connect(function()
     updateScoreUI()
 end)
 
-function ScoreController.Init()
+function ScoreController.Init(): nil
     local playerGui = player:WaitForChild("PlayerGui")
     
     -- You may need to adjust this path based on your ScreenGui structure

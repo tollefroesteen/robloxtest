@@ -1,14 +1,11 @@
+--!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local TrapController = require(ServerScriptService.Server.Game.TrapController)
 
 -- Ensure ResetGameEvent exists
-local ResetGameEvent = ReplicatedStorage:FindFirstChild("ResetGameEvent")
-if not ResetGameEvent then
-	ResetGameEvent = Instance.new("RemoteEvent")
-	ResetGameEvent.Name = "ResetGameEvent"
-	ResetGameEvent.Parent = ReplicatedStorage
-end
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local ResetGameEvent = RemoteEvents.ResetGameEvent
 
 -- Optional: central score state (if you keep totals on server)
 local scoreState = ServerScriptService:FindFirstChild("ScoreState")

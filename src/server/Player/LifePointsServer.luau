@@ -1,7 +1,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local HealthEvent = ReplicatedStorage:WaitForChild("HealthEvent")
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local HealthEvent = RemoteEvents.HealthEvent
 
 local MAX_LIFE = 100
 

@@ -1,30 +1,41 @@
+--!strict
 -- ModuleScript: TrapController
 local module = {}
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+
+type TrapState = {
+	capturedList: {BasePart},
+	capturedIndex: {[BasePart]: number},
+	ScoresByTrapType: {[string]: number},
+}
+
+module.ActiveTraps = {} :: {[BasePart]: TrapState}
 
 -- Storage to reset traps after game restart
 module.ActiveTraps = {}
 
-function module.SetupTrap(trap: BasePart)
-	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-	local ScoreEvent = ReplicatedStorage:WaitForChild("ScoreEvent")
-	local Flock = workspace:WaitForChild("Flock")
+function module.SetupTrap(trap: BasePart): nil
+	local ScoreEvent: RemoteEvent = RemoteEvents.ScoreEvent
+	local Flock = workspace:WaitForChild("Flock") :: Folder
 
 	-- Config
-	local GRID_COLS = 6
-	local CELL_SPACING_X = 6
-	local CELL_SPACING_Z = 8
-	local Y_OFFSET = 2
+	local GRID_COLS: number = 6
+	local CELL_SPACING_X: number = 6
+	local CELL_SPACING_Z: number = 8
+	local Y_OFFSET: number = 2
 
 	-- State tables (must reset on game restart)
-	local capturedList = {}
-	local capturedIndex = {}
-	local ScoresByTrapType = {}
+	local capturedList: {BasePart} = {}
+	local capturedIndex: {[BasePart]: number} = {}
+	local ScoresByTrapType: {[string]: number} = {}
 
-	local function isFlockRoot(hit)
-		return hit and hit:IsA("BasePart") and hit.Parent == Flock
+	local function isFlockRoot(hit: BasePart?): boolean
+		return hit ~= nil and hit:IsA("BasePart") and hit.Parent == Flock
 	end
 
-	local function getSlotCFrame(index)
+	local function getSlotCFrame(index: number): CFrame
 		local col = (index - 1) % GRID_COLS
 		local row = math.floor((index - 1) / GRID_COLS)
 		local offset = CFrame.new(
@@ -35,14 +46,14 @@ function module.SetupTrap(trap: BasePart)
 		return trap.CFrame * offset
 	end
 
-	local function placeCaptured(part)
+	local function placeCaptured(part: BasePart): nil
 		local idx = capturedIndex[part]
 		if idx then
 			part.CFrame = getSlotCFrame(idx)
 		end
 	end
 
-	local function addCaptured(part)
+	local function addCaptured(part: BasePart): nil
 		if capturedIndex[part] then return end
 
 		table.insert(capturedList, part)
@@ -56,7 +67,7 @@ function module.SetupTrap(trap: BasePart)
 		placeCaptured(part)
 	end
 
-	local function applyScore(trapType, animalType)
+	local function applyScore(trapType: string, animalType: string): nil
 		local delta = (trapType == animalType) and 1 or -1
 		ScoresByTrapType[trapType] = (ScoresByTrapType[trapType] or 0) + delta
 
@@ -79,10 +90,13 @@ function module.SetupTrap(trap: BasePart)
 		hit:SetAttribute("Captured", true)
 		hit:SetAttribute("CapturedBy", trap.Name)
 
-		local trapType = trap:GetAttribute("Team")
-		local animalType = hit:GetAttribute("Team")
-
-		applyScore(trapType, animalType)
+		local trapTypeAttr = trap:GetAttribute("Team")
+		local animalTypeAttr = hit:GetAttribute("Team")
+		if typeof(trapTypeAttr) == "string" and typeof(animalTypeAttr) == "string" then
+			applyScore(trapTypeAttr, animalTypeAttr)
+		else
+			warn("[TrapController] Missing Team attributes on trap/animal")
+		end
 		addCaptured(hit)
 	end)
 
@@ -91,11 +105,11 @@ function module.SetupTrap(trap: BasePart)
 		capturedList = capturedList,
 		capturedIndex = capturedIndex,
 		ScoresByTrapType = ScoresByTrapType
-	}
+	} :: TrapState
 end
 
 -- Called by game reset to clear trap memory
-function module.ResetAllTraps()
+function module.ResetAllTraps(): nil
 	for trap, data in pairs(module.ActiveTraps) do
 		table.clear(data.capturedList)
 		table.clear(data.capturedIndex)

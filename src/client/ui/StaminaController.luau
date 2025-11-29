@@ -1,21 +1,23 @@
+--!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local SprintEvent = ReplicatedStorage:WaitForChild("SprintEvent")
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local SprintEvent = RemoteEvents.SprintEvent
 
-local player = Players.LocalPlayer
+local player: Player = Players.LocalPlayer
 
 local StaminaController = {}
 
-local MAX_STAMINA = 100
+local MAX_STAMINA: number = 100
 
 -- Optional: smooth bar animations
 local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-local barFill = nil
+local barFill: Frame? = nil
 
 -- Function to update bar fill
-local function updateBar(currentStamina)
+local function updateBar(currentStamina: number): nil
     if not barFill then return end
     
     local ratio = math.clamp(currentStamina / MAX_STAMINA, 0, 1)
@@ -32,7 +34,7 @@ SprintEvent.OnClientEvent:Connect(function(isSprinting, stamina)
     updateBar(stamina)
 end)
 
-function StaminaController.Init()
+function StaminaController.Init(): nil
     local playerGui = player:WaitForChild("PlayerGui")
     
     local staminaGui = playerGui:WaitForChild("StaminaGui", 5)

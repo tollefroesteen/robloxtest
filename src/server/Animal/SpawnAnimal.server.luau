@@ -9,7 +9,8 @@ local PartLibrary = require(animalsFolder:WaitForChild("AnimalLibraryModule"))
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AnimalTemplate = ReplicatedStorage:WaitForChild("AnimalTemplate")
-local AnimalSpawnedEvent = ReplicatedStorage:WaitForChild("AnimalSpawnedEvent")
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local AnimalSpawnedEvent = RemoteEvents.AnimalSpawnedEvent
 
 
 local UFOModel = workspace.UFO

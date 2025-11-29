@@ -2,7 +2,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local lifeModule = require(game.ServerScriptService.Server.Player:WaitForChild("LifePointsServer"))
 
-local ShootEvent = ReplicatedStorage:WaitForChild("ShootEvent")
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local ShootEvent = RemoteEvents.ShootEvent
 
 local PROJECTILE_SPEED = 200
 local PROJECTILE_LIFETIME = 2

@@ -1,9 +1,11 @@
+--!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TrapController = require(game.ServerScriptService.Server.Game.TrapController)
 local Flock = workspace:WaitForChild("Flock")
 
-local ResetGameEvent = ReplicatedStorage:WaitForChild("ResetGameEvent")
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local ResetGameEvent = RemoteEvents.ResetGameEvent
 
 -- Reset all animals to spawn attributes
 local function resetFlock()

@@ -31,11 +31,24 @@ function MenuController.Init(): nil
         return
     end
 
-    -- Add press effect
+    local startButton = frame:WaitForChild("StartButton", 5)
+    if not startButton then
+        Log.Warn(CONTEXT, "StartButton not found under Frame")
+        return
+    end
+
+    -- Add press effects
     ButtonEffects.AddPressEffect(shootButton)
+    ButtonEffects.AddPressEffect(startButton)
 
     shootButton.MouseButton1Click:Connect(function()
         ShootEvent:FireServer()
+    end)
+
+    -- Use debounce for start button to prevent multiple rapid clicks
+    ButtonEffects.AddDebounce(startButton, 1.0, function()
+        RemoteEvents.StartGameEvent:FireServer()
+        Log.Info(CONTEXT, "Game start requested")
     end)
 end
 

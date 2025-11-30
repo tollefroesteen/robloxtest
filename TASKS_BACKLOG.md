@@ -5,23 +5,23 @@ Use this checklist to track and complete improvements one-by-one.
 ## 🚧 Active Tasks
 
 ### UI & Source Control
-- [ ] [UI-3] Map GUIs via `default.project.json` under `StarterGui` for consistency and fewer runtime waits.
-    - [x] Map `StarterGui` to `src/gui` in `default.project.json`.
-    - [ ] Export `ActionsGui`, `StaminaGui`, `HealthGui`, `ScoreGui` from Studio into `src/gui` (Rojo plugin → Save).
-    - [ ] Verify controllers bind to exported hierarchies; fix paths if needed.
-    - [ ] Remove duplicate Studio GUIs so filesystem is the source of truth.
+- [x] [UI-3] ~~Map GUIs via Rojo~~ **CANCELLED** - Rojo's `.model.json` format has critical limitations (no UIGradient, limited Font support, unreliable property sync).
+    - **Decision**: GUIs remain in Studio; controllers in filesystem.
+    - **Documentation**: Created `docs/GUI_WORKFLOW.md` with hybrid approach guidelines.
+    - **Workflow**: Create/edit GUIs in Studio → Export `.rbxmx` for backup → Write controllers in `src/client/ui/`.
+    - See [GUI_WORKFLOW.md](docs/GUI_WORKFLOW.md) for details.
 
 ### Phase 1: UFO Spawner (Gameplay Loop)
-- [ ] [UFO-1] Replace pre-placed Workspace `Flock` animals with dynamic spawning from `ReplicatedStorage.AnimalTemplate`.
-- [ ] [UFO-2] Apply per-animal properties from `ServerScriptService.Server.Animal.AnimalLibraryModule` to each spawned clone (PointValue, MaxSpeed, Color, etc.).
-- [ ] [UFO-3] Gate spawning by game state: start on `StartGameEvent`, stop on `TimerEndedEvent`.
- - [x] [UFO-4] Configure pacing: add shared spawn config (interval, max concurrent, burst size) and enforce a cap in `workspace.Flock`.
-- [ ] [UFO-5] Ownership + replication: set `SetNetworkOwner(nil)` and fire `RemoteEvents.AnimalSpawnedEvent` after parenting to `workspace.Flock`.
-- [ ] [UFO-6] Lifecycle: despawn animals on capture/reset; ensure `ResetService` clears `Flock` safely.
-- [ ] [UFO-7] Safety checks: validate `AnimalTemplate` exists; log and skip if missing; fall back color if library is incomplete.
-- [ ] [UFO-8] UFO behavior: ensure UFO has a valid `PrimaryPart`; add hover/pathing stub for future movement.
-- [ ] [UFO-9] Performance: avoid per-frame tree scans (client already cached); throttle server loop; protect against memory growth.
-- [ ] [UFO-10] Telemetry: add `Log.Debug` traces around spawn/stop; count spawns per minute for tuning.
+- [x] [UFO-1] Replace pre-placed Workspace `Flock` animals with dynamic spawning from `ReplicatedStorage.AnimalTemplate`.
+- [x] [UFO-2] Apply per-animal properties from `ServerScriptService.Server.Animal.AnimalLibraryModule` to each spawned clone (PointValue, MaxSpeed, Color, etc.).
+- [x] [UFO-3] Gate spawning by game state: start on `StartGameEvent`, stop on `TimerEndedEvent`.
+- [x] [UFO-4] Configure pacing: add shared spawn config (interval, max concurrent, burst size) and enforce a cap in `workspace.Flock`.
+- [x] [UFO-5] Ownership + replication: set `SetNetworkOwner(nil)` and fire `RemoteEvents.AnimalSpawnedEvent` after parenting to `workspace.Flock`.
+- [x] [UFO-6] Lifecycle: despawn animals on capture/reset; ensure `ResetService` clears `Flock` safely.
+- [x] [UFO-7] Safety checks: validate `AnimalTemplate` exists; log and skip if missing; fall back color if library is incomplete.
+- [x] [UFO-8] UFO behavior: ensure UFO has a valid `PrimaryPart`; add hover/pathing stub for future movement.
+- [x] [UFO-9] Performance: avoid per-frame tree scans (client already cached); throttle server loop; protect against memory growth.
+- [x] [UFO-10] Telemetry: add `Log.Debug` traces around spawn/stop; count spawns per minute for tuning.
 
 ---
 
@@ -65,11 +65,24 @@ Use this checklist to track and complete improvements one-by-one.
 ### Medium Impact: UI Init & Paths
 - [x] [UI-1] Add `CharacterAdded` re-init hook in `MainClient.client.luau` to rebind controllers after respawn.
 - [x] [UI-2] Document GUI hierarchy (names/paths) in `README.md`: `ActionsGui`, `HealthGui`, `StaminaGui`, `ScoreGui`.
+- [x] [UI-3] ~~Map GUIs via Rojo~~ **CANCELLED** - See above; documented hybrid Studio/filesystem approach instead.
 
 ### Low Impact: Performance & Ergonomics
 - [x] [LO-1] Cache animal part references in `AnimalController` (visual, bounce, legs) to avoid per-frame tree scans.
 - [x] [LO-2] Enhance `ButtonEffects` with debounce helper and optional scale-based press effect.
 - [x] [LO-3] Standardize warning prefixes and add `DEV_MODE` toggle for verbose client logging.
+
+### UFO Spawner: Complete System
+- [x] [UFO-1] Replace pre-placed Workspace `Flock` animals with dynamic spawning from `ReplicatedStorage.AnimalTemplate`.
+- [x] [UFO-2] Apply per-animal properties from `ServerScriptService.Server.Animal.AnimalLibraryModule` to each spawned clone (PointValue, MaxSpeed, Color, etc.).
+- [x] [UFO-3] Gate spawning by game state: start on `StartGameEvent`, stop on `TimerEndedEvent`.
+- [x] [UFO-4] Configure pacing: add shared spawn config (interval, max concurrent, burst size) and enforce a cap in `workspace.Flock`.
+- [x] [UFO-5] Ownership + replication: set `SetNetworkOwner(nil)` and fire `RemoteEvents.AnimalSpawnedEvent` after parenting to `workspace.Flock`.
+- [x] [UFO-6] Lifecycle: despawn animals on capture/reset; ensure `ResetService` clears `Flock` safely.
+- [x] [UFO-7] Safety checks: validate `AnimalTemplate` exists; log and skip if missing; fall back color if library is incomplete.
+- [x] [UFO-8] UFO behavior: ensure UFO has a valid `PrimaryPart`; add hover/pathing stub for future movement.
+- [x] [UFO-9] Performance: avoid per-frame tree scans (client already cached); throttle server loop; protect against memory growth.
+- [x] [UFO-10] Telemetry: add `Log.Debug` traces around spawn/stop; count spawns per minute for tuning.
 
 ---
 

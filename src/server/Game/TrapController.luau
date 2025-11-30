@@ -2,10 +2,14 @@
 -- ModuleScript: TrapController
 local module = {}
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
-local ScoreService = require(ServerScriptService:WaitForChild("Server"):WaitForChild("Game"):WaitForChild("ScoreService"))
+local TeamService = require(ServerScriptService:WaitForChild("Server"):WaitForChild("Game"):WaitForChild("TeamService"))
+local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+
+local CONTEXT = "TrapController"
 
 type TrapState = {
     capturedList: {BasePart},
@@ -16,6 +20,7 @@ type TrapState = {
 module.ActiveTraps = {} :: {[BasePart]: TrapState}
 
 function module.SetupTrap(trap: BasePart): nil
+	Log.Info(CONTEXT, string.format("Setting up trap: %s", trap.Name))
     local Flock = workspace:WaitForChild("Flock") :: Folder
     
 	-- Config
@@ -64,9 +69,25 @@ function module.SetupTrap(trap: BasePart): nil
 		placeCaptured(part)
 	end
 
-	local function applyScore(trapType: string, animalType: string): nil
-		-- Delegate to centralized ScoreService
-		ScoreService.ApplyScore(trapType, animalType, trap.Name)
+	local function applyScore(animal: BasePart): nil
+		-- Award points to the team that owns this trap
+		local trapTeamName = trap:GetAttribute("Team")
+		if not trapTeamName then 
+			Log.Warn(CONTEXT, string.format("Trap %s has no Team attribute set!", trap.Name))
+			return 
+		end
+		
+		-- Get the animal's point value
+		local pointValue = animal:GetAttribute("PointValue") or 1
+		
+		local teamFullName = trapTeamName .. " Team"
+		local team = TeamService.GetTeamByName(teamFullName)
+		if team then
+			Log.Info(CONTEXT, string.format("Adding %d points to %s", pointValue, teamFullName))
+			TeamService.AddTeamScore(team, pointValue)
+		else
+			Log.Warn(CONTEXT, string.format("Team not found: %s", teamFullName))
+		end
 	end
 
 	trap.Touched:Connect(function(hit)
@@ -76,16 +97,12 @@ function module.SetupTrap(trap: BasePart): nil
 		if hit:GetAttribute("Captured") == true then return end
 		if hit:GetAttribute("CapturedBy") then return end
 
+		Log.Info(CONTEXT, string.format("Animal captured: %s by trap %s", hit.Name, trap.Name))
+		
 		hit:SetAttribute("Captured", true)
 		hit:SetAttribute("CapturedBy", trap.Name)
 
-		local trapTypeAttr = trap:GetAttribute("Team")
-		local animalTypeAttr = hit:GetAttribute("Team")
-		if typeof(trapTypeAttr) == "string" and typeof(animalTypeAttr) == "string" then
-			applyScore(trapTypeAttr, animalTypeAttr)
-		else
-			warn("[TrapController] Missing Team attributes on trap/animal")
-		end
+		applyScore(hit)
 		addCaptured(hit)
 	end)
 

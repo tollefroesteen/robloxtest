@@ -10,33 +10,60 @@ local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"
 
 local CONTEXT = "MainClient"
 
--- Optional list of controller module names expected under Client/ui
-local CONTROLLER_FOLDER_NAME = "ui"
-local EXPECTED_CONTROLLERS = {
+-- Controllers in the ui folder
+local UI_CONTROLLER_FOLDER = "ui"
+local UI_CONTROLLERS = {
 	"MenuController",
 	"RunButtonController",
 	"ResetButtonController",
 	"StaminaController",
 	"HealthController",
-	"ScoreController",
 	"TimerController",
+	"TeamController",
+}
+
+-- Controllers in the controllers folder
+local CONTROLLERS_FOLDER = "controllers"
+local OTHER_CONTROLLERS = {
+	"AnimalController",
 }
 
 local controllers: { [string]: any } = {}
 
 local function loadControllers()
 	local root = script.Parent
-	local uiFolder = root:FindFirstChild(CONTROLLER_FOLDER_NAME)
-	if not uiFolder then
-		return
+	
+	-- Load UI controllers
+	local uiFolder = root:FindFirstChild(UI_CONTROLLER_FOLDER)
+	if uiFolder then
+		for _, name in ipairs(UI_CONTROLLERS) do
+			if controllers[name] == nil then
+				local module = uiFolder:FindFirstChild(name)
+				if module and module:IsA("ModuleScript") then
+					local ok, loaded = pcall(require, module)
+					if ok then
+						controllers[name] = loaded
+					else
+						Log.Warn(CONTEXT, "Failed to load controller: " .. name .. " -> " .. tostring(loaded))
+					end
+				end
+			end
+		end
 	end
-	for _, name in ipairs(EXPECTED_CONTROLLERS) do
-		if controllers[name] == nil then
-			local module = uiFolder:FindFirstChild(name)
-			if module and module:IsA("ModuleScript") then
-				local ok, loaded = pcall(require, module)
-				if ok then
-					controllers[name] = loaded
+	
+	-- Load other controllers
+	local controllersFolder = root:FindFirstChild(CONTROLLERS_FOLDER)
+	if controllersFolder then
+		for _, name in ipairs(OTHER_CONTROLLERS) do
+			if controllers[name] == nil then
+				local module = controllersFolder:FindFirstChild(name)
+				if module and module:IsA("ModuleScript") then
+					local ok, loaded = pcall(require, module)
+					if ok then
+						controllers[name] = loaded
+					else
+						Log.Warn(CONTEXT, "Failed to load controller: " .. name .. " -> " .. tostring(loaded))
+					end
 				end
 			end
 		end

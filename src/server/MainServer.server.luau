@@ -13,10 +13,11 @@ if not ok then
 else
     -- Optionally touch key events to ensure they exist (no-op but validates references)
     local _ = RemoteEvents.SprintEvent
-    local _2 = RemoteEvents.ScoreEvent
-    local _3 = RemoteEvents.ResetGameEvent
-    local _4 = RemoteEvents.HealthEvent
-    local _5 = RemoteEvents.ShootEvent
-    local _6 = RemoteEvents.EndGameEvent
+    local _2 = RemoteEvents.ResetGameEvent
+    local _3 = RemoteEvents.HealthEvent
+    local _4 = RemoteEvents.ShootEvent
+    local _5 = RemoteEvents.EndGameEvent
+    local _6 = RemoteEvents.TeamAssignedEvent
+    local _7 = RemoteEvents.TeamScoreUpdateEvent
     print("[Bootstrap] Shared.RemoteEvents initialized")
 end

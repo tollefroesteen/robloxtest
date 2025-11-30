@@ -19,11 +19,13 @@ end
 RemoteEvents.EndGameEvent = getOrCreate("EndGameEvent")
 RemoteEvents.HealthEvent = getOrCreate("HealthEvent")
 RemoteEvents.ResetGameEvent = getOrCreate("ResetGameEvent")
-RemoteEvents.ScoreEvent = getOrCreate("ScoreEvent")
 RemoteEvents.ShootEvent = getOrCreate("ShootEvent")
 RemoteEvents.SprintEvent = getOrCreate("SprintEvent")
 RemoteEvents.StartGameEvent = getOrCreate("StartGameEvent")
 RemoteEvents.AnimalSpawnedEvent = getOrCreate("AnimalSpawnedEvent")
 RemoteEvents.TimerUpdateEvent = getOrCreate("TimerUpdateEvent")
+RemoteEvents.TeamAssignedEvent = getOrCreate("TeamAssignedEvent")
+RemoteEvents.TeamScoreUpdateEvent = getOrCreate("TeamScoreUpdateEvent")
+RemoteEvents.PlayerScoredEvent = getOrCreate("PlayerScoredEvent")
 
 return RemoteEvents

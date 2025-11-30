@@ -58,9 +58,11 @@ local function spawnPart()
 	local chosenType = PartLibrary.GetRandomType()
 
 	local clone = AnimalTemplate:Clone()
-
-	-- Position animal at UFO's X/Z but at ground level (Y = spawnHeight)
-	clone.Position = Vector3.new(ufoPos.X, spawnHeight, ufoPos.Z)
+	
+	-- Calculate offset from template position to spawn position
+	local templatePos = clone.Position
+	local spawnPos = Vector3.new(ufoPos.X, spawnHeight, ufoPos.Z)
+	local offset = spawnPos - templatePos
 
 	-- Attributes
 	clone:SetAttribute("PointValue", chosenType.PointValue)
@@ -76,7 +78,15 @@ local function spawnPart()
 
 	clone.Visual.Bouncepart.Color = chosenType.Color.Color -- Convert BrickColor to Color3
 	
-	clone.Parent = workspace.Flock  -- put in workspace first so it replicates
+	-- Move all parts to spawn position (all are anchored, so move each individually)
+	clone.CFrame = clone.CFrame + offset
+	for _, child in ipairs(clone:GetDescendants()) do
+		if child:IsA("BasePart") then
+			child.CFrame = child.CFrame + offset
+		end
+	end
+	
+	clone.Parent = workspace.Flock  -- put in workspace after positioning
 	
 	clone:SetNetworkOwner(nil) -- server owns, allows client visual control (must be parented to workspace first)
 

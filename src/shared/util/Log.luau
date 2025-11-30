@@ -5,7 +5,7 @@
 local Log = {}
 
 -- Toggle verbose logging for development
-Log.DEV_MODE = false
+Log.DEV_MODE = true
 
 --- Logs a warning with standardized prefix
 --- @param context string The module/controller name (e.g., "MenuController")

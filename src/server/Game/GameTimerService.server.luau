@@ -3,13 +3,29 @@
 -- Manages the game timer: starts when game starts, fires end game event when timer ends
 -- Broadcasts timer updates to all clients
 
+print("[GameTimerService] Script starting...")
+
 local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- Add pcall to catch require errors
+local Shared = ReplicatedStorage:WaitForChild("Shared", 10)
+if not Shared then
+	warn("[GameTimerService] Failed to find Shared folder in ReplicatedStorage")
+	return
+end
+
 local ServerEvents = require(ServerScriptService.Server.ServerEvents)
-local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
-local GameTimerConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("config"):WaitForChild("GameTimerConfig"))
-local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
+
+local configFolder = Shared:WaitForChild("config", 5)
+if not configFolder then
+	warn("[GameTimerService] Failed to find config folder")
+	return
+end
+
+local GameTimerConfig = require(configFolder:WaitForChild("GameTimerConfig"))
+local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "GameTimerService"
 
@@ -20,6 +36,8 @@ local EndGameRemote = RemoteEvents.EndGameEvent
 
 local timerRunning = false
 local timeRemaining = 0
+
+Log.Info(CONTEXT, "GameTimerService initialized, listening for StartGameEvent")
 
 -- Broadcasts timer update to all clients
 local function broadcastTimerUpdate(remaining: number): nil

@@ -75,14 +75,18 @@ PlayerGui [PlayerGui]
 - After respawn, controllers should re-init (add a `CharacterAdded` hook in `MainClient` for UI-1 task).
 - Ensure admin gating for `ResetButton` stays in controller logic, not in hierarchy.
 
-### Optional: Map GUIs via Rojo (UI-3)
-Add a section to `default.project.json` mapping a new folder (e.g. `src/gui`) to `StarterGui` so GUI elements are source-controlled. Example snippet:
-```jsonc
-"StarterGui": {
-	"$path": "src/gui"
-}
-```
-Then export/create the ScreenGuis (`ActionsGui`, `ScoreGui`, `StaminaGui`, `HealthGui`) under `src/gui/` for full versioning.
+### GUI Development Approach
+**GUIs are created and maintained in Roblox Studio, NOT synced via Rojo.**
+
+Rojo's `.model.json` format has significant limitations (no UIGradient support, limited Font support, unreliable property sync). Studio's GUI editor is the correct tool for visual design.
+
+**Workflow:**
+- Create/edit GUIs in Studio's `StarterGui`
+- Export as `.rbxmx` files for backup/version control (optional)
+- Write controllers in `src/client/ui/` to handle logic
+- Controllers sync via Rojo, GUIs stay in Studio
+
+See [docs/GUI_WORKFLOW.md](docs/GUI_WORKFLOW.md) for detailed guidelines.
 
 ### Initialization Flow
 1. Server bootstrap (`MainServer.server.luau`) creates RemoteEvents.
@@ -90,7 +94,7 @@ Then export/create the ScreenGuis (`ActionsGui`, `ScoreGui`, `StaminaGui`, `Heal
 3. Controllers listen to events immediately (module scope where needed) before UI waits finish.
 4. Reset flow uses `ResetButtonController` → server `ResetService` + `ScoreService.ResetAll()` → `ResetGameEvent` to clear HUD.
 
-### Pending Improvement (UI-1)
-Implement a `Players.LocalPlayer.CharacterAdded` hook in `MainClient.client.luau` to call each controller's `Init()` again after respawn to guarantee UI rebinds.
+### Character Respawn Handling (UI-1) ✅
+`MainClient.client.luau` includes a `CharacterAdded` hook that re-initializes all controllers after respawn to guarantee UI rebinds.
 
 ---

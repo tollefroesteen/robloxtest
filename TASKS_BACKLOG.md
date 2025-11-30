@@ -6,6 +6,10 @@ Use this checklist to track and complete improvements one-by-one.
 
 ### UI & Source Control
 - [ ] [UI-3] Map GUIs via `default.project.json` under `StarterGui` for consistency and fewer runtime waits.
+    - [x] Map `StarterGui` to `src/gui` in `default.project.json`.
+    - [ ] Export `ActionsGui`, `StaminaGui`, `HealthGui`, `ScoreGui` from Studio into `src/gui` (Rojo plugin → Save).
+    - [ ] Verify controllers bind to exported hierarchies; fix paths if needed.
+    - [ ] Remove duplicate Studio GUIs so filesystem is the source of truth.
 
 ### Phase 1: UFO Spawner (Gameplay Loop)
 - [ ] [UFO-1] Replace pre-placed Workspace `Flock` animals with dynamic spawning from `ReplicatedStorage.AnimalTemplate`.

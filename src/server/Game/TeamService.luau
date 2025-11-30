@@ -18,10 +18,12 @@ local TEAM_CONFIG = {
 	{
 		Name = "Red Team",
 		Color = BrickColor.new("Bright red"),
+		ShirtColor = Color3.fromRGB(200, 60, 60),
 	},
 	{
 		Name = "Blue Team", 
 		Color = BrickColor.new("Bright blue"),
+		ShirtColor = Color3.fromRGB(60, 100, 200),
 	},
 }
 
@@ -62,6 +64,42 @@ function TeamService.CreateTeams(): nil
 	Log.Info(CONTEXT, "Teams created: Red Team and Blue Team")
 end
 
+-- Colors the player's character to match their team
+local function colorPlayerCharacter(player: Player, teamColor: Color3): nil
+	local character = player.Character
+	if not character then return end
+	
+	-- Color the shirt (Torso/UpperTorso)
+	local torso = character:FindFirstChild("Torso") or character:FindFirstChild("UpperTorso")
+	if torso and torso:IsA("BasePart") then
+		torso.Color = teamColor
+	end
+	
+	-- Also color the shirt clothing if present
+	local shirt = character:FindFirstChildOfClass("Shirt")
+	if shirt then
+		shirt:Destroy() -- Remove custom shirt to show team color
+	end
+	
+	-- For R15 characters, also color LowerTorso
+	local lowerTorso = character:FindFirstChild("LowerTorso")
+	if lowerTorso and lowerTorso:IsA("BasePart") then
+		lowerTorso.Color = teamColor
+	end
+	
+	Log.Info(CONTEXT, string.format("Colored %s's character for team", player.Name))
+end
+
+-- Gets the shirt color for a team
+local function getTeamShirtColor(team: Team): Color3?
+	for _, config in TEAM_CONFIG do
+		if config.Name == team.Name then
+			return config.ShirtColor
+		end
+	end
+	return nil
+end
+
 -- Gets the team with fewer players (for balanced assignment)
 local function getTeamWithFewerPlayers(): Team?
 	if not redTeam or not blueTeam then return nil end
@@ -89,6 +127,18 @@ function TeamService.AssignPlayerToTeam(player: Player): nil
 	
 	player.Team = team
 	Log.Info(CONTEXT, string.format("Assigned %s to %s", player.Name, team.Name))
+	
+	-- Color the player's character
+	local shirtColor = getTeamShirtColor(team)
+	if shirtColor then
+		colorPlayerCharacter(player, shirtColor)
+		
+		-- Also color when character respawns
+		player.CharacterAdded:Connect(function(character)
+			task.wait(0.1) -- Wait for character to fully load
+			colorPlayerCharacter(player, shirtColor)
+		end)
+	end
 	
 	-- Notify clients of team assignment
 	RemoteEvents.TeamAssignedEvent:FireAllClients(player, team.Name, team.TeamColor.Color)

@@ -5,14 +5,15 @@ local Flock = workspace:WaitForChild("Flock")
 -- Timestep
 local TICK = 1/20
 
--- Flocking settings
+-- Flocking settings (fallback defaults)
 local BASE_SPEED = 0.5
-local NEIGHBOR_RADIUS = 25
+local BASE_OBSERVATION_RADIUS = 25
 local SEPARATION_DISTANCE = 6
 
--- Player interaction
-local PLAYER_AVOID_RADIUS = 35
+-- Player interaction (fallback defaults)
+local BASE_PLAYER_AVOID_RADIUS = 35
 local PLAYER_PANIC_RADIUS = 9
+local BASE_FEAR_FACTOR = 1.0  -- Multiplier for panic/avoid behavior
 
 -- Motion shaping
 local TURN_SMOOTH = 0.22
@@ -28,15 +29,16 @@ local velocities = {}       -- [BasePart] = Vector3
 local panicUntil = {}       -- [BasePart] = timestamp
 local acc = 0
 
--- Neighbor finder (ignores captured animals)
-local function getNeighbors(root)
+-- Neighbor finder (ignores captured animals, uses per-animal ObservationRadius)
+local function getNeighbors(root, observationRadius)
 	local neighbors = {}
+	local radius = observationRadius or BASE_OBSERVATION_RADIUS
 	for _, other in ipairs(Flock:GetChildren()) do
 		if other ~= root
 			and other:IsA("BasePart")
 			and other:GetAttribute("Captured") ~= true
 		then
-			if (other.Position - root.Position).Magnitude < NEIGHBOR_RADIUS then
+			if (other.Position - root.Position).Magnitude < radius then
 				table.insert(neighbors, other)
 			end
 		end
@@ -67,9 +69,11 @@ RunService.Heartbeat:Connect(function(dt)
 
 		local pos = root.Position
 		local maxSpeed = root:GetAttribute("MaxSpeed") or BASE_SPEED
+		local observationRadius = root:GetAttribute("ObservationRadius") or BASE_OBSERVATION_RADIUS
+		local fearFactor = root:GetAttribute("FearFactor") or BASE_FEAR_FACTOR
 		local vel = velocities[root] or Vector3.zero
 
-		-- Player proximity (for panic)
+		-- Player proximity (for panic) - scaled by FearFactor
 		local isPanicking = panicUntil[root] and panicUntil[root] > now
 		local playerDist = math.huge
 		local playerDir = Vector3.zero
@@ -84,22 +88,24 @@ RunService.Heartbeat:Connect(function(dt)
 			end
 		end
 
-		-- Trigger panic if very close to player
-		if playerDist < PLAYER_PANIC_RADIUS then
-			panicUntil[root] = now + PANIC_TIME
+		-- Trigger panic if very close to player (scaled by FearFactor)
+		local panicRadius = PLAYER_PANIC_RADIUS * fearFactor
+		if playerDist < panicRadius then
+			panicUntil[root] = now + (PANIC_TIME * fearFactor)  -- More fearful = longer panic
 			isPanicking = true
 		end
 
 		if isPanicking then
-			-- Strong flee, but still lerped for smoothness
+			-- Strong flee, but still lerped for smoothness (panic intensity scaled by FearFactor)
 			if playerDir.Magnitude > 0 then
 				local fleeDir = playerDir.Unit
-				local fleeVel = fleeDir * (maxSpeed * PANIC_BOOST)
+				local panicBoost = PANIC_BOOST * (0.5 + fearFactor * 0.5)  -- Range: 1.1x to 2.2x
+				local fleeVel = fleeDir * (maxSpeed * panicBoost)
 				vel = vel:Lerp(fleeVel, 0.4)
 			end
 		else
-			-- Standard boids
-			local neighbors = getNeighbors(root)
+			-- Standard boids (use per-animal ObservationRadius)
+			local neighbors = getNeighbors(root, observationRadius)
 			local separation = Vector3.zero
 			local alignment  = Vector3.zero
 			local cohesion   = Vector3.zero
@@ -124,10 +130,12 @@ RunService.Heartbeat:Connect(function(dt)
 
 			local desired = separation + alignment + cohesion
 
-			-- Player avoidance (non-panic)
-			if playerDist < PLAYER_AVOID_RADIUS and playerDir.Magnitude > 0 then
-				local t = 1 - (playerDist / PLAYER_AVOID_RADIUS) -- 0..1
-				desired += playerDir.Unit * (t * AVOID_FORCE)
+			-- Player avoidance (non-panic) - scaled by FearFactor
+			local avoidRadius = BASE_PLAYER_AVOID_RADIUS * fearFactor
+			if playerDist < avoidRadius and playerDir.Magnitude > 0 then
+				local t = 1 - (playerDist / avoidRadius) -- 0..1
+				local avoidForce = AVOID_FORCE * fearFactor
+				desired += playerDir.Unit * (t * avoidForce)
 			end
 
 			if desired.Magnitude > 0 then
@@ -141,8 +149,9 @@ RunService.Heartbeat:Connect(function(dt)
 			vel = vel:Lerp(desired, TURN_SMOOTH)
 		end
 
-		-- Cap speed (higher cap while panicking)
-		local speedCap = isPanicking and (maxSpeed * PANIC_BOOST) or maxSpeed
+		-- Cap speed (higher cap while panicking, scaled by FearFactor)
+		local panicBoost = PANIC_BOOST * (0.5 + fearFactor * 0.5)
+		local speedCap = isPanicking and (maxSpeed * panicBoost) or maxSpeed
 		if vel.Magnitude > speedCap then
 			vel = vel.Unit * speedCap
 		end

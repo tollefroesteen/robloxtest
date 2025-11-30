@@ -5,13 +5,13 @@ local PartLibrary = {}
 PartLibrary.List = {
 	{
 		ID = "RR01",
-		Name = "RedRunner",
+		Name = "WhiteRover",
 		Color = BrickColor.new("Bright white"),
 		PointValue = 1,
-		MaxSpeed = 0.3,
+		MaxSpeed = 0.37,
 		Hungriness = 0.5,
-		FearFactor = 0.6,
-		ObservationRadius = 20,
+		FearFactor = 0.85,
+		ObservationRadius = 30,
 		SpawnChance = 50
 	},
 	{
@@ -19,10 +19,10 @@ PartLibrary.List = {
 		Name = "BlueBouncer",
 		Color = BrickColor.new("Bright blue"),
 		PointValue = 3,
-		MaxSpeed = 0.4,
+		MaxSpeed = 0.75,
 		Hungriness = 0.8,
-		FearFactor = 0.3,
-		ObservationRadius = 25,
+		FearFactor = 0.6,
+		ObservationRadius = 40,
 		SpawnChance = 20
 	},
 	{
@@ -30,45 +30,45 @@ PartLibrary.List = {
 		Name = "YellowCrawler",
 		Color = BrickColor.new("Bright yellow"),
 		PointValue = 5,
-		MaxSpeed = 0.15,
+		MaxSpeed = 0.8,
 		Hungriness = 0.3,
 		FearFactor = 0.9,
-		ObservationRadius = 15,
+		ObservationRadius = 10,
 		SpawnChance = 10
 	},
-	{
-		ID = "OC01",
-		Name = "OrangeCrawler",
-		Color = BrickColor.new("Bright orange"),
-		PointValue = 6,
-		MaxSpeed = 0.15,
-		Hungriness = 0.3,
-		FearFactor = 0.9,
-		ObservationRadius = 15,
-		SpawnChance = 10
-	},
-	{
-		ID = "GS01",
-		Name = "GreenScout",
-		Color = BrickColor.new("Bright green"),
-		PointValue = 8,
-		MaxSpeed = 0.35,
-		Hungriness = 0.9,
-		FearFactor = 0.4,
-		ObservationRadius = 35,
-		SpawnChance = 5
-	},
-	{
-		ID = "BS01",
-		Name = "BlusihScout",
-		Color = BrickColor.new("Bright bluish green"),
-		PointValue = 10,
-		MaxSpeed = 0.35,
-		Hungriness = 0.9,
-		FearFactor = 0.4,
-		ObservationRadius = 35,
-		SpawnChance = 5
-	},
+	-- {
+	-- 	ID = "OC01",
+	-- 	Name = "OrangeCrawler",
+	-- 	Color = BrickColor.new("Bright orange"),
+	-- 	PointValue = 6,
+	-- 	MaxSpeed = 0.15,
+	-- 	Hungriness = 0.3,
+	-- 	FearFactor = 0.9,
+	-- 	ObservationRadius = 15,
+	-- 	SpawnChance = 10
+	-- },
+	-- {
+	-- 	ID = "GS01",
+	-- 	Name = "GreenScout",
+	-- 	Color = BrickColor.new("Bright green"),
+	-- 	PointValue = 8,
+	-- 	MaxSpeed = 0.35,
+	-- 	Hungriness = 0.9,
+	-- 	FearFactor = 0.4,
+	-- 	ObservationRadius = 35,
+	-- 	SpawnChance = 5
+	-- },
+	-- {
+	-- 	ID = "BS01",
+	-- 	Name = "BlusihScout",
+	-- 	Color = BrickColor.new("Bright bluish green"),
+	-- 	PointValue = 10,
+	-- 	MaxSpeed = 0.35,
+	-- 	Hungriness = 0.9,
+	-- 	FearFactor = 0.4,
+	-- 	ObservationRadius = 35,
+	-- 	SpawnChance = 5
+	-- },
 }
 
 -- Helper: get a random part type using weighted probabilities

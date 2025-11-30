@@ -19,6 +19,7 @@ local EXPECTED_CONTROLLERS = {
 	"StaminaController",
 	"HealthController",
 	"ScoreController",
+	"TimerController",
 }
 
 local controllers: { [string]: any } = {}

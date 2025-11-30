@@ -3,7 +3,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
+local CONTEXT = "HealthController"
 local player: Player = Players.LocalPlayer
 
 local HealthController = {}
@@ -35,19 +37,19 @@ function HealthController.Init(): nil
     
     local healthGui = playerGui:WaitForChild("HealthGui", 5)
     if not healthGui then
-        warn("[HealthController] HealthGui not found in PlayerGui")
+        Log.Warn(CONTEXT, "HealthGui not found in PlayerGui")
         return
     end
 
     local barBackground = healthGui:WaitForChild("HealthBarBackground", 5)
     if not barBackground then
-        warn("[HealthController] HealthBarBackground not found under HealthGui")
+        Log.Warn(CONTEXT, "HealthBarBackground not found under HealthGui")
         return
     end
 
     barFill = barBackground:WaitForChild("HealthFill", 5)
     if not barFill then
-        warn("[HealthController] HealthFill not found under HealthBarBackground")
+        Log.Warn(CONTEXT, "HealthFill not found under HealthBarBackground")
         return
     end
 

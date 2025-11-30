@@ -2,9 +2,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 local resetGameEvent = RemoteEvents.ResetGameEvent
 local ButtonEffects = require(script.Parent:WaitForChild("ButtonEffects"))
 
+local CONTEXT = "ResetButtonController"
 local player: Player = Players.LocalPlayer
 
 -- Simple whitelist for who can see/use Reset button
@@ -19,19 +21,19 @@ function ResetButtonController.Init(): nil
     local playerGui = player:WaitForChild("PlayerGui")
     local actionsGui = playerGui:WaitForChild("ActionsGui", 5)
     if not actionsGui then
-        warn("[ResetButtonController] ActionsGui not found in PlayerGui")
+        Log.Warn(CONTEXT, "ActionsGui not found in PlayerGui")
         return
     end
 
     local frame = actionsGui:WaitForChild("Frame", 5)
     if not frame then
-        warn("[ResetButtonController] Frame not found under ActionsGui")
+        Log.Warn(CONTEXT, "Frame not found under ActionsGui")
         return
     end
 
     local resetButton: TextButton? = frame:WaitForChild("ResetButton", 5)
     if not resetButton then
-        warn("[ResetButtonController] ResetButton not found under Frame")
+        Log.Warn(CONTEXT, "ResetButton not found under Frame")
         return
     end
 

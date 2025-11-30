@@ -18,7 +18,11 @@ local ufo = UFOModel.PrimaryPart
 
 local gameEnded = true
 
-local spawnInterval = 10
+local SpawnConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("config"):WaitForChild("SpawnConfig"))
+local spawnInterval = SpawnConfig.INTERVAL
+local burstSize = SpawnConfig.BURST_SIZE
+local maxConcurrent = SpawnConfig.MAX_CONCURRENT
+local startDelay = SpawnConfig.START_DELAY
 local spawnHeight = 10
 local partSize = Vector3.new(2, 2, 4)
 
@@ -28,8 +32,16 @@ spawnFolder.Parent = workspace
 
 local RunService = game:GetService("RunService")
 
+local function canSpawn(): boolean
+	local flock = workspace:FindFirstChild("Flock")
+	if not flock then return false end
+	local count = #flock:GetChildren()
+	return count < maxConcurrent
+end
+
 local function spawnPart()
 	if gameEnded then return end
+	if not canSpawn() then return end
 	local pos = ufo.Position
 	local chosenType = PartLibrary.GetRandomType()
 
@@ -62,12 +74,16 @@ end
 
 -- Loop
 local accumulator = 0
-RunService.Heartbeat:Connect(function(dt)
-	accumulator += dt
-	if accumulator >= spawnInterval then
-		accumulator = 0
-		spawnPart()
-	end
+task.delay(startDelay, function()
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator += dt
+		if accumulator >= spawnInterval then
+			accumulator = 0
+			for i = 1, burstSize do
+				spawnPart()
+			end
+		end
+	end)
 end)
 
 

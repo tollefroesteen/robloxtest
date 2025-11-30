@@ -56,11 +56,13 @@ local function getOffset(leg)
 	)
 end
 
--- ✅ Bind pose storage
+-- ✅ Bind pose storage + cached part references (LO-1)
 -- [root] = {
 --   visualLocal = CFrame,
 --   bounceLocal = CFrame,
---   legs = { [leg] = CFrame }
+--   legs = { [leg] = CFrame },
+--   visualPart = BasePart,
+--   bouncePart = BasePart
 -- }
 local bindPose = {}
 local lastPos = {}
@@ -77,12 +79,14 @@ local function captureBindPose(root)
 		if c:IsA("BasePart") and c ~= root then
 			local visual = c
 			data.visualLocal = root.CFrame:ToObjectSpace(visual.CFrame)
+			data.visualPart = visual  -- ✅ cache reference
 
 			-- find bounce
 			for _, b in ipairs(visual:GetChildren()) do
 				if b:IsA("BasePart") then
 					local bounce = b
 					data.bounceLocal = visual.CFrame:ToObjectSpace(bounce.CFrame)
+					data.bouncePart = bounce  -- ✅ cache reference
 
 					-- find legs
 					for _, l in ipairs(bounce:GetChildren()) do
@@ -118,18 +122,9 @@ function AnimalController.Init()
 			local visualLocal = conf.visualLocal
 			local bounceLocal = conf.bounceLocal
 
-			-- Reconstruct visual reference from Studio bind
-			local visualCF = root.CFrame * visualLocal
-
-			-- get actual live visual part
-			local visual
-			for _, c in ipairs(root:GetChildren()) do
-				if c:IsA("BasePart") and c ~= root then
-					visual = c
-					break
-				end
-			end
-			if not visual then continue end
+			-- Use cached visual reference (no tree scan)
+			local visual = conf.visualPart
+			if not visual or not visual.Parent then continue end
 
 			-- movement follow
 			local targetPos = Vector3.new(target.X, target.Y + HEIGHT_OFFSET, target.Z)
@@ -143,15 +138,9 @@ function AnimalController.Init()
 			local bodyPos = Vector3.new(newPos.X, newPos.Y + bob, newPos.Z)
 			local bounceCF = CFrame.new(bodyPos, bodyPos + facing)
 
-			-- find bounce actual
-			local bounce
-			for _, c in ipairs(visual:GetChildren()) do
-				if c:IsA("BasePart") then
-					bounce = c
-					break
-				end
-			end
-			if not bounce then continue end
+			-- Use cached bounce reference (no tree scan)
+			local bounce = conf.bouncePart
+			if not bounce or not bounce.Parent then continue end
 
 			bounce.CFrame = bounceCF
 

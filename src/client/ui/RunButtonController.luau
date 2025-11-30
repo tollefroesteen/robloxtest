@@ -3,9 +3,11 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local SprintConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("config"):WaitForChild("SprintConfig"))
+local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 local SprintEvent = RemoteEvents.SprintEvent
 local UserInputService = game:GetService("UserInputService")
 
+local CONTEXT = "RunButtonController"
 local player: Player = Players.LocalPlayer
 
 -- Config from shared module
@@ -76,19 +78,19 @@ function RunButtonController.Init(): nil
     local playerGui = player:WaitForChild("PlayerGui")
     local actionsGui = playerGui:WaitForChild("ActionsGui", 5)
     if not actionsGui then
-        warn("[RunButtonController] ActionsGui not found in PlayerGui")
+        Log.Warn(CONTEXT, "ActionsGui not found in PlayerGui")
         return
     end
 
     local frame = actionsGui:WaitForChild("Frame", 5)
     if not frame then
-        warn("[RunButtonController] Frame not found under ActionsGui")
+        Log.Warn(CONTEXT, "Frame not found under ActionsGui")
         return
     end
 
     runButton = frame:WaitForChild("RunButton", 5)
     if not runButton then
-        warn("[RunButtonController] RunButton not found under Frame")
+        Log.Warn(CONTEXT, "RunButton not found under Frame")
         return
     end
 

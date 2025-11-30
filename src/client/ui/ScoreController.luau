@@ -2,9 +2,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 local ScoreEvent = RemoteEvents.ScoreEvent
 local ResetGameEvent = RemoteEvents.ResetGameEvent
 
+local CONTEXT = "ScoreController"
 local player: Player = Players.LocalPlayer
 
 local ScoreController = {}
@@ -45,19 +47,19 @@ function ScoreController.Init(): nil
     -- Common patterns: ScoreGui, HUD, MainGui, etc.
     local scoreGui = playerGui:WaitForChild("ScoreGui", 5)
     if not scoreGui then
-        warn("[ScoreController] ScoreGui not found in PlayerGui")
+        Log.Warn(CONTEXT, "ScoreGui not found in PlayerGui")
         return
     end
 
     local frame = scoreGui:WaitForChild("Frame", 5)
     if not frame then
-        warn("[ScoreController] Frame not found in PlayerGui")
+        Log.Warn(CONTEXT, "Frame not found in PlayerGui")
         return
     end
 
     textLabel = frame:WaitForChild("TextLabel", 5)
     if not textLabel then
-        warn("[ScoreController] TextLabel not found under Frame")
+        Log.Warn(CONTEXT, "TextLabel not found under Frame")
         return
     end
 

@@ -6,6 +6,9 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Shared RemoteEvents (bootstrap should already occur on server)
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+
+local CONTEXT = "MainClient"
 
 -- Optional list of controller module names expected under Client/ui
 local CONTROLLER_FOLDER_NAME = "ui"
@@ -46,7 +49,7 @@ local function initControllers()
 		if type(initFunc) == "function" then
 			local success, err = pcall(initFunc)
 			if not success then
-				warn("Controller init failed: " .. name .. " -> " .. tostring(err))
+				Log.Warn(CONTEXT, "Controller init failed: " .. name .. " -> " .. tostring(err))
 			end
 		end
 	end

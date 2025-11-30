@@ -4,8 +4,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local SprintConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("config"):WaitForChild("SprintConfig"))
+local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 local SprintEvent = RemoteEvents.SprintEvent
 
+local CONTEXT = "StaminaController"
 local player: Player = Players.LocalPlayer
 
 local StaminaController = {}
@@ -40,19 +42,19 @@ function StaminaController.Init(): nil
     
     local staminaGui = playerGui:WaitForChild("StaminaGui", 5)
     if not staminaGui then
-        warn("[StaminaController] StaminaGui not found in PlayerGui")
+        Log.Warn(CONTEXT, "StaminaGui not found in PlayerGui")
         return
     end
 
     local barBackground = staminaGui:WaitForChild("StaminaBarBackground", 5)
     if not barBackground then
-        warn("[StaminaController] StaminaBarBackground not found under StaminaGui")
+        Log.Warn(CONTEXT, "StaminaBarBackground not found under StaminaGui")
         return
     end
 
     barFill = barBackground:WaitForChild("StaminaFill", 5)
     if not barFill then
-        warn("[StaminaController] StaminaFill not found under StaminaBarBackground")
+        Log.Warn(CONTEXT, "StaminaFill not found under StaminaBarBackground")
         return
     end
 

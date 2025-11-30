@@ -28,7 +28,7 @@ local function updateTimerUI(): nil
 	if not timerLabel then return end
 	timerLabel.Text = formatTime(timeRemaining)
 	
-	-- Color feedback: green -> yellow -> red as time runs out
+	-- Color feedback: white -> yellow -> red as time runs out
 	if timeRemaining > 60 then
 		timerLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White
 	elseif timeRemaining > 30 then

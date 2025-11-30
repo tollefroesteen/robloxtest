@@ -2,6 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local TrapController = require(ServerScriptService.Server.Game.TrapController)
+local ScoreService = require(ServerScriptService.Server.Game.ScoreService)
 
 -- Ensure ResetGameEvent exists
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))

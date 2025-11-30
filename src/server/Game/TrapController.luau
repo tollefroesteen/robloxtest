@@ -3,23 +3,21 @@
 local module = {}
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local ScoreService = require(ServerScriptService:WaitForChild("Server"):WaitForChild("Game"):WaitForChild("ScoreService"))
 
 type TrapState = {
-	capturedList: {BasePart},
-	capturedIndex: {[BasePart]: number},
-	ScoresByTrapType: {[string]: number},
+    capturedList: {BasePart},
+    capturedIndex: {[BasePart]: number},
 }
 
+-- Storage to reset traps after game restart
 module.ActiveTraps = {} :: {[BasePart]: TrapState}
 
--- Storage to reset traps after game restart
-module.ActiveTraps = {}
-
 function module.SetupTrap(trap: BasePart): nil
-	local ScoreEvent: RemoteEvent = RemoteEvents.ScoreEvent
-	local Flock = workspace:WaitForChild("Flock") :: Folder
-
+    local Flock = workspace:WaitForChild("Flock") :: Folder
+    
 	-- Config
 	local GRID_COLS: number = 6
 	local CELL_SPACING_X: number = 6
@@ -29,7 +27,6 @@ function module.SetupTrap(trap: BasePart): nil
 	-- State tables (must reset on game restart)
 	local capturedList: {BasePart} = {}
 	local capturedIndex: {[BasePart]: number} = {}
-	local ScoresByTrapType: {[string]: number} = {}
 
 	local function isFlockRoot(hit: BasePart?): boolean
 		return hit ~= nil and hit:IsA("BasePart") and hit.Parent == Flock
@@ -68,16 +65,8 @@ function module.SetupTrap(trap: BasePart): nil
 	end
 
 	local function applyScore(trapType: string, animalType: string): nil
-		local delta = (trapType == animalType) and 1 or -1
-		ScoresByTrapType[trapType] = (ScoresByTrapType[trapType] or 0) + delta
-
-		ScoreEvent:FireAllClients({
-			delta = delta,
-			trapType = trapType,
-			animalType = animalType,
-			totalForTrapType = ScoresByTrapType[trapType],
-			trapName = trap.Name,
-		})
+		-- Delegate to centralized ScoreService
+		ScoreService.ApplyScore(trapType, animalType, trap.Name)
 	end
 
 	trap.Touched:Connect(function(hit)
@@ -104,8 +93,7 @@ function module.SetupTrap(trap: BasePart): nil
 	module.ActiveTraps[trap] = {
 		capturedList = capturedList,
 		capturedIndex = capturedIndex,
-		ScoresByTrapType = ScoresByTrapType
-	} :: TrapState
+	}
 end
 
 -- Called by game reset to clear trap memory
@@ -113,7 +101,6 @@ function module.ResetAllTraps(): nil
 	for trap, data in pairs(module.ActiveTraps) do
 		table.clear(data.capturedList)
 		table.clear(data.capturedIndex)
-		table.clear(data.ScoresByTrapType)
 	end
 end
 

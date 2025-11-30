@@ -15,3 +15,82 @@ rojo serve
 ```
 
 For more help, check out [the Rojo documentation](https://rojo.space/docs).
+
+## GUI Hierarchy & Controller Mapping
+The current `PlayerGui` tree (captured from runtime) and the modules controlling each element:
+
+```
+PlayerGui [PlayerGui]
+	Freecam [ScreenGui]
+		FreecamScript [LocalScript]
+	ActionsGui [ScreenGui]
+		Frame [Frame]
+			UIGridLayout [UIGridLayout]
+			ShootButton [TextButton]
+				Frame
+					ClickSound [Sound]
+					Main [Frame]
+						UICorner [UICorner]
+						UIGradient [UIGradient]
+						TextLabel [TextLabel]
+					Shadow [Frame]
+						UICorner [UICorner]
+			RunButton [TextButton]
+				(same nested structure as ShootButton)
+			ResetButton [TextButton]
+				(same nested structure as ShootButton)
+	StaminaGui [ScreenGui]
+		StaminaBarBackground [Frame]
+			StaminaFill [Frame]
+	HealthGui [ScreenGui]
+		HealthBarBackground [Frame]
+			HealthFill [Frame]
+	ScoreGui [ScreenGui]
+		Frame [Frame]
+			TextLabel [TextLabel]
+```
+
+### Controllers → GUI Elements
+| Controller | File | GUI Elements | Purpose |
+|------------|------|--------------|---------|
+| MenuController | `src/client/ui/MenuController.luau` | `ActionsGui.Frame.ShootButton` | Fire `ShootEvent` when clicked (uses press effect) |
+| RunButtonController | `src/client/ui/RunButtonController.luau` | `ActionsGui.Frame.RunButton` | Sprint toggle + Shift key; subscribes to `SprintEvent` |
+| ResetButtonController | `src/client/ui/ResetButtonController.luau` | `ActionsGui.Frame.ResetButton` | Admin-only game reset via `ResetGameEvent` |
+| StaminaController | `src/client/ui/StaminaController.luau` | `StaminaGui.StaminaBarBackground.StaminaFill` | Visual stamina bar based on `SprintEvent` updates |
+| HealthController | `src/client/ui/HealthController.luau` | `HealthGui.HealthBarBackground.HealthFill` | Health bar based on `HealthEvent` |
+| ScoreController | `src/client/ui/ScoreController.luau` | `ScoreGui.Frame.TextLabel` | Aggregated score display via `ScoreEvent` + reset handling |
+
+### Event Dependencies
+| RemoteEvent | Produced By | Consumed By |
+|-------------|-------------|------------|
+| `SprintEvent` | `PlayerSprint.server.luau` | RunButtonController, StaminaController |
+| `ScoreEvent` | `ScoreService.luau` | ScoreController |
+| `ResetGameEvent` | ResetService / ScoreService | ResetButtonController, ScoreController |
+| `HealthEvent` | `LifePointsServer.luau` | HealthController |
+| `ShootEvent` | (Server listener in ShootServer) | MenuController |
+
+### Notes & Recommendations
+- Buttons share a nested visual structure (`Frame -> Main / Shadow`) used by `ButtonEffects` for press animation.
+- Runtime waits (`WaitForChild`) could be removed by mapping GUIs into the filesystem (see below).
+- After respawn, controllers should re-init (add a `CharacterAdded` hook in `MainClient` for UI-1 task).
+- Ensure admin gating for `ResetButton` stays in controller logic, not in hierarchy.
+
+### Optional: Map GUIs via Rojo (UI-3)
+Add a section to `default.project.json` mapping a new folder (e.g. `src/gui`) to `StarterGui` so GUI elements are source-controlled. Example snippet:
+```jsonc
+"StarterGui": {
+	"$path": "src/gui"
+}
+```
+Then export/create the ScreenGuis (`ActionsGui`, `ScoreGui`, `StaminaGui`, `HealthGui`) under `src/gui/` for full versioning.
+
+### Initialization Flow
+1. Server bootstrap (`MainServer.server.luau`) creates RemoteEvents.
+2. Client `MainClient` requires controllers; each controller binds to its GUI subtree.
+3. Controllers listen to events immediately (module scope where needed) before UI waits finish.
+4. Reset flow uses `ResetButtonController` → server `ResetService` + `ScoreService.ResetAll()` → `ResetGameEvent` to clear HUD.
+
+### Pending Improvement (UI-1)
+Implement a `Players.LocalPlayer.CharacterAdded` hook in `MainClient.client.luau` to call each controller's `Init()` again after respawn to guarantee UI rebinds.
+
+---

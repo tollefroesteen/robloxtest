@@ -10,17 +10,18 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local SprintConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("config"):WaitForChild("SprintConfig"))
 local SprintEvent: RemoteEvent = RemoteEvents.SprintEvent
 
--- 🔹 Sprint parameters
-local NORMAL_SPEED: number = 17
-local SPRINT_SPEED: number = 30
+-- 🔹 Sprint parameters from shared config
+local NORMAL_SPEED: number = SprintConfig.NORMAL_SPEED
+local SPRINT_SPEED: number = SprintConfig.SPRINT_SPEED
 
--- 🔹 Stamina configuration
-local MAX_STAMINA: number = 100
-local STAMINA_DRAIN_RATE: number = 15        -- points per second while sprinting
-local STAMINA_RECOVERY_RATE: number = 10     -- points per second while not sprinting
-local UPDATE_INTERVAL: number = 0.1          -- seconds between updates
+-- 🔹 Stamina configuration from shared config
+local MAX_STAMINA: number = SprintConfig.MAX_STAMINA
+local STAMINA_DRAIN_RATE: number = SprintConfig.STAMINA_DRAIN_RATE
+local STAMINA_RECOVERY_RATE: number = SprintConfig.STAMINA_RECOVERY_RATE
+local UPDATE_INTERVAL: number = SprintConfig.UPDATE_INTERVAL  -- throttled to 0.2s
        
 
 -- 🔹 Internal data store

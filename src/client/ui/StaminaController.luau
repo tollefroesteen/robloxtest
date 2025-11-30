@@ -3,13 +3,14 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local SprintConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("config"):WaitForChild("SprintConfig"))
 local SprintEvent = RemoteEvents.SprintEvent
 
 local player: Player = Players.LocalPlayer
 
 local StaminaController = {}
 
-local MAX_STAMINA: number = 100
+local MAX_STAMINA: number = SprintConfig.MAX_STAMINA
 
 -- Optional: smooth bar animations
 local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)

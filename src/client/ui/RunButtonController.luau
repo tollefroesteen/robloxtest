@@ -2,18 +2,20 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+local SprintConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("config"):WaitForChild("SprintConfig"))
 local SprintEvent = RemoteEvents.SprintEvent
 local UserInputService = game:GetService("UserInputService")
 
 local player: Player = Players.LocalPlayer
 
--- Config
-local RESUME_THRESHOLD: number = 20
+-- Config from shared module
+local RESUME_THRESHOLD: number = SprintConfig.RESUME_THRESHOLD
+local MAX_STAMINA: number = SprintConfig.MAX_STAMINA
 
 -- State
 local sprinting: boolean = false
 local requestInFlight: boolean = false
-local currentStamina: number = 100
+local currentStamina: number = MAX_STAMINA
 local sprintButtonDown: boolean = false
 
 local RunButtonController = {}

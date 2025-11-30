@@ -24,5 +24,6 @@ RemoteEvents.ShootEvent = getOrCreate("ShootEvent")
 RemoteEvents.SprintEvent = getOrCreate("SprintEvent")
 RemoteEvents.StartGameEvent = getOrCreate("StartGameEvent")
 RemoteEvents.AnimalSpawnedEvent = getOrCreate("AnimalSpawnedEvent")
+RemoteEvents.TimerUpdateEvent = getOrCreate("TimerUpdateEvent")
 
 return RemoteEvents

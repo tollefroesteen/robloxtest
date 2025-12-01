@@ -32,10 +32,25 @@ Players.PlayerAdded:Connect(function(player)
 			Log.Info(CONTEXT, string.format("Sent initial inventory to %s", player.Name))
 		end
 		
+		-- Send stats WITH achievements included
 		local stats = AchievementsService.GetStats(player)
+		local achievements = AchievementsService.GetAchievements(player)
 		if stats then
-			RemoteEvents.StatsUpdatedEvent:FireClient(player, stats)
-			Log.Info(CONTEXT, string.format("Sent initial stats to %s", player.Name))
+			local payload = {
+				Level = stats.Level,
+				ExperiencePoints = stats.ExperiencePoints,
+				TotalCaptures = stats.TotalCaptures,
+				TotalWins = stats.TotalWins,
+				TotalLosses = stats.TotalLosses,
+				TotalGamesPlayed = stats.TotalGamesPlayed,
+				TotalKills = stats.TotalKills,
+				TotalDeaths = stats.TotalDeaths,
+				CapturedAnimalIndex = stats.CapturedAnimalIndex,
+				AnimalCaptureCount = stats.AnimalCaptureCount,
+				Achievements = achievements or {},
+			}
+			RemoteEvents.StatsUpdatedEvent:FireClient(player, payload)
+			Log.Info(CONTEXT, string.format("Sent initial stats and achievements to %s", player.Name))
 		end
 	end)
 end)
@@ -52,9 +67,24 @@ for _, player in Players:GetPlayers() do
 				RemoteEvents.InventoryUpdatedEvent:FireClient(player, inventory)
 			end
 			
+			-- Send stats WITH achievements included
 			local stats = AchievementsService.GetStats(player)
+			local achievements = AchievementsService.GetAchievements(player)
 			if stats then
-				RemoteEvents.StatsUpdatedEvent:FireClient(player, stats)
+				local payload = {
+					Level = stats.Level,
+					ExperiencePoints = stats.ExperiencePoints,
+					TotalCaptures = stats.TotalCaptures,
+					TotalWins = stats.TotalWins,
+					TotalLosses = stats.TotalLosses,
+					TotalGamesPlayed = stats.TotalGamesPlayed,
+					TotalKills = stats.TotalKills,
+					TotalDeaths = stats.TotalDeaths,
+					CapturedAnimalIndex = stats.CapturedAnimalIndex,
+					AnimalCaptureCount = stats.AnimalCaptureCount,
+					Achievements = achievements or {},
+				}
+				RemoteEvents.StatsUpdatedEvent:FireClient(player, payload)
 			end
 		end)
 	end)

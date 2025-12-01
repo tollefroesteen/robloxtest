@@ -878,7 +878,8 @@ local function populateStats(): nil
 	
 	local levelNumber = Instance.new("TextLabel")
 	levelNumber.Name = "LevelNumber"
-	levelNumber.Size = UDim2.new(1, 0, 1, 0)
+	levelNumber.Size = UDim2.new(1, 0, 0.7, 0)
+	levelNumber.Position = UDim2.new(0, 0, 0, 0)
 	levelNumber.BackgroundTransparency = 1
 	levelNumber.Text = tostring(currentLevel)
 	levelNumber.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -886,16 +887,17 @@ local function populateStats(): nil
 	levelNumber.Font = Enum.Font.GothamBold
 	levelNumber.Parent = levelBadge
 	
+	-- LEVEL text inside the badge at bottom
 	local levelLabel = Instance.new("TextLabel")
 	levelLabel.Name = "LevelLabel"
-	levelLabel.Size = UDim2.new(0, 70, 0, 15)
-	levelLabel.Position = UDim2.new(0, 15, 0, 78)
+	levelLabel.Size = UDim2.new(1, 0, 0, 14)
+	levelLabel.Position = UDim2.new(0, 0, 1, -16)
 	levelLabel.BackgroundTransparency = 1
 	levelLabel.Text = "LEVEL"
-	levelLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-	levelLabel.TextSize = 10
+	levelLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	levelLabel.TextSize = 9
 	levelLabel.Font = Enum.Font.GothamBold
-	levelLabel.Parent = levelCard
+	levelLabel.Parent = levelBadge
 	
 	-- XP Progress (right side)
 	local xpContainer = Instance.new("Frame")

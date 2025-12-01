@@ -295,6 +295,89 @@ end)
 | InventoryUpdatedEvent    | Server→Client | inventory table                   |
 | StatsUpdatedEvent        | Server→Client | stats table                       |
 | LevelUpEvent             | Server→Client | newLevel                          |
+| CoinsAwardedEvent        | Server→Client | coinAmount (for animation only)   |
+
+---
+
+## Client UI Controllers
+
+The following controllers handle displaying player data in the HUD:
+
+### CoinsController (`src/client/ui/CoinsController.luau`)
+
+Displays the player's coin count in the top-right corner of the screen.
+
+**Features:**
+- Shows current coin count from inventory
+- Animates coin count changes with a brief highlight effect
+- Listens to `InventoryUpdatedEvent` for real-time updates
+- Listens to `CoinsAwardedEvent` for visual coin award animation
+
+**Structure:**
+```
+┌─────────────────┐
+│  🪙 1,234       │  ← Top-right corner
+└─────────────────┘
+```
+
+### XPController (`src/client/ui/XPController.luau`)
+
+Displays the player's XP progress bar and current level.
+
+**Features:**
+- Shows current level prominently
+- Animated XP progress bar that fills as XP is gained
+- Listens to `StatsUpdatedEvent` for real-time updates
+- Level-up animation triggered by `LevelUpEvent`
+
+**Structure:**
+```
+┌─────────────────────────────────┐
+│ Lv. 12  [████████░░░░] 850/1000 │
+└─────────────────────────────────┘
+```
+
+### AchievementNotificationController (`src/client/ui/AchievementNotificationController.luau`)
+
+Displays popup notifications when achievements are unlocked.
+
+**Features:**
+- Slide-in animation from the right side of screen
+- Auto-dismisses after 3 seconds
+- Queue system for multiple achievements
+- Listens to `AchievementUnlockedEvent`
+
+**Structure:**
+```
+                    ┌───────────────────────┐
+                    │ 🏆 Achievement!       │
+                    │ First Catch           │ ← Slides in from right
+                    └───────────────────────┘
+```
+
+### Data Flow
+
+```
+Server                              Client
+──────                              ──────
+AchievementsService.AddXP()
+    │
+    ├──► StatsUpdatedEvent ────────► XPController (updates bar)
+    │
+    └──► LevelUpEvent ─────────────► XPController (level-up animation)
+
+AchievementsService.UnlockAchievement()
+    │
+    └──► AchievementUnlockedEvent ─► AchievementNotificationController (popup)
+
+InventoryService.AddItem(COIN)
+    │
+    └──► InventoryUpdatedEvent ────► CoinsController (updates count)
+
+GameEndService (awards coins)
+    │
+    └──► CoinsAwardedEvent ────────► CoinsController (animation only)
+```
 
 ---
 

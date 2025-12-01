@@ -21,6 +21,8 @@ local UI_CONTROLLERS = {
 	"TimerController",
 	"TeamController",
 	"CoinsController",
+	"XPController",
+	"AchievementNotificationController",
 }
 
 -- Controllers in the controllers folder

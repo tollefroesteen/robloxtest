@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerDataTypes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("PlayerDataTypes"))
 local AchievementRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("AchievementRegistry"))
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "AchievementsService"
@@ -19,6 +20,17 @@ local XP_SCALE_FACTOR = 1.5  -- Each level requires more XP
 -- In-memory storage
 local playerStats: { [Player]: PlayerDataTypes.PlayerStats } = {}
 local playerAchievements: { [Player]: { [string]: PlayerDataTypes.AchievementProgress } } = {}
+
+-- Callbacks for achievement completion (other services can subscribe)
+local achievementCallbacks: { (Player, string, AchievementRegistry.AchievementDefinition) -> () } = {}
+
+-- Broadcast stats update to client
+local function broadcastStatsUpdate(player: Player): nil
+	local stats = playerStats[player]
+	if stats then
+		RemoteEvents.StatsUpdatedEvent:FireClient(player, stats)
+	end
+end
 
 -- Callbacks for achievement completion (other services can subscribe)
 local achievementCallbacks: { (Player, string, AchievementRegistry.AchievementDefinition) -> () } = {}
@@ -83,6 +95,9 @@ function AchievementsService.AddXP(player: Player, amount: number): (number, boo
 			didLevelUp = true
 			Log.Info(CONTEXT, string.format("%s leveled up to %d!", player.Name, stats.Level))
 			
+			-- Notify client of level up
+			RemoteEvents.LevelUpEvent:FireClient(player, stats.Level)
+			
 			-- Check level achievements
 			AchievementsService.UpdateProgress(player, "LEVEL_5", stats.Level)
 			AchievementsService.UpdateProgress(player, "LEVEL_10", stats.Level)
@@ -95,6 +110,9 @@ function AchievementsService.AddXP(player: Player, amount: number): (number, boo
 	if didLevelUp then
 		Log.Info(CONTEXT, string.format("%s gained %d XP (Level %d -> %d)", player.Name, amount, startLevel, stats.Level))
 	end
+	
+	-- Broadcast updated stats to client
+	broadcastStatsUpdate(player)
 	
 	return stats.Level, didLevelUp
 end

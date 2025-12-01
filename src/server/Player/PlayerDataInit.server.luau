@@ -24,12 +24,18 @@ PlayerDataService.Init()
 Players.PlayerAdded:Connect(function(player)
 	PlayerDataService.OnPlayerAdded(player)
 	
-	-- Send initial inventory to client after a brief delay
+	-- Send initial data to client after a brief delay
 	task.delay(1, function()
 		local inventory = InventoryService.GetInventory(player)
 		if inventory then
 			RemoteEvents.InventoryUpdatedEvent:FireClient(player, inventory)
 			Log.Info(CONTEXT, string.format("Sent initial inventory to %s", player.Name))
+		end
+		
+		local stats = AchievementsService.GetStats(player)
+		if stats then
+			RemoteEvents.StatsUpdatedEvent:FireClient(player, stats)
+			Log.Info(CONTEXT, string.format("Sent initial stats to %s", player.Name))
 		end
 	end)
 end)
@@ -39,11 +45,16 @@ for _, player in Players:GetPlayers() do
 	task.spawn(function()
 		PlayerDataService.OnPlayerAdded(player)
 		
-		-- Send initial inventory
+		-- Send initial data
 		task.delay(1, function()
 			local inventory = InventoryService.GetInventory(player)
 			if inventory then
 				RemoteEvents.InventoryUpdatedEvent:FireClient(player, inventory)
+			end
+			
+			local stats = AchievementsService.GetStats(player)
+			if stats then
+				RemoteEvents.StatsUpdatedEvent:FireClient(player, stats)
 			end
 		end)
 	end)

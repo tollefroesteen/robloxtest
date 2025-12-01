@@ -20,6 +20,7 @@ local UI_CONTROLLERS = {
 	"HealthController",
 	"TimerController",
 	"TeamController",
+	"CoinsController",
 }
 
 -- Controllers in the controllers folder

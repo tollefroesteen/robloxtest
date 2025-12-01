@@ -16,6 +16,7 @@ local GameStateController = {}
 -- State
 local isGameFrozen = false
 local gameResults: any = nil
+local initialized = false
 
 -- Callbacks that other controllers can subscribe to
 local onFreezeCallbacks: { (frozen: boolean) -> () } = {}
@@ -53,8 +54,11 @@ function GameStateController.OnNewAnimalDiscovered(callback: (animalIDs: { strin
 	table.insert(onNewAnimalCallbacks, callback)
 end
 
--- Initialize the controller
+-- Initialize the controller (only runs once)
 function GameStateController.Init(): nil
+	if initialized then return end
+	initialized = true
+	
 	Log.Info(CONTEXT, "Initializing GameStateController")
 	
 	-- Listen for freeze event

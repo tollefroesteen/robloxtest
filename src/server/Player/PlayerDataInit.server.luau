@@ -23,12 +23,29 @@ PlayerDataService.Init()
 -- Handle players joining
 Players.PlayerAdded:Connect(function(player)
 	PlayerDataService.OnPlayerAdded(player)
+	
+	-- Send initial inventory to client after a brief delay
+	task.delay(1, function()
+		local inventory = InventoryService.GetInventory(player)
+		if inventory then
+			RemoteEvents.InventoryUpdatedEvent:FireClient(player, inventory)
+			Log.Info(CONTEXT, string.format("Sent initial inventory to %s", player.Name))
+		end
+	end)
 end)
 
 -- Handle players already in game (in case script loads late)
 for _, player in Players:GetPlayers() do
 	task.spawn(function()
 		PlayerDataService.OnPlayerAdded(player)
+		
+		-- Send initial inventory
+		task.delay(1, function()
+			local inventory = InventoryService.GetInventory(player)
+			if inventory then
+				RemoteEvents.InventoryUpdatedEvent:FireClient(player, inventory)
+			end
+		end)
 	end)
 end
 

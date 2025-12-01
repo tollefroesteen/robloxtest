@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerDataTypes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("PlayerDataTypes"))
 local ItemRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("ItemRegistry"))
+local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "InventoryService"
@@ -14,6 +15,14 @@ local InventoryService = {}
 
 -- In-memory storage (PlayerDataService handles persistence)
 local playerInventories: { [Player]: PlayerDataTypes.Inventory } = {}
+
+-- Broadcast inventory update to client
+local function broadcastInventoryUpdate(player: Player): nil
+	local inventory = playerInventories[player]
+	if inventory then
+		RemoteEvents.InventoryUpdatedEvent:FireClient(player, inventory)
+	end
+end
 
 -- Initialize inventory for a player
 function InventoryService.InitPlayer(player: Player, inventory: PlayerDataTypes.Inventory?): nil
@@ -72,6 +81,7 @@ function InventoryService.AddItem(player: Player, itemID: string, quantity: numb
 	end
 	
 	Log.Info(CONTEXT, string.format("%s received %dx %s", player.Name, quantity, itemDef.Name))
+	broadcastInventoryUpdate(player)
 	return true, "Success"
 end
 
@@ -101,6 +111,7 @@ function InventoryService.RemoveItem(player: Player, itemID: string, quantity: n
 	local itemDef = ItemRegistry.GetItem(itemID)
 	local itemName = itemDef and itemDef.Name or itemID
 	Log.Info(CONTEXT, string.format("%s used %dx %s", player.Name, quantity, itemName))
+	broadcastInventoryUpdate(player)
 	return true, "Success"
 end
 

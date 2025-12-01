@@ -24,11 +24,26 @@ local playerAchievements: { [Player]: { [string]: PlayerDataTypes.AchievementPro
 -- Callbacks for achievement completion (other services can subscribe)
 local achievementCallbacks: { (Player, string, AchievementRegistry.AchievementDefinition) -> () } = {}
 
--- Broadcast stats update to client
+-- Broadcast stats update to client (includes achievements)
 local function broadcastStatsUpdate(player: Player): nil
 	local stats = playerStats[player]
+	local achievements = playerAchievements[player]
 	if stats then
-		RemoteEvents.StatsUpdatedEvent:FireClient(player, stats)
+		-- Create a combined payload with stats and achievements
+		local payload = {
+			Level = stats.Level,
+			ExperiencePoints = stats.ExperiencePoints,
+			TotalCaptures = stats.TotalCaptures,
+			TotalWins = stats.TotalWins,
+			TotalLosses = stats.TotalLosses,
+			TotalGamesPlayed = stats.TotalGamesPlayed,
+			TotalKills = stats.TotalKills,
+			TotalDeaths = stats.TotalDeaths,
+			CapturedAnimalIndex = stats.CapturedAnimalIndex,
+			AnimalCaptureCount = stats.AnimalCaptureCount,
+			Achievements = achievements or {},
+		}
+		RemoteEvents.StatsUpdatedEvent:FireClient(player, payload)
 	end
 end
 
@@ -154,6 +169,9 @@ function AchievementsService.UpdateProgress(player: Player, achievementID: strin
 		
 		Log.Info(CONTEXT, string.format("%s unlocked achievement: %s", player.Name, achievementDef.Name))
 		
+		-- Notify client of achievement unlock
+		RemoteEvents.AchievementUnlockedEvent:FireClient(player, achievementID, achievementDef.Name)
+		
 		-- Award XP
 		if achievementDef.RewardXP > 0 then
 			AchievementsService.AddXP(player, achievementDef.RewardXP)
@@ -163,6 +181,9 @@ function AchievementsService.UpdateProgress(player: Player, achievementID: strin
 		for _, callback in achievementCallbacks do
 			task.spawn(callback, player, achievementID, achievementDef)
 		end
+		
+		-- Broadcast updated achievements to client
+		broadcastStatsUpdate(player)
 		
 		return true
 	end
@@ -206,6 +227,9 @@ function AchievementsService.IncrementStat(player: Player, statName: string, amo
 	elseif statName == "TotalDeaths" then
 		stats.TotalDeaths += increment
 	end
+	
+	-- Broadcast updated stats to client
+	broadcastStatsUpdate(player)
 end
 
 -- Record an animal capture

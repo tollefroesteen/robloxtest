@@ -23,6 +23,7 @@ local UI_CONTROLLERS = {
 	"CoinsController",
 	"XPController",
 	"AchievementNotificationController",
+	"PlayerMenuController",
 }
 
 -- Controllers in the controllers folder

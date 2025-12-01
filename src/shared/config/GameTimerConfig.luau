@@ -5,7 +5,7 @@
 local GameTimerConfig = {}
 
 -- Timer duration in seconds
-GameTimerConfig.DURATION = 30 -- 3 minutes
+GameTimerConfig.DURATION = 180 -- 3 minutes
 
 -- Update interval in seconds (how often to send timer updates to clients)
 GameTimerConfig.UPDATE_INTERVAL = 1

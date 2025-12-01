@@ -9,6 +9,20 @@ local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChi
 local TeamService = require(ServerScriptService:WaitForChild("Server"):WaitForChild("Game"):WaitForChild("TeamService"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
+-- Lazy load AchievementsService to avoid circular dependency
+local AchievementsService: any = nil
+local function getAchievementsService()
+	if not AchievementsService then
+		local success, service = pcall(function()
+			return require(ServerScriptService:WaitForChild("Server"):WaitForChild("Player"):WaitForChild("AchievementsService"))
+		end)
+		if success then
+			AchievementsService = service
+		end
+	end
+	return AchievementsService
+end
+
 local CONTEXT = "TrapController"
 
 type TrapState = {
@@ -77,14 +91,23 @@ function module.SetupTrap(trap: BasePart): nil
 			return 
 		end
 		
-		-- Get the animal's point value
+		-- Get the animal's point value and ID
 		local pointValue = animal:GetAttribute("PointValue") or 1
+		local animalID = animal:GetAttribute("ID") or "Unknown"
 		
 		local teamFullName = trapTeamName .. " Team"
 		local team = TeamService.GetTeamByName(teamFullName)
 		if team then
 			Log.Info(CONTEXT, string.format("Adding %d points to %s", pointValue, teamFullName))
 			TeamService.AddTeamScore(team, pointValue)
+			
+			-- Record capture for all players on this team (achievements/stats)
+			local achievementsService = getAchievementsService()
+			if achievementsService then
+				for _, player in team:GetPlayers() do
+					achievementsService.RecordAnimalCapture(player, animalID)
+				end
+			end
 		else
 			Log.Warn(CONTEXT, string.format("Team not found: %s", teamFullName))
 		end

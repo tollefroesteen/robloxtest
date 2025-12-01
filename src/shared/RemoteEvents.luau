@@ -28,4 +28,10 @@ RemoteEvents.TeamAssignedEvent = getOrCreate("TeamAssignedEvent")
 RemoteEvents.TeamScoreUpdateEvent = getOrCreate("TeamScoreUpdateEvent")
 RemoteEvents.PlayerScoredEvent = getOrCreate("PlayerScoredEvent")
 
+-- Player data events
+RemoteEvents.AchievementUnlockedEvent = getOrCreate("AchievementUnlockedEvent")
+RemoteEvents.InventoryUpdatedEvent = getOrCreate("InventoryUpdatedEvent")
+RemoteEvents.StatsUpdatedEvent = getOrCreate("StatsUpdatedEvent")
+RemoteEvents.LevelUpEvent = getOrCreate("LevelUpEvent")
+
 return RemoteEvents

@@ -6,6 +6,20 @@ local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"
 local ShootEvent = RemoteEvents.ShootEvent
 local ButtonEffects = require(script.Parent:WaitForChild("ButtonEffects"))
 
+-- Lazy load GameStateController to avoid circular dependencies
+local GameStateController: any = nil
+local function getGameStateController()
+    if not GameStateController then
+        local success, controller = pcall(function()
+            return require(script.Parent.Parent:WaitForChild("controllers"):WaitForChild("GameStateController"))
+        end)
+        if success then
+            GameStateController = controller
+        end
+    end
+    return GameStateController
+end
+
 local CONTEXT = "MenuController"
 local player: Player = Players.LocalPlayer
 
@@ -42,6 +56,12 @@ function MenuController.Init(): nil
     ButtonEffects.AddPressEffect(startButton)
 
     shootButton.MouseButton1Click:Connect(function()
+        -- Check if game is frozen before allowing shooting
+        local gsc = getGameStateController()
+        if gsc and gsc.IsGameFrozen() then
+            Log.Info(CONTEXT, "Cannot shoot - game is frozen")
+            return
+        end
         ShootEvent:FireServer()
     end)
 

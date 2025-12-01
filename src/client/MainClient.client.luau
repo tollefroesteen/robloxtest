@@ -26,6 +26,7 @@ local UI_CONTROLLERS = {
 local CONTROLLERS_FOLDER = "controllers"
 local OTHER_CONTROLLERS = {
 	"AnimalController",
+	"GameStateController",
 }
 
 local controllers: { [string]: any } = {}

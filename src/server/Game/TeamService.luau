@@ -214,4 +214,44 @@ function TeamService.GetTeamByName(name: string): Team?
 	return nil
 end
 
+-- Get team score
+function TeamService.GetTeamScore(team: Team): number
+	return teamScores[team] or 0
+end
+
+-- Get both teams
+function TeamService.GetTeams(): (Team?, Team?)
+	return redTeam, blueTeam
+end
+
+-- Determine the winning team (returns team, score, isTie)
+function TeamService.DetermineWinner(): (Team?, number, boolean)
+	if not redTeam or not blueTeam then
+		return nil, 0, false
+	end
+	
+	local redScore = teamScores[redTeam] or 0
+	local blueScore = teamScores[blueTeam] or 0
+	
+	if redScore > blueScore then
+		return redTeam, redScore, false
+	elseif blueScore > redScore then
+		return blueTeam, blueScore, false
+	else
+		-- Tie - randomly pick winner (or could be handled differently)
+		local winner = if math.random() > 0.5 then redTeam else blueTeam
+		return winner, redScore, true
+	end
+end
+
+-- Get team config by team instance
+function TeamService.GetTeamConfig(team: Team): { Name: string, Color: BrickColor, ShirtColor: Color3 }?
+	for _, config in TEAM_CONFIG do
+		if config.Name == team.Name then
+			return config
+		end
+	end
+	return nil
+end
+
 return TeamService

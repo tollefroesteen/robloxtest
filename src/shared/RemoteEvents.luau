@@ -34,4 +34,10 @@ RemoteEvents.InventoryUpdatedEvent = getOrCreate("InventoryUpdatedEvent")
 RemoteEvents.StatsUpdatedEvent = getOrCreate("StatsUpdatedEvent")
 RemoteEvents.LevelUpEvent = getOrCreate("LevelUpEvent")
 
+-- Game end events
+RemoteEvents.GameFreezeEvent = getOrCreate("GameFreezeEvent")
+RemoteEvents.GameResultsEvent = getOrCreate("GameResultsEvent")
+RemoteEvents.CoinsAwardedEvent = getOrCreate("CoinsAwardedEvent")
+RemoteEvents.NewAnimalDiscoveredEvent = getOrCreate("NewAnimalDiscoveredEvent")
+
 return RemoteEvents

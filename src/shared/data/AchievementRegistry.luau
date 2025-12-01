@@ -28,7 +28,7 @@ AchievementRegistry.Categories = {
 }
 
 -- All achievement definitions
-AchievementRegistry.Achievements: { [string]: AchievementDefinition } = {
+AchievementRegistry.Achievements = {
 	-- Capture achievements
 	CAPTURE_FIRST = {
 		ID = "CAPTURE_FIRST",
@@ -109,7 +109,7 @@ AchievementRegistry.Achievements: { [string]: AchievementDefinition } = {
 		Category = "Collection",
 		TargetValue = 3,  -- Update this when adding new animals
 		RewardXP = 500,
-		RewardItems = { TOOL_TRAP = 5 },
+		RewardItems = { ["TOOL_TRAP"] = 5 },
 		Hidden = true,
 		Repeatable = false,
 	},
@@ -186,7 +186,7 @@ AchievementRegistry.Achievements: { [string]: AchievementDefinition } = {
 		Category = "Milestones",
 		TargetValue = 5,
 		RewardXP = 0,  -- No XP to avoid infinite loop
-		RewardItems = { AMMO_BASIC = 50 },
+		RewardItems = { ["AMMO_BASIC"] = 50 },
 		Hidden = false,
 		Repeatable = false,
 	},
@@ -197,7 +197,7 @@ AchievementRegistry.Achievements: { [string]: AchievementDefinition } = {
 		Category = "Milestones",
 		TargetValue = 10,
 		RewardXP = 0,
-		RewardItems = { AMMO_TRANQ = 25 },
+		RewardItems = { ["AMMO_TRANQ"] = 25 },
 		Hidden = false,
 		Repeatable = false,
 	},
@@ -208,7 +208,7 @@ AchievementRegistry.Achievements: { [string]: AchievementDefinition } = {
 		Category = "Milestones",
 		TargetValue = 25,
 		RewardXP = 0,
-		RewardItems = { TOOL_TRAP = 3 },
+		RewardItems = { ["TOOL_TRAP"] = 3 },
 		Hidden = false,
 		Repeatable = false,
 	},

@@ -25,7 +25,7 @@ ItemRegistry.Categories = {
 }
 
 -- All item definitions
-ItemRegistry.Items: { [string]: ItemDefinition } = {
+ItemRegistry.Items = {
 	-- Ammunition
 	AMMO_BASIC = {
 		ID = "AMMO_BASIC",
@@ -121,6 +121,17 @@ ItemRegistry.Items: { [string]: ItemDefinition } = {
 		Description = "Basic building material",
 		MaxStack = 100,
 		Tradeable = true,
+		Consumable = false,
+	},
+	
+	-- Currency
+	COIN = {
+		ID = "COIN",
+		Name = "Coins",
+		Category = "Special",
+		Description = "In-game currency earned from winning games",
+		MaxStack = 999999,
+		Tradeable = false,
 		Consumable = false,
 	},
 }

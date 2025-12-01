@@ -33,6 +33,32 @@ type TrapState = {
 -- Storage to reset traps after game restart
 module.ActiveTraps = {} :: {[BasePart]: TrapState}
 
+-- Track captured animals by team name (for game end processing)
+-- Format: { [teamName]: { animalID1, animalID2, ... } }
+local capturedAnimalsByTeam: { [string]: { string } } = {}
+
+-- Game state - can be set to disable captures
+local gameActive = true
+
+function module.SetGameActive(active: boolean): nil
+	gameActive = active
+	Log.Info(CONTEXT, string.format("Game active state: %s", tostring(active)))
+end
+
+function module.IsGameActive(): boolean
+	return gameActive
+end
+
+-- Get all captured animal IDs for a team
+function module.GetCapturedAnimalsByTeam(teamName: string): { string }
+	return capturedAnimalsByTeam[teamName] or {}
+end
+
+-- Reset captured animals tracking (called on game reset)
+function module.ResetCapturedAnimals(): nil
+	capturedAnimalsByTeam = {}
+end
+
 function module.SetupTrap(trap: BasePart): nil
 	Log.Info(CONTEXT, string.format("Setting up trap: %s", trap.Name))
     local Flock = workspace:WaitForChild("Flock") :: Folder
@@ -101,6 +127,12 @@ function module.SetupTrap(trap: BasePart): nil
 			Log.Info(CONTEXT, string.format("Adding %d points to %s", pointValue, teamFullName))
 			TeamService.AddTeamScore(team, pointValue)
 			
+			-- Track this animal for the team (for end-game processing)
+			if not capturedAnimalsByTeam[teamFullName] then
+				capturedAnimalsByTeam[teamFullName] = {}
+			end
+			table.insert(capturedAnimalsByTeam[teamFullName], animalID)
+			
 			-- Record capture for all players on this team (achievements/stats)
 			local achievementsService = getAchievementsService()
 			if achievementsService then
@@ -114,6 +146,9 @@ function module.SetupTrap(trap: BasePart): nil
 	end
 
 	trap.Touched:Connect(function(hit)
+		-- Check if game is active
+		if not gameActive then return end
+		
 		if not isFlockRoot(hit) then return end
 
 		-- Prevent re-capture

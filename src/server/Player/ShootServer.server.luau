@@ -1,9 +1,24 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local lifeModule = require(game.ServerScriptService.Server.Player:WaitForChild("LifePointsServer"))
 
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local ShootEvent = RemoteEvents.ShootEvent
+
+-- Lazy load GameEndService to check game state
+local GameEndService: any = nil
+local function getGameEndService()
+	if not GameEndService then
+		local success, service = pcall(function()
+			return require(ServerScriptService.Server.Game.GameEndService)
+		end)
+		if success then
+			GameEndService = service
+		end
+	end
+	return GameEndService
+end
 
 local PROJECTILE_SPEED = 200
 local PROJECTILE_LIFETIME = 2
@@ -11,6 +26,12 @@ local DAMAGE = 25
 local HIT_RADIUS = 2
 
 local function createProjectile(player)
+	-- Check if game is in end-processing state
+	local gameEndSvc = getGameEndService()
+	if gameEndSvc and gameEndSvc.IsProcessingGameEnd() then
+		return -- Silently ignore shots during game end
+	end
+
 	local character = player.Character
 	if not character then return end
 	local root = character:FindFirstChild("HumanoidRootPart")

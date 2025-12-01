@@ -16,4 +16,9 @@ TimerEndedEvent.Name = "TimerEndedEvent"
 TimerEndedEvent.Parent = nil -- Server-only
 ServerEvents.TimerEndedEvent = TimerEndedEvent
 
+local GameEndProcessedEvent = Instance.new("BindableEvent")
+GameEndProcessedEvent.Name = "GameEndProcessedEvent"
+GameEndProcessedEvent.Parent = nil -- Server-only
+ServerEvents.GameEndProcessedEvent = GameEndProcessedEvent
+
 return ServerEvents

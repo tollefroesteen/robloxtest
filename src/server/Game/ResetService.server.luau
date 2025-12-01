@@ -30,6 +30,7 @@ ResetGameEvent.OnServerEvent:Connect(function(player)
 
 	-- Clear per-trap captured lists and scores
 	TrapController.ResetAllTraps()
+	TrapController.ResetCapturedAnimals()
 	
 	-- Fire TimerEndedEvent to stop the timer and spawner
 	TimerEndedEvent:Fire()

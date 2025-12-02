@@ -478,18 +478,22 @@ For testing purposes, admin chat commands are available in `DebugCommands.server
 
 ### Available Commands
 
-| Command                    | Description                      |
-|----------------------------|----------------------------------|
-| `/grantcoins <amount>`     | Grant coins to all players       |
-| `/grantammo <amount>`      | Grant AMMO_BASIC to all players  |
-| `/grantbait <amount>`      | Grant FOOD_BAIT to all players   |
-| `/grantshield <amount>`    | Grant TOOL_SHIELD to all players |
-| `/grantitem <id> <amount>` | Grant any item to all players    |
-| `/die`                     | Kill yourself (test respawn)     |
-| `/shield`                  | Activate a free shield           |
-| `/spawnfood [attract]`     | Spawn food at your position      |
-| `/spawngift`               | Spawn a gift pickup nearby       |
-| `/debughelp`               | Show available commands          |
+| Command                    | Description                           |
+|----------------------------|---------------------------------------|
+| `/grantcoins <amount>`     | Grant coins to all players            |
+| `/grantammo <amount>`      | Grant AMMO_BASIC to all players       |
+| `/grantbait <amount>`      | Grant FOOD_BAIT to all players        |
+| `/grantshield <amount>`    | Grant TOOL_SHIELD to all players      |
+| `/grantitem <id> <amount>` | Grant any item to all players         |
+| `/die`                     | Kill yourself (test respawn)          |
+| `/shield`                  | Activate a free shield                |
+| `/spawnfood [attract]`     | Spawn food at your position           |
+| `/spawngift`               | Spawn a gift pickup nearby            |
+| `/endgame`                 | Force end the current game            |
+| `/resetachievements`       | Reset all achievements for all players|
+| `/resetxp`                 | Reset XP and level for all players    |
+| `/resetall`                | Reset all stats/achievements/XP       |
+| `/debughelp`               | Show available commands               |
 
 ### Usage Examples
 
@@ -504,6 +508,10 @@ For testing purposes, admin chat commands are available in `DebugCommands.server
 /spawnfood           -- Spawn basic food
 /spawnfood 80        -- Spawn food with 80 attractiveness
 /spawngift           -- Spawn random gift pickup
+/endgame             -- Force game to end (shows results, stops timer)
+/resetachievements   -- Clear all achievement progress
+/resetxp             -- Reset everyone to level 1, 0 XP
+/resetall            -- Full stat/achievement wipe
 ```
 
 ### Admin Access
@@ -916,3 +924,188 @@ Gift_ITEM_ID (Model)
    - Destroy gift
 6. Game ends:
    - All remaining gifts destroyed
+
+---
+
+## Game Start & End System
+
+### Overview
+
+The game follows a structured start and end flow with proper state management.
+
+### Game Start Flow
+
+When a player clicks "Start Game":
+
+1. **Clean Up Previous State**
+   - Clear all animals from Flock folder
+   - Clear Food and Gifts folders
+   - Reset trap states
+   - Reset team scores
+   - Reset GameEndService state
+
+2. **Assign Teams**
+   - All players assigned to Red or Blue team
+   - Teams are balanced
+
+3. **Enable Team Spawning**
+   - Players will spawn at their team's spawn location
+
+4. **Start Achievement Tracking**
+   - Begins recording achievements earned during this game
+
+5. **Respawn All Players**
+   - All players teleported to their team spawn points
+
+6. **Fire StartGameEvent**
+   - Notifies all game systems (timer, animals, UFO, etc.)
+
+### Game End Flow
+
+When timer runs out or `/endgame` is used:
+
+1. **Stop Timer** (if forced via `/endgame`)
+2. **Freeze Players & Animals**
+   - Players anchored and controls disabled
+   - Animals stop moving
+3. **Determine Winner**
+   - Team with highest score wins
+   - Tie-breaker if scores equal
+4. **Award Coins**
+   - Winners: 100% of team score as coins
+   - Losers: 25% of team score as coins
+   - Bonus multiplier for achievements
+5. **Show Game End UI**
+   - Sequential phases: Winner → Scores → Coins (animated) → Achievements → New Animals → Game Over
+6. **Reset State**
+   - `gameStarted = false`
+   - Ready for next game
+
+### Files
+
+```
+src/server/Game/
+├── StartGameService.server.luau  # Handles game start
+├── GameEndService.luau           # Game end logic module
+├── GameEndServiceInit.server.luau # Event listeners
+├── GameTimerService.server.luau  # Timer management
+└── SpawnService.luau             # Team-based spawning
+
+src/client/ui/
+└── GameEndController.luau        # Game end UI display
+```
+
+### Server Events
+
+| Event              | Purpose                                    |
+|--------------------|--------------------------------------------|
+| StartGameEvent     | Fired when game starts (BindableEvent)     |
+| TimerEndedEvent    | Fired when timer reaches 0 (BindableEvent) |
+| ForceEndGameEvent  | Fired by /endgame command (BindableEvent)  |
+| GameEndSequenceEvent | Per-player game end data (RemoteEvent)   |
+
+### Achievement Tracking
+
+Achievements earned during the game are tracked from game start to game end:
+- `GameEndService.StartGameTracking()` called on game start
+- All achievements unlocked during play are recorded
+- Displayed in game end sequence UI
+
+---
+
+## Keyboard Controls
+
+### Overview
+
+Players can use keyboard shortcuts in addition to on-screen buttons.
+
+### Key Bindings
+
+| Key | Action                          | Notes                           |
+|-----|--------------------------------|--------------------------------|
+| E   | Perform current action         | Same as Action Button          |
+| Q   | Cycle to next action mode      | SHOOT → FEED → SCARE → SHIELD  |
+| Shift | Toggle sprint                | Same as Run Button             |
+| I   | Open/close player menu         | Inventory, Shop, Achievements  |
+
+### Implementation
+
+Keyboard input is handled in `MenuController.luau`:
+
+```lua
+-- E key = Action
+if input.KeyCode == Enum.KeyCode.E then
+    performCurrentAction()
+end
+
+-- Q key = Cycle Mode (with 200ms debounce)
+if input.KeyCode == Enum.KeyCode.Q then
+    cycleToNextMode()
+end
+```
+
+### Debounce
+
+The Q key has a 200ms cooldown to prevent rapid mode cycling from key repeat.
+
+---
+
+## Game End UI
+
+### Overview
+
+When a game ends, players see a sequential animated display of results.
+
+### Phases
+
+1. **Winner Announcement** (1.5s)
+   - "🏆 VICTORY!" or "DEFEAT" banner
+   - Winning team name
+   - Final score
+
+2. **Coins Earned** (2s + animation)
+   - Animated count-up from 0 to final amount
+   - Shows bonus multiplier if applicable
+   - Winner/Loser status
+
+3. **Achievements Unlocked** (variable)
+   - Lists achievements earned during the game
+   - Up to 5 shown at once
+
+4. **New Animals Discovered** (variable)
+   - Shows any new animal types captured
+
+5. **Game Over** (7s)
+   - Final screen
+   - Auto-dismisses after 7 seconds
+
+### Visual Design
+
+```
+┌─────────────────────────────────────────────────┐
+│                                                 │
+│           🏆 VICTORY! 🏆                        │
+│                                                 │
+│              Red Team Wins!                     │
+│                                                 │
+│          Final Score: 45 - 32                   │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+### Files
+
+```
+src/client/ui/
+└── GameEndController.luau    # All UI creation and animation
+
+src/shared/
+└── RemoteEvents.luau         # GameEndSequenceEvent
+```
+
+### Coin Animation
+
+Coins count up smoothly using TweenService:
+- Duration: 2 seconds
+- Easing: Quad Out (fast start, slow finish)
+- Format: "+0" → "+34" (or whatever amount)

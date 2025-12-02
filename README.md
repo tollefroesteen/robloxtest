@@ -53,27 +53,29 @@ PlayerGui [PlayerGui]
 ### Controllers → GUI Elements
 | Controller | File | GUI Elements | Purpose |
 |------------|------|--------------|---------|
-| MenuController | `src/client/ui/MenuController.luau` | `ActionsGui.Frame.ShootButton` | Fire `ShootEvent` when clicked (uses press effect) |
+| MenuController | `src/client/ui/MenuController.luau` | `ActionsGui.Frame.ShootButton` | Fire `ShootEvent` when clicked (uses press effect), keyboard E/Q support |
 | RunButtonController | `src/client/ui/RunButtonController.luau` | `ActionsGui.Frame.RunButton` | Sprint toggle + Shift key; subscribes to `SprintEvent` |
-| ResetButtonController | `src/client/ui/ResetButtonController.luau` | `ActionsGui.Frame.ResetButton` | Admin-only game reset via `ResetGameEvent` |
 | StaminaController | `src/client/ui/StaminaController.luau` | `StaminaGui.StaminaBarBackground.StaminaFill` | Visual stamina bar based on `SprintEvent` updates |
 | HealthController | `src/client/ui/HealthController.luau` | `HealthGui.HealthBarBackground.HealthFill` | Health bar based on `HealthEvent` |
-| ScoreController | `src/client/ui/ScoreController.luau` | `ScoreGui.Frame.TextLabel` | Aggregated score display via `ScoreEvent` + reset handling |
+| TimerController | `src/client/ui/TimerController.luau` | Timer display | Game timer countdown |
+| GameEndController | `src/client/ui/GameEndController.luau` | Dynamic overlay | Sequential game end results display |
 
 ### Event Dependencies
 | RemoteEvent | Produced By | Consumed By |
 |-------------|-------------|------------|
 | `SprintEvent` | `PlayerSprint.server.luau` | RunButtonController, StaminaController |
-| `ScoreEvent` | `ScoreService.luau` | ScoreController |
-| `ResetGameEvent` | ResetService / ScoreService | ResetButtonController, ScoreController |
 | `HealthEvent` | `LifePointsServer.luau` | HealthController |
 | `ShootEvent` | (Server listener in ShootServer) | MenuController |
+| `TimerUpdateEvent` | `GameTimerService.server.luau` | TimerController |
+| `GameEndSequenceEvent` | `GameEndService.luau` | GameEndController |
+| `StartGameEvent` | (BindableEvent) | Game systems |
+| `TimerEndedEvent` | `GameTimerService.server.luau` | Game end flow |
 
 ### Notes & Recommendations
 - Buttons share a nested visual structure (`Frame -> Main / Shadow`) used by `ButtonEffects` for press animation.
 - Runtime waits (`WaitForChild`) could be removed by mapping GUIs into the filesystem (see below).
 - After respawn, controllers should re-init (add a `CharacterAdded` hook in `MainClient` for UI-1 task).
-- Ensure admin gating for `ResetButton` stays in controller logic, not in hierarchy.
+- Keyboard shortcuts: E = Action, Q = Mode cycle, Shift = Sprint, I = Player menu
 
 ### GUI Development Approach
 **GUIs are created and maintained in Roblox Studio, NOT synced via Rojo.**
@@ -92,7 +94,8 @@ See [docs/GUI_WORKFLOW.md](docs/GUI_WORKFLOW.md) for detailed guidelines.
 1. Server bootstrap (`MainServer.server.luau`) creates RemoteEvents.
 2. Client `MainClient` requires controllers; each controller binds to its GUI subtree.
 3. Controllers listen to events immediately (module scope where needed) before UI waits finish.
-4. Reset flow uses `ResetButtonController` → server `ResetService` + `ScoreService.ResetAll()` → `ResetGameEvent` to clear HUD.
+4. Game start cleans up previous state, assigns teams, respawns players.
+5. Game end freezes everything, shows results UI, then resets for next game.
 
 ### Character Respawn Handling (UI-1) ✅
 `MainClient.client.luau` includes a `CharacterAdded` hook that re-initializes all controllers after respawn to guarantee UI rebinds.

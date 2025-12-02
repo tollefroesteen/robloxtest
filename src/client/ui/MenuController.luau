@@ -3,7 +3,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
-local ShootEvent = RemoteEvents.ShootEvent
 local ButtonEffects = require(script.Parent:WaitForChild("ButtonEffects"))
 
 -- Lazy load GameStateController to avoid circular dependencies
@@ -21,54 +20,212 @@ local function getGameStateController()
 end
 
 local CONTEXT = "MenuController"
-local AMMO_ITEM_ID = "AMMO_BASIC"
 local player: Player = Players.LocalPlayer
 
--- UI references for ammo tracking
-local shootButtonRef: TextButton? = nil
-local shootButtonTextLabel: TextLabel? = nil
-local originalButtonColor: Color3? = nil
-local currentAmmoCount: number = 0
+--============================================================================
+-- ACTION MODE SYSTEM
+--============================================================================
+
+-- Mode definition type
+export type ActionMode = {
+    ID: string,
+    Name: string,
+    Icon: string,
+    ItemID: string?,           -- Item consumed when action is used (nil = no item needed)
+    Color: Color3,             -- Button color when this mode is active
+    DisabledText: string,      -- Text when item is depleted
+    OnActivate: (player: Player) -> (), -- Function to call when action button is pressed
+}
+
+-- Available action modes (extensible - add new modes here)
+local ActionModes: { ActionMode } = {
+    {
+        ID = "SHOOT",
+        Name = "Shoot",
+        Icon = "🔫",
+        ItemID = "AMMO_BASIC",
+        Color = Color3.fromRGB(200, 80, 80),  -- Red
+        DisabledText = "No Ammo",
+        OnActivate = function(plr: Player)
+            RemoteEvents.ShootEvent:FireServer()
+            Log.Info(CONTEXT, "Shoot action fired")
+        end,
+    },
+    {
+        ID = "FEED",
+        Name = "Feed",
+        Icon = "🍖",
+        ItemID = "FOOD_BAIT",
+        Color = Color3.fromRGB(80, 180, 80),  -- Green
+        DisabledText = "No Bait",
+        OnActivate = function(plr: Player)
+            RemoteEvents.FeedEvent:FireServer()
+            Log.Info(CONTEXT, "Feed action fired")
+        end,
+    },
+    {
+        ID = "SCARE",
+        Name = "Scare",
+        Icon = "👻",
+        ItemID = nil,  -- Scare doesn't consume items
+        Color = Color3.fromRGB(150, 80, 200),  -- Purple
+        DisabledText = "Can't Scare",
+        OnActivate = function(plr: Player)
+            RemoteEvents.ScareEvent:FireServer()
+            Log.Info(CONTEXT, "Scare action fired")
+        end,
+    },
+}
+
+-- State
+local currentModeIndex: number = 1
+local cachedInventory: any = nil
+local inventoryReceived: boolean = false  -- Track if we've received inventory at least once
+
+-- UI references
+local actionButtonRef: TextButton? = nil
+local actionButtonTextLabel: TextLabel? = nil
+local actionButtonMainFrame: Frame? = nil
+local modeButtonRef: TextButton? = nil
+local modeButtonTextLabel: TextLabel? = nil
 
 local MenuController = {}
 
--- Update shoot button state based on ammo
-local function updateShootButtonState(): nil
-    if not shootButtonRef then return end
-    
-    local hasAmmo = currentAmmoCount > 0
-    shootButtonRef.Active = hasAmmo
-    shootButtonRef.AutoButtonColor = hasAmmo
-    
-    -- Update the TextLabel inside the button's nested structure
-    if shootButtonTextLabel then
-        if hasAmmo then
-            shootButtonTextLabel.Text = "Shoot (" .. currentAmmoCount .. ")"
-        else
-            shootButtonTextLabel.Text = "No Ammo"
+--============================================================================
+-- HELPER FUNCTIONS
+--============================================================================
+
+-- Get item count from cached inventory
+local function getItemCount(itemID: string?): number
+    if not itemID then return 999 end  -- No item required = always available
+    if not cachedInventory or not cachedInventory.Items then 
+        Log.Info(CONTEXT, string.format("getItemCount: No inventory cached for %s", itemID or "nil"))
+        return 0 
+    end
+    local item = cachedInventory.Items[itemID]
+    local count = item and item.Quantity or 0
+    Log.Info(CONTEXT, string.format("getItemCount: %s = %d", itemID, count))
+    return count
+end
+
+-- Get current mode
+local function getCurrentMode(): ActionMode
+    return ActionModes[currentModeIndex]
+end
+
+-- Check if current mode can be used
+local function canUseCurrentMode(): boolean
+    local mode = getCurrentMode()
+    return getItemCount(mode.ItemID) > 0
+end
+
+-- Find TextLabel in button's nested structure (Frame -> Main -> TextLabel)
+local function findButtonTextLabel(button: TextButton): TextLabel?
+    local buttonFrame = button:FindFirstChild("Frame")
+    if buttonFrame then
+        local mainFrame = buttonFrame:FindFirstChild("Main")
+        if mainFrame then
+            local textLabel = mainFrame:FindFirstChild("TextLabel")
+            if textLabel and textLabel:IsA("TextLabel") then
+                return textLabel
+            end
         end
     end
+    return nil
+end
+
+-- Find Main frame in button's nested structure
+local function findButtonMainFrame(button: TextButton): Frame?
+    local buttonFrame = button:FindFirstChild("Frame")
+    if buttonFrame then
+        local mainFrame = buttonFrame:FindFirstChild("Main")
+        if mainFrame and mainFrame:IsA("Frame") then
+            return mainFrame
+        end
+    end
+    return nil
+end
+
+--============================================================================
+-- UI UPDATE FUNCTIONS
+--============================================================================
+
+-- Update action button appearance based on current mode and inventory
+local function updateActionButton(): nil
+    if not actionButtonRef then 
+        Log.Warn(CONTEXT, "updateActionButton: actionButtonRef is nil")
+        return 
+    end
     
-    -- Update the Main frame background color (the visible button part)
-    local frame = shootButtonRef:FindFirstChild("Frame")
-    local mainFrame = frame and frame:FindFirstChild("Main")
-    if mainFrame and mainFrame:IsA("Frame") then
-        if hasAmmo then
-            if originalButtonColor then
-                mainFrame.BackgroundColor3 = originalButtonColor
+    local mode = getCurrentMode()
+    local itemCount = getItemCount(mode.ItemID)
+    local canUse = itemCount > 0
+    
+    Log.Info(CONTEXT, string.format("updateActionButton: mode=%s, itemCount=%d, canUse=%s, inventoryReceived=%s", 
+        mode.Name, itemCount, tostring(canUse), tostring(inventoryReceived)))
+    
+    -- Update button interactivity
+    actionButtonRef.Active = canUse
+    actionButtonRef.AutoButtonColor = canUse
+    
+    -- Update text
+    if actionButtonTextLabel then
+        if not inventoryReceived and mode.ItemID then
+            -- Show loading state if inventory not received yet and mode requires items
+            actionButtonTextLabel.Text = string.format("%s %s (...)", mode.Icon, mode.Name)
+        elseif canUse then
+            if mode.ItemID then
+                actionButtonTextLabel.Text = string.format("%s %s (%d)", mode.Icon, mode.Name, itemCount)
+            else
+                actionButtonTextLabel.Text = string.format("%s %s", mode.Icon, mode.Name)
             end
         else
-            mainFrame.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- Gray when no ammo
+            actionButtonTextLabel.Text = string.format("%s %s", mode.Icon, mode.DisabledText)
         end
+        Log.Info(CONTEXT, string.format("updateActionButton: text set to '%s'", actionButtonTextLabel.Text))
+    else
+        Log.Warn(CONTEXT, "updateActionButton: actionButtonTextLabel is nil")
+    end
+    
+    -- Update color
+    if actionButtonMainFrame then
+        if canUse then
+            actionButtonMainFrame.BackgroundColor3 = mode.Color
+        else
+            actionButtonMainFrame.BackgroundColor3 = Color3.fromRGB(100, 100, 100)  -- Gray when disabled
+        end
+        Log.Info(CONTEXT, string.format("updateActionButton: color set, canUse=%s", tostring(canUse)))
+    else
+        Log.Warn(CONTEXT, "updateActionButton: actionButtonMainFrame is nil")
     end
 end
 
--- Get ammo count from inventory
-local function getAmmoFromInventory(inventory: any): number
-    if not inventory or not inventory.Items then return 0 end
-    local ammoItem = inventory.Items[AMMO_ITEM_ID]
-    return ammoItem and ammoItem.Quantity or 0
+-- Update mode button to show next available mode
+local function updateModeButton(): nil
+    if not modeButtonTextLabel then return end
+    
+    -- Show the current mode name/icon on the mode button
+    local mode = getCurrentMode()
+    local nextIndex = (currentModeIndex % #ActionModes) + 1
+    local nextMode = ActionModes[nextIndex]
+    
+    -- Show what the NEXT mode will be
+    modeButtonTextLabel.Text = string.format("→ %s", nextMode.Icon)
 end
+
+-- Cycle to next mode
+local function cycleMode(): nil
+    currentModeIndex = (currentModeIndex % #ActionModes) + 1
+    local mode = getCurrentMode()
+    Log.Info(CONTEXT, string.format("Switched to mode: %s", mode.Name))
+    
+    updateActionButton()
+    updateModeButton()
+end
+
+--============================================================================
+-- INITIALIZATION
+--============================================================================
 
 function MenuController.Init(): nil
     local playerGui = player:WaitForChild("PlayerGui")
@@ -84,9 +241,10 @@ function MenuController.Init(): nil
         return
     end
 
-    local shootButton = frame:WaitForChild("ShootButton", 5)
-    if not shootButton then
-        Log.Warn(CONTEXT, "ShootButton not found under Frame")
+    -- Action button (formerly ShootButton)
+    local actionButton = frame:WaitForChild("ShootButton", 5)
+    if not actionButton then
+        Log.Warn(CONTEXT, "ShootButton (Action) not found under Frame")
         return
     end
 
@@ -95,66 +253,129 @@ function MenuController.Init(): nil
         Log.Warn(CONTEXT, "StartButton not found under Frame")
         return
     end
-
-    -- Store shoot button reference for ammo tracking
-    shootButtonRef = shootButton
     
-    -- Find the TextLabel inside the button's nested structure (Frame -> Main -> TextLabel)
-    local buttonFrame = shootButton:FindFirstChild("Frame")
-    if buttonFrame then
-        local mainFrame = buttonFrame:FindFirstChild("Main")
-        if mainFrame then
-            local textLabel = mainFrame:FindFirstChild("TextLabel")
-            if textLabel and textLabel:IsA("TextLabel") then
-                shootButtonTextLabel = textLabel
-                -- Store original color for restoring when ammo is available
-                originalButtonColor = mainFrame.BackgroundColor3
-                Log.Info(CONTEXT, "Found shoot button TextLabel")
-            end
-        end
+    -- Mode button (try to find existing or use RunButton temporarily)
+    -- In a full implementation, you'd create a dedicated ModeButton in Studio
+    local modeButton = frame:FindFirstChild("ModeButton") or frame:FindFirstChild("RunButton")
+    
+    -- Store references
+    actionButtonRef = actionButton
+    actionButtonTextLabel = findButtonTextLabel(actionButton)
+    actionButtonMainFrame = findButtonMainFrame(actionButton)
+    
+    if modeButton and modeButton:IsA("TextButton") then
+        modeButtonRef = modeButton
+        modeButtonTextLabel = findButtonTextLabel(modeButton)
     end
     
     -- Add press effects
-    ButtonEffects.AddPressEffect(shootButton)
+    ButtonEffects.AddPressEffect(actionButton)
     ButtonEffects.AddPressEffect(startButton)
+    if modeButtonRef then
+        ButtonEffects.AddPressEffect(modeButtonRef)
+    end
 
-    shootButton.MouseButton1Click:Connect(function()
-        -- Check if game is frozen before allowing shooting
+    -- Action button click handler
+    actionButton.MouseButton1Click:Connect(function()
+        -- Check if game is frozen
         local gsc = getGameStateController()
         if gsc and gsc.IsGameFrozen() then
-            Log.Info(CONTEXT, "Cannot shoot - game is frozen")
+            Log.Info(CONTEXT, "Cannot perform action - game is frozen")
             return
         end
         
-        -- Check if we have ammo (button state should already prevent this, but double-check)
-        if currentAmmoCount <= 0 then
-            Log.Info(CONTEXT, "Cannot shoot - no ammo")
+        -- Check if action can be used
+        if not canUseCurrentMode() then
+            Log.Info(CONTEXT, "Cannot perform action - insufficient items")
             return
         end
         
-        ShootEvent:FireServer()
+        -- Execute the action
+        local mode = getCurrentMode()
+        mode.OnActivate(player)
     end)
+    
+    -- Mode button click handler
+    if modeButtonRef then
+        modeButtonRef.MouseButton1Click:Connect(function()
+            cycleMode()
+        end)
+    end
 
-    -- Use debounce for start button to prevent multiple rapid clicks
+    -- Start button with debounce
     ButtonEffects.AddDebounce(startButton, 1.0, function()
         RemoteEvents.StartGameEvent:FireServer()
         Log.Info(CONTEXT, "Game start requested")
     end)
     
-    -- Listen for inventory updates to track ammo
+    -- Listen for inventory updates
     RemoteEvents.InventoryUpdatedEvent.OnClientEvent:Connect(function(inventory: any)
-        currentAmmoCount = getAmmoFromInventory(inventory)
-        updateShootButtonState()
-        Log.Info(CONTEXT, string.format("Ammo updated: %d", currentAmmoCount))
+        Log.Info(CONTEXT, "Received inventory update")
+        cachedInventory = inventory
+        inventoryReceived = true
+        updateActionButton()
+        
+        local mode = getCurrentMode()
+        if mode.ItemID then
+            Log.Info(CONTEXT, string.format("%s count: %d", mode.Name, getItemCount(mode.ItemID)))
+        end
     end)
     
-    -- Initialize button state (will update when inventory is received)
-    updateShootButtonState()
+    -- Debug: Log UI references found
+    Log.Info(CONTEXT, string.format("UI refs - actionButton: %s, textLabel: %s, mainFrame: %s", 
+        tostring(actionButtonRef ~= nil),
+        tostring(actionButtonTextLabel ~= nil),
+        tostring(actionButtonMainFrame ~= nil)))
+    
+    -- Initialize button states
+    updateActionButton()
+    updateModeButton()
+    
+    Log.Info(CONTEXT, string.format("MenuController initialized with %d action modes", #ActionModes))
 end
 
--- Expose ammo count for other systems if needed
-function MenuController.GetAmmoCount(): number
-    return currentAmmoCount
+--============================================================================
+-- PUBLIC API
+--============================================================================
+
+-- Get current mode info
+function MenuController.GetCurrentMode(): ActionMode
+    return getCurrentMode()
+end
+
+-- Get current mode ID
+function MenuController.GetCurrentModeID(): string
+    return getCurrentMode().ID
+end
+
+-- Set mode by ID
+function MenuController.SetMode(modeID: string): boolean
+    for i, mode in ActionModes do
+        if mode.ID == modeID then
+            currentModeIndex = i
+            updateActionButton()
+            updateModeButton()
+            return true
+        end
+    end
+    return false
+end
+
+-- Get all available modes
+function MenuController.GetAllModes(): { ActionMode }
+    return ActionModes
+end
+
+-- Get item count for current mode
+function MenuController.GetCurrentModeItemCount(): number
+    local mode = getCurrentMode()
+    return getItemCount(mode.ItemID)
+end
+
+-- Register a new action mode dynamically
+function MenuController.RegisterMode(mode: ActionMode): nil
+    table.insert(ActionModes, mode)
+    Log.Info(CONTEXT, string.format("Registered new action mode: %s", mode.Name))
 end
 
 return MenuController

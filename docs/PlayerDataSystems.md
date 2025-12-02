@@ -84,6 +84,15 @@ ItemRegistry.Items = {
 }
 ```
 
+### Default Starting Inventory
+
+New players start with:
+
+| Item       | Quantity | Purpose               |
+|------------|----------|-----------------------|
+| AMMO_BASIC | 50       | Basic ammunition      |
+| FOOD_BAIT  | 10       | Animal bait for Feed  |
+
 ### Inventory Limits
 
 - Default max slots: 20 (configurable per player)
@@ -385,6 +394,109 @@ GameEndService (awards coins)
     │
     └──► CoinsAwardedEvent ────────► CoinsController (animation only)
 ```
+
+---
+
+## Action System
+
+The game features a multi-mode action button that players can cycle through.
+
+### Action Modes
+
+| Mode  | Required Item | Description                        |
+|-------|---------------|------------------------------------|
+| SHOOT | AMMO_BASIC    | Fire projectile (consumes 1 ammo)  |
+| FEED  | FOOD_BAIT     | Place bait to attract animals      |
+| SCARE | (none)        | Scare away nearby animals          |
+
+### How It Works
+
+1. **Mode Button**: Players press to cycle through available modes
+2. **Action Button**: Performs the current mode's action
+3. **Item Check**: Button shows disabled if required item is missing
+4. **Server Validation**: All actions are validated server-side
+
+### Client Controller (`MenuController.luau`)
+
+The action system lives in `src/client/ui/MenuController.luau`:
+
+```lua
+-- Action mode definition
+type ActionMode = {
+    ID: string,           -- Unique identifier
+    Name: string,         -- Display name
+    Icon: string,         -- Emoji/icon
+    ItemID: string?,      -- Required inventory item (nil = no requirement)
+    Color: Color3,        -- Button color when enabled
+    DisabledText: string, -- Text shown when item missing
+    OnActivate: () -> (), -- Function to execute
+}
+```
+
+### Server Handlers
+
+| Action | Handler File                  | Remote Event |
+|--------|-------------------------------|--------------|
+| SHOOT  | `ShootServer.server.luau`     | ShootEvent   |
+| FEED   | `ActionServer.server.luau`    | FeedEvent    |
+| SCARE  | `ActionServer.server.luau`    | ScareEvent   |
+
+### Adding New Action Modes
+
+1. Define the mode in `MenuController.luau`:
+```lua
+local ACTION_MODES: { ActionMode } = {
+    -- ... existing modes ...
+    {
+        ID = "NEW_ACTION",
+        Name = "New Action",
+        Icon = "🎯",
+        ItemID = "ITEM_ID",  -- or nil for no item requirement
+        Color = Color3.fromRGB(100, 100, 255),
+        DisabledText = "No items!",
+        OnActivate = function()
+            RemoteEvents.NewActionEvent:FireServer()
+        end,
+    },
+}
+```
+
+2. Create server handler in `src/server/Player/`:
+```lua
+RemoteEvents.NewActionEvent.OnServerEvent:Connect(function(player)
+    -- Validate and process action
+end)
+```
+
+---
+
+## Debug Commands
+
+For testing purposes, admin chat commands are available in `DebugCommands.server.luau`.
+
+### Available Commands
+
+| Command                    | Description                      |
+|----------------------------|----------------------------------|
+| `/grantcoins <amount>`     | Grant coins to all players       |
+| `/grantammo <amount>`      | Grant AMMO_BASIC to all players  |
+| `/grantbait <amount>`      | Grant FOOD_BAIT to all players   |
+| `/grantitem <id> <amount>` | Grant any item to all players    |
+| `/debughelp`               | Show available commands          |
+
+### Usage Examples
+
+```
+/grantcoins 100      -- Give everyone 100 coins
+/grantammo 50        -- Give everyone 50 basic ammo
+/grantbait 20        -- Give everyone 20 bait
+/grantitem mat_rope 25  -- Give everyone 25 rope
+```
+
+### Admin Access
+
+- **In Studio**: All players are treated as admins
+- **In Production**: Add user IDs to `ADMIN_USER_IDS` table in `DebugCommands.server.luau`
 
 ---
 

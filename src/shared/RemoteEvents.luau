@@ -28,6 +28,10 @@ RemoteEvents.TeamAssignedEvent = getOrCreate("TeamAssignedEvent")
 RemoteEvents.TeamScoreUpdateEvent = getOrCreate("TeamScoreUpdateEvent")
 RemoteEvents.PlayerScoredEvent = getOrCreate("PlayerScoredEvent")
 
+-- Player action events
+RemoteEvents.FeedEvent = getOrCreate("FeedEvent")
+RemoteEvents.ScareEvent = getOrCreate("ScareEvent")
+
 -- Player data events
 RemoteEvents.AchievementUnlockedEvent = getOrCreate("AchievementUnlockedEvent")
 RemoteEvents.InventoryUpdatedEvent = getOrCreate("InventoryUpdatedEvent")

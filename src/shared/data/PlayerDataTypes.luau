@@ -57,7 +57,10 @@ local PlayerDataTypes = {}
 
 function PlayerDataTypes.CreateDefaultInventory(): Inventory
 	return {
-		Items = {},
+		Items = {
+			AMMO_BASIC = 50,    -- Starting ammo
+			FOOD_BAIT = 10,     -- Starting bait
+		},
 		MaxSlots = 20,
 	}
 end

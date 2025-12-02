@@ -403,11 +403,12 @@ The game features a multi-mode action button that players can cycle through.
 
 ### Action Modes
 
-| Mode  | Required Item | Description                        |
-|-------|---------------|------------------------------------|
-| SHOOT | AMMO_BASIC    | Fire projectile (consumes 1 ammo)  |
-| FEED  | FOOD_BAIT     | Place bait to attract animals      |
-| SCARE | (none)        | Scare away nearby animals          |
+| Mode   | Required Item | Description                        |
+|--------|---------------|------------------------------------|
+| SHOOT  | AMMO_BASIC    | Fire projectile (consumes 1 ammo)  |
+| FEED   | FOOD_BAIT     | Place bait to attract animals      |
+| SCARE  | (none)        | Scare away nearby animals          |
+| SHIELD | TOOL_SHIELD   | Activate protective shield         |
 
 ### How It Works
 
@@ -435,11 +436,12 @@ type ActionMode = {
 
 ### Server Handlers
 
-| Action | Handler File                  | Remote Event |
-|--------|-------------------------------|--------------|
-| SHOOT  | `ShootServer.server.luau`     | ShootEvent   |
-| FEED   | `ActionServer.server.luau`    | FeedEvent    |
-| SCARE  | `ActionServer.server.luau`    | ScareEvent   |
+| Action | Handler File                  | Remote Event       |
+|--------|-------------------------------|--------------------|
+| SHOOT  | `ShootServer.server.luau`     | ShootEvent         |
+| FEED   | `ActionServer.server.luau`    | FeedEvent          |
+| SCARE  | `ActionServer.server.luau`    | ScareEvent         |
+| SHIELD | `ShieldServiceInit.server.luau` | ShieldActivateEvent |
 
 ### Adding New Action Modes
 
@@ -481,7 +483,12 @@ For testing purposes, admin chat commands are available in `DebugCommands.server
 | `/grantcoins <amount>`     | Grant coins to all players       |
 | `/grantammo <amount>`      | Grant AMMO_BASIC to all players  |
 | `/grantbait <amount>`      | Grant FOOD_BAIT to all players   |
+| `/grantshield <amount>`    | Grant TOOL_SHIELD to all players |
 | `/grantitem <id> <amount>` | Grant any item to all players    |
+| `/die`                     | Kill yourself (test respawn)     |
+| `/shield`                  | Activate a free shield           |
+| `/spawnfood [attract]`     | Spawn food at your position      |
+| `/spawngift`               | Spawn a gift pickup nearby       |
 | `/debughelp`               | Show available commands          |
 
 ### Usage Examples
@@ -490,7 +497,13 @@ For testing purposes, admin chat commands are available in `DebugCommands.server
 /grantcoins 100      -- Give everyone 100 coins
 /grantammo 50        -- Give everyone 50 basic ammo
 /grantbait 20        -- Give everyone 20 bait
+/grantshield 5       -- Give everyone 5 shields
 /grantitem mat_rope 25  -- Give everyone 25 rope
+/die                 -- Test death/respawn system
+/shield              -- Test shield visual effect
+/spawnfood           -- Spawn basic food
+/spawnfood 80        -- Spawn food with 80 attractiveness
+/spawngift           -- Spawn random gift pickup
 ```
 
 ### Admin Access
@@ -524,6 +537,7 @@ For testing purposes, admin chat commands are available in `DebugCommands.server
 | FOOD_BAIT     | Animal Bait       | Food      | 25        |
 | TOOL_TRAP     | Portable Trap     | Tools     | 5         |
 | TOOL_BINOCULARS | Binoculars      | Tools     | 1         |
+| TOOL_SHIELD   | Protective Shield | Tools     | 10        |
 | MAT_ROPE      | Rope              | Materials | 50        |
 | MAT_WOOD      | Wood              | Materials | 100       |
 
@@ -647,6 +661,8 @@ ShopRegistry.CoinBundles = {
 | SHOP_TOOL_BINOCULARS| Binoculars        | 1   | 100   |
 | SHOP_MAT_ROPE_20    | Rope              | 20  | 15    |
 | SHOP_MAT_WOOD_50    | Wood              | 50  | 20    |
+| SHOP_TOOL_SHIELD_1  | Protective Shield | 1   | 75    |
+| SHOP_TOOL_SHIELD_3  | Protective Shield | 3   | 200   |
 
 ### Coin Bundles (Robux)
 
@@ -681,3 +697,222 @@ The Shop tab is available in the Player Menu (press `I`):
 │ └─────────────────────────────────────────┘ │
 └─────────────────────────────────────────────┘
 ```
+
+---
+
+## Shield System
+
+### Overview
+
+The shield system provides temporary damage protection for players.
+
+### Features
+
+- **Duration**: 10 seconds (configurable per item via `ShieldDuration`)
+- **Visual Effect**: Glowing sphere around player with ForceField material
+- **Damage Blocking**: All damage is blocked while shield is active
+- **Spawn Protection**: 5 seconds of free shield after respawning
+
+### Files
+
+```
+src/server/Player/
+├── ShieldService.luau        # Shield state management module
+├── ShieldServiceInit.server.luau  # Module initializer
+└── LifePointsServer.luau     # Checks shield before applying damage
+```
+
+### API Reference
+
+```lua
+local ShieldService = require(ServerScriptService.Server.Player.ShieldService)
+
+-- Check if player has active shield
+local isShielded = ShieldService.HasShield(player)
+
+-- Activate shield for player
+ShieldService.ActivateShield(player, duration)  -- duration in seconds
+
+-- Remove active shield
+ShieldService.RemoveShield(player)
+```
+
+### Shield Item
+
+| Property       | Value              |
+|----------------|--------------------|
+| ID             | TOOL_SHIELD        |
+| Name           | Protective Shield  |
+| Category       | Tools              |
+| Max Stack      | 10                 |
+| ShieldDuration | 10 (seconds)       |
+| Consumable     | true               |
+
+### How It Works
+
+1. Player activates SHIELD action mode and presses action button
+2. Client fires `ShieldActivateEvent` to server
+3. Server validates player has TOOL_SHIELD item
+4. Server consumes 1 TOOL_SHIELD from inventory
+5. `ShieldService.ActivateShield()` creates visual effect and starts timer
+6. `LifePointsServer.damagePlayer()` checks `ShieldService.HasShield()` before applying damage
+7. After duration expires, shield is automatically removed
+
+### Visual Effect
+
+The shield visual is a transparent sphere around the player:
+- Material: ForceField (glowing)
+- Color: Light blue (100, 200, 255)
+- Transparency: 0.7
+- Size: 6x8x6 studs (covers player)
+
+---
+
+## Respawn System
+
+### Overview
+
+When a player dies, there's a countdown before they respawn.
+
+### Features
+
+- **Countdown Duration**: 5 seconds
+- **Billboard Display**: Countdown visible above dead player to others
+- **Client Overlay**: Semi-transparent death screen with countdown
+- **Spawn Protection**: 5 seconds of free shield after respawn
+
+### Files
+
+```
+src/server/Player/
+└── LifePointsServer.luau     # Death handling, countdown, respawn
+
+src/client/ui/
+└── RespawnController.luau    # Death overlay UI
+```
+
+### How It Works
+
+1. Player's health reaches 0
+2. `Humanoid.Died` event fires
+3. Server creates `BillboardGui` above dead player showing countdown
+4. Server fires `RespawnCountdownEvent` to client
+5. Client shows death overlay with countdown
+6. Player controls are disabled during countdown
+7. After countdown, server calls `player:LoadCharacter()`
+8. Spawn protection shield activates for 5 seconds
+
+### Configuration
+
+```lua
+-- In LifePointsServer.luau
+local RESPAWN_DELAY = 5  -- seconds before respawn
+local SPAWN_PROTECTION_DURATION = 5  -- seconds of free shield
+```
+
+### Remote Events
+
+| Event                | Direction      | Data           |
+|----------------------|---------------|----------------|
+| RespawnCountdownEvent | Server→Client | secondsLeft    |
+
+---
+
+## Gift Spawner System
+
+### Overview
+
+The UFO periodically spawns collectible gift pickups during gameplay.
+
+### Features
+
+- **Random Items**: Gifts contain coins, ammo, food, or shields
+- **Weighted Drops**: Rarer items have lower spawn chance
+- **Visual Effects**: Particles, glow, floating animation, billboard label
+- **Auto-Despawn**: Uncollected gifts disappear after 60 seconds
+- **Spawn Limit**: Maximum 5 gifts in world at once
+
+### Files
+
+```
+src/server/UFO/
+└── GiftSpawner.server.luau   # Gift spawning logic
+
+src/shared/config/
+└── GiftConfig.luau           # Spawner configuration
+```
+
+### Configuration (`GiftConfig.luau`)
+
+```lua
+return {
+    -- Timing
+    MIN_INTERVAL = 30,    -- Minimum seconds between spawns
+    MAX_INTERVAL = 90,    -- Maximum seconds between spawns
+    GIFT_LIFETIME = 60,   -- Seconds before uncollected gift despawns
+    MAX_GIFTS = 5,        -- Maximum gifts in world at once
+    
+    -- Visuals
+    GIFT_SIZE = Vector3.new(2, 2, 2),
+    GIFT_COLOR = Color3.fromRGB(255, 215, 0),  -- Gold
+    GLOW_COLOR = Color3.fromRGB(255, 255, 150),
+    
+    -- Drop table (Weight determines spawn chance)
+    GiftTable = {
+        { ItemID = "COIN", MinAmount = 10, MaxAmount = 50, Weight = 40 },
+        { ItemID = "AMMO_BASIC", MinAmount = 10, MaxAmount = 30, Weight = 30 },
+        { ItemID = "FOOD_BAIT", MinAmount = 5, MaxAmount = 15, Weight = 20 },
+        { ItemID = "TOOL_SHIELD", MinAmount = 1, MaxAmount = 2, Weight = 10 },
+    },
+}
+```
+
+### Gift Visual Structure
+
+```
+Gift_ITEM_ID (Model)
+├── GiftBox (Part)
+│   ├── ParticleAttachment (Attachment)
+│   │   └── ParticleEmitter
+│   └── PointLight
+└── GiftLabel (BillboardGui)
+    └── Background (Frame)
+        └── ItemLabel (TextLabel)
+```
+
+### Gift Appearance
+
+- **Part**: Gold neon block, 2x2x2 studs
+- **Particles**: Gold sparkles floating upward
+- **Light**: Glowing point light (range 8 studs)
+- **Billboard**: Shows "🎁 Xx ItemName" above the gift
+- **Animation**: Floating up/down + rotating
+
+### Drop Weights
+
+| Item        | Weight | Chance  |
+|-------------|--------|---------|
+| Coins       | 40     | ~40%    |
+| Basic Ammo  | 30     | ~30%    |
+| Animal Bait | 20     | ~20%    |
+| Shield      | 10     | ~10%    |
+
+### How It Works
+
+1. Game starts, `GiftSpawner` becomes active
+2. Random interval (30-90s) timer starts
+3. When timer fires:
+   - Check if at gift capacity (5 max)
+   - Select random gift from weighted table
+   - Raycast from UFO to find ground position
+   - Create gift model with visuals
+   - Connect touch handler
+4. Player touches gift:
+   - Grant item to inventory
+   - Play collection animation
+   - Destroy gift
+5. Gift uncollected for 60s:
+   - Fade out animation
+   - Destroy gift
+6. Game ends:
+   - All remaining gifts destroyed

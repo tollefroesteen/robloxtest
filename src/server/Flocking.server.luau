@@ -1,6 +1,10 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local ServerScriptService = game:GetService("ServerScriptService")
 local Flock = workspace:WaitForChild("Flock")
+
+-- Server events for scare action
+local ServerEvents = require(ServerScriptService.Server.ServerEvents)
 
 -- Ensure Food folder exists
 local FoodFolder = workspace:FindFirstChild("Food")
@@ -38,9 +42,14 @@ local PANIC_TIME = 0.35     -- stay scared this long
 local PANIC_BOOST = 2.2     -- panic speed multiplier
 local AVOID_FORCE = 1.6     -- base avoid power
 
+-- Scare action settings
+local SCARE_PANIC_TIME = 1.5   -- how long animals panic from scare action
+local SCARE_BOOST = 3.0        -- speed multiplier when scared by player action
+
 -- State
 local velocities = {}       -- [BasePart] = Vector3
 local panicUntil = {}       -- [BasePart] = timestamp
+local scareSource = {}      -- [BasePart] = Vector3 (position to flee from)
 local acc = 0
 
 -- Neighbor finder (ignores captured animals, uses per-animal ObservationRadius)
@@ -142,6 +151,10 @@ RunService.Heartbeat:Connect(function(dt)
 		local isPanicking = panicUntil[root] and panicUntil[root] > now
 		local playerDist = math.huge
 		local playerDir = Vector3.zero
+		
+		-- Check if this animal was scared by player action (has a specific scare source)
+		local hasScareSource = scareSource[root] ~= nil
+		local fleeDirection = Vector3.zero
 
 		for _, plr in ipairs(Players:GetPlayers()) do
 			local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
@@ -158,17 +171,30 @@ RunService.Heartbeat:Connect(function(dt)
 		if playerDist < panicRadius then
 			panicUntil[root] = now + (PANIC_TIME * fearFactor)  -- More fearful = longer panic
 			isPanicking = true
+			scareSource[root] = nil  -- Clear scare source, use player position instead
+		end
+		
+		-- Determine flee direction
+		if hasScareSource and isPanicking then
+			-- Flee from the scare action source position
+			fleeDirection = (pos - scareSource[root])
+		elseif playerDir.Magnitude > 0 then
+			-- Flee from nearest player
+			fleeDirection = playerDir
 		end
 
 		if isPanicking then
-			-- Strong flee, but still lerped for smoothness (panic intensity scaled by FearFactor)
-			if playerDir.Magnitude > 0 then
-				local fleeDir = playerDir.Unit
-				local panicBoost = PANIC_BOOST * (0.5 + fearFactor * 0.5)  -- Range: 1.1x to 2.2x
+			-- Strong flee, but still lerped for smoothness
+			if fleeDirection.Magnitude > 0 then
+				local fleeDir = fleeDirection.Unit
+				-- Use higher boost for scare action
+				local panicBoost = hasScareSource and SCARE_BOOST or (PANIC_BOOST * (0.5 + fearFactor * 0.5))
 				local fleeVel = fleeDir * (maxSpeed * panicBoost)
-				vel = vel:Lerp(fleeVel, 0.4)
+				vel = vel:Lerp(fleeVel, 0.5)  -- Faster lerp for more responsive flee
 			end
 		else
+			-- Clear scare source when no longer panicking
+			scareSource[root] = nil
 			-- Standard boids (use per-animal ObservationRadius)
 			local neighbors = getNeighbors(root, observationRadius)
 			local separation = Vector3.zero
@@ -240,9 +266,10 @@ RunService.Heartbeat:Connect(function(dt)
 			vel = vel:Lerp(desired, TURN_SMOOTH)
 		end
 
-		-- Cap speed (higher cap while panicking, scaled by FearFactor)
-		local panicBoost = PANIC_BOOST * (0.5 + fearFactor * 0.5)
-		local speedCap = isPanicking and (maxSpeed * panicBoost) or maxSpeed
+		-- Cap speed (higher cap while panicking, scaled by FearFactor or scare action)
+		local hasScareSource = scareSource[root] ~= nil
+		local panicBoostCap = hasScareSource and SCARE_BOOST or (PANIC_BOOST * (0.5 + fearFactor * 0.5))
+		local speedCap = isPanicking and (maxSpeed * panicBoostCap) or maxSpeed
 		if vel.Magnitude > speedCap then
 			vel = vel.Unit * speedCap
 		end
@@ -263,5 +290,30 @@ RunService.Heartbeat:Connect(function(dt)
 
 		-- Expose target for client visual smoothing
 		root:SetAttribute("TargetPos", newPos)
+	end
+end)
+
+-- Listen for player scare actions
+ServerEvents.PlayerScareEvent.Event:Connect(function(scarePosition: Vector3, scareRadius: number)
+	local now = tick()
+	
+	for _, root in ipairs(Flock:GetChildren()) do
+		if not root:IsA("BasePart") then continue end
+		if root:GetAttribute("Captured") == true then continue end
+		
+		local distance = (root.Position - scarePosition).Magnitude
+		if distance < scareRadius then
+			-- Set panic state for this animal
+			local fearFactor = root:GetAttribute("FearFactor") or BASE_FEAR_FACTOR
+			panicUntil[root] = now + (SCARE_PANIC_TIME * fearFactor)
+			scareSource[root] = scarePosition
+			
+			-- Give immediate velocity boost away from scare source
+			local fleeDir = (root.Position - scarePosition)
+			if fleeDir.Magnitude > 0 then
+				local maxSpeed = root:GetAttribute("MaxSpeed") or BASE_SPEED
+				velocities[root] = fleeDir.Unit * (maxSpeed * SCARE_BOOST * 0.5)
+			end
+		end
 	end
 end)

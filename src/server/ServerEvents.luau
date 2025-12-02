@@ -26,4 +26,9 @@ ForceEndGameEvent.Name = "ForceEndGameEvent"
 ForceEndGameEvent.Parent = nil -- Server-only, used to force end the game (e.g., /endgame command)
 ServerEvents.ForceEndGameEvent = ForceEndGameEvent
 
+local PlayerScareEvent = Instance.new("BindableEvent")
+PlayerScareEvent.Name = "PlayerScareEvent"
+PlayerScareEvent.Parent = nil -- Server-only, fired when player uses scare action
+ServerEvents.PlayerScareEvent = PlayerScareEvent
+
 return ServerEvents

@@ -256,9 +256,12 @@ local function onScareAction(player: Player)
 	local root = character:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	
-	-- TODO: Implement actual scare mechanics (affect nearby animals)
-	-- For now, create a visual/audio indicator
 	local scareRadius = 15
+	local scarePosition = root.Position
+	
+	-- Fire server event to notify Flocking system
+	local ServerEvents = require(ServerScriptService.Server.ServerEvents)
+	ServerEvents.PlayerScareEvent:Fire(scarePosition, scareRadius)
 	
 	-- Visual ring effect
 	local scareRing = Instance.new("Part")

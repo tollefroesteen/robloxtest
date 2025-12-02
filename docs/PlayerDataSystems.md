@@ -407,7 +407,7 @@ The game features a multi-mode action button that players can cycle through.
 |--------|---------------|------------------------------------|
 | SHOOT  | AMMO_BASIC    | Fire projectile (consumes 1 ammo)  |
 | FEED   | FOOD_BAIT     | Place bait to attract animals      |
-| SCARE  | (none)        | Scare away nearby animals          |
+| SCARE  | (none)        | Scare away nearby animals (15 stud radius) |
 | SHIELD | TOOL_SHIELD   | Activate protective shield         |
 
 ### How It Works
@@ -436,12 +436,59 @@ type ActionMode = {
 
 ### Server Handlers
 
-| Action | Handler File                  | Remote Event       |
-|--------|-------------------------------|--------------------|
-| SHOOT  | `ShootServer.server.luau`     | ShootEvent         |
-| FEED   | `ActionServer.server.luau`    | FeedEvent          |
-| SCARE  | `ActionServer.server.luau`    | ScareEvent         |
-| SHIELD | `ShieldServiceInit.server.luau` | ShieldActivateEvent |
+| Action | Handler File                  | Remote Event       | BindableEvent      |
+|--------|-------------------------------|--------------------|--------------------|
+| SHOOT  | `ShootServer.server.luau`     | ShootEvent         | -                  |
+| FEED   | `ActionServer.server.luau`    | FeedEvent          | -                  |
+| SCARE  | `ActionServer.server.luau`    | ScareEvent         | PlayerScareEvent   |
+| SHIELD | `ShieldServiceInit.server.luau` | ShieldActivateEvent | -               |
+
+### Scare System
+
+The SCARE action allows players to frighten nearby animals, causing them to panic and flee.
+
+#### Mechanics
+
+| Parameter           | Value       | Description                              |
+|---------------------|-------------|------------------------------------------|
+| Scare Radius        | 15 studs    | Area of effect around the player         |
+| Panic Duration      | 1.5 seconds | How long animals remain in panic state   |
+| Speed Boost         | 3.0x        | Multiplier applied to fleeing speed      |
+| Max Flee Speed      | 150 studs/s | Speed cap during panic (50 × 3.0)        |
+
+#### Flow
+
+```
+Player activates SCARE mode
+    │
+    ▼
+ActionServer.server.luau
+    │
+    ├──► Validates player has character/root
+    │
+    └──► ServerEvents.PlayerScareEvent:Fire(position, radius)
+           │
+           ▼
+    Flocking.server.luau (listener)
+           │
+           ├──► Iterates all animals in radius
+           │
+           └──► Sets scareSource and scareUntil for each animal
+                  │
+                  ▼
+           Update loop applies panic behavior:
+               • Flee direction = away from scare source
+               • Speed = base speed × 3.0 (SCARE_BOOST)
+               • Duration = 1.5 seconds (SCARE_PANIC_TIME)
+```
+
+#### Animal Behavior When Scared
+
+Animals in panic state:
+- **Flee Direction**: Move directly away from the scare source position
+- **Ignore Flocking**: Scare direction overrides normal flocking behavior
+- **Boosted Speed**: Move at 3× their normal maximum speed
+- **Auto-Recovery**: Return to normal behavior after 1.5 seconds
 
 ### Adding New Action Modes
 
@@ -1002,6 +1049,7 @@ src/client/ui/
 | StartGameEvent     | Fired when game starts (BindableEvent)     |
 | TimerEndedEvent    | Fired when timer reaches 0 (BindableEvent) |
 | ForceEndGameEvent  | Fired by /endgame command (BindableEvent)  |
+| PlayerScareEvent   | Fired when player uses SCARE action (BindableEvent) |
 | GameEndSequenceEvent | Per-player game end data (RemoteEvent)   |
 
 ### Achievement Tracking

@@ -122,6 +122,22 @@ ShopRegistry.Items = {
 		CoinPrice = 100,
 		Category = "Tools",
 	},
+	SHOP_TOOL_SHIELD_1 = {
+		ID = "SHOP_TOOL_SHIELD_1",
+		ItemID = "TOOL_SHIELD",
+		Quantity = 1,
+		CoinPrice = 75,
+		Category = "Tools",
+	},
+	SHOP_TOOL_SHIELD_3 = {
+		ID = "SHOP_TOOL_SHIELD_3",
+		ItemID = "TOOL_SHIELD",
+		Quantity = 3,
+		CoinPrice = 180,
+		Category = "Tools",
+		Discount = 20,
+		Featured = true,
+	},
 	
 	-- Materials
 	SHOP_MAT_ROPE_20 = {

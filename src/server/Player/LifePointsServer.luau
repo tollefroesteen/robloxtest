@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local HealthEvent = RemoteEvents.HealthEvent
@@ -7,9 +8,24 @@ local RespawnCountdownEvent = RemoteEvents.RespawnCountdownEvent
 
 local MAX_LIFE = 100
 local RESPAWN_DELAY = 5 -- Seconds before respawn
+local SPAWN_PROTECTION_DURATION = 5 -- Seconds of free shield after respawn
 
 -- Disable automatic respawn - we handle it manually with countdown
 Players.CharacterAutoLoads = false
+
+-- Lazy load ShieldService to check for active shields
+local ShieldService: any = nil
+local function getShieldService()
+	if not ShieldService then
+		local success, service = pcall(function()
+			return require(ServerScriptService.Server.Player.ShieldService)
+		end)
+		if success then
+			ShieldService = service
+		end
+	end
+	return ShieldService
+end
 
 -- Stores each player's life points
 local playerLife = {}
@@ -138,6 +154,14 @@ local function startRespawnSequence(player: Player)
 	-- Send reset health to UI
 	HealthEvent:FireClient(player, MAX_LIFE, MAX_LIFE)
 	
+	-- Grant spawn protection shield (free, no item consumed)
+	task.delay(0.1, function()  -- Small delay to ensure character is fully loaded
+		local shieldSvc = getShieldService()
+		if shieldSvc then
+			shieldSvc.ActivateShield(player, SPAWN_PROTECTION_DURATION)
+		end
+	end)
+	
 	-- Clear respawning flag
 	playersRespawning[player] = nil
 end
@@ -186,6 +210,14 @@ local function damagePlayer(targetPlayer, amount)
 	
 	-- Don't damage if already respawning
 	if playersRespawning[targetPlayer] then return end
+	
+	-- Check if player has active shield
+	local shieldSvc = getShieldService()
+	if shieldSvc and shieldSvc.HasShield(targetPlayer) then
+		-- Shield blocks the damage!
+		-- Could add visual/sound feedback here
+		return
+	end
 
 	playerLife[targetPlayer] -= amount
 	local currentLife = math.clamp(playerLife[targetPlayer], 0, MAX_LIFE)

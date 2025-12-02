@@ -52,4 +52,8 @@ RemoteEvents.ShopBuyCoinsRequestEvent = getOrCreate("ShopBuyCoinsRequestEvent")
 -- Respawn events
 RemoteEvents.RespawnCountdownEvent = getOrCreate("RespawnCountdownEvent")
 
+-- Shield events
+RemoteEvents.ShieldActivateEvent = getOrCreate("ShieldActivateEvent")
+RemoteEvents.ShieldStatusEvent = getOrCreate("ShieldStatusEvent")
+
 return RemoteEvents

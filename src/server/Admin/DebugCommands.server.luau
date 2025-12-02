@@ -34,6 +34,19 @@ local function getInventoryService()
 	return InventoryService
 end
 
+local ShieldService: any = nil
+local function getShieldService()
+	if not ShieldService then
+		local success, service = pcall(function()
+			return require(ServerScriptService.Server.Player.ShieldService)
+		end)
+		if success then
+			ShieldService = service
+		end
+	end
+	return ShieldService
+end
+
 -- Check if player is admin (or in Studio)
 local function isAdmin(player: Player): boolean
 	-- Always allow in Studio for testing
@@ -190,9 +203,29 @@ local function onPlayerChatted(player: Player, message: string): nil
 		return
 	end
 	
+	-- /shield - activate shield instantly (for testing)
+	if lowerMessage == "/shield" then
+		local shieldSvc = getShieldService()
+		if shieldSvc then
+			shieldSvc.ActivateShield(player, 10)
+			Log.Info(CONTEXT, string.format("%s activated debug shield", player.Name))
+		end
+		return
+	end
+	
+	-- /grantshield <amount> - grant shield items
+	local shieldMatch = lowerMessage:match("^/grantshield%s+(%d+)$")
+	if shieldMatch then
+		local amount = tonumber(shieldMatch)
+		if amount and amount > 0 then
+			grantItemToAll("TOOL_SHIELD", amount, player)
+		end
+		return
+	end
+	
 	-- /debughelp - show available commands
 	if lowerMessage == "/debughelp" then
-		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantitem <id> <amt>, /die, /spawnfood [attract]")
+		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantshield <amt>, /grantitem <id> <amt>, /die, /shield, /spawnfood [attract]")
 		return
 	end
 end

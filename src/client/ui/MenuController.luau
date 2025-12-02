@@ -75,6 +75,18 @@ local ActionModes: { ActionMode } = {
             Log.Info(CONTEXT, "Scare action fired")
         end,
     },
+    {
+        ID = "SHIELD",
+        Name = "Shield",
+        Icon = "🛡️",
+        ItemID = "TOOL_SHIELD",
+        Color = Color3.fromRGB(80, 150, 255),  -- Blue
+        DisabledText = "No Shield",
+        OnActivate = function(plr: Player)
+            RemoteEvents.ShieldActivateEvent:FireServer()
+            Log.Info(CONTEXT, "Shield action fired")
+        end,
+    },
 }
 
 -- State

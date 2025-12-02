@@ -16,6 +16,8 @@ export type ItemDefinition = {
 	-- Food-specific properties
 	Attractiveness: number?,  -- How attractive to animals (0-10, higher = more attractive)
 	FoodAmount: number?,      -- How much food value when placed (depletes as animals eat)
+	-- Shield-specific properties
+	ShieldDuration: number?,  -- How long shield lasts in seconds
 }
 
 -- Item categories
@@ -111,6 +113,16 @@ ItemRegistry.Items = {
 		MaxStack = 1,
 		Tradeable = false,
 		Consumable = false,
+	},
+	TOOL_SHIELD = {
+		ID = "TOOL_SHIELD",
+		Name = "Energy Shield",
+		Category = "Tools",
+		Description = "Creates a protective barrier that blocks incoming shots",
+		MaxStack = 5,
+		Tradeable = true,
+		Consumable = true,
+		ShieldDuration = 10,
 	},
 	
 	-- Materials

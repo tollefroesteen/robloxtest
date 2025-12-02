@@ -223,9 +223,149 @@ local function onPlayerChatted(player: Player, message: string): nil
 		return
 	end
 	
+	-- /spawngift - spawn a gift at player location for testing
+	if lowerMessage == "/spawngift" then
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root then
+			-- Ensure Gifts folder exists
+			local giftsFolder = workspace:FindFirstChild("Gifts")
+			if not giftsFolder then
+				giftsFolder = Instance.new("Folder")
+				giftsFolder.Name = "Gifts"
+				giftsFolder.Parent = workspace
+			end
+			
+			-- Create a random gift
+			local giftItems = {"COIN", "AMMO_BASIC", "FOOD_BAIT", "TOOL_SHIELD"}
+			local itemID = giftItems[math.random(1, #giftItems)]
+			local amount = math.random(5, 20)
+			
+			local placePos = root.Position + root.CFrame.LookVector * 5 + Vector3.new(0, 2, 0)
+			
+			-- Create gift model (same structure as GiftSpawner)
+			local giftModel = Instance.new("Model")
+			giftModel.Name = "Gift_" .. itemID
+			
+			local giftPart = Instance.new("Part")
+			giftPart.Name = "GiftBox"
+			giftPart.Shape = Enum.PartType.Block
+			giftPart.Size = Vector3.new(2, 2, 2)
+			giftPart.Color = Color3.fromRGB(255, 215, 0)
+			giftPart.Material = Enum.Material.Neon
+			giftPart.Anchored = true
+			giftPart.CanCollide = false
+			giftPart.Position = placePos
+			giftPart.Parent = giftModel
+			
+			giftModel.PrimaryPart = giftPart
+			giftModel:SetAttribute("ItemID", itemID)
+			giftModel:SetAttribute("Amount", amount)
+			
+			-- Attachment for particles
+			local attachment = Instance.new("Attachment")
+			attachment.Parent = giftPart
+			
+			-- Particles
+			local particles = Instance.new("ParticleEmitter")
+			particles.Color = ColorSequence.new(Color3.fromRGB(255, 215, 0))
+			particles.Size = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 1),
+				NumberSequenceKeypoint.new(0.5, 0.5),
+				NumberSequenceKeypoint.new(1, 0),
+			})
+			particles.Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0),
+				NumberSequenceKeypoint.new(0.8, 0.5),
+				NumberSequenceKeypoint.new(1, 1),
+			})
+			particles.LightEmission = 1
+			particles.LightInfluence = 0
+			particles.Lifetime = NumberRange.new(0.5, 1.5)
+			particles.Rate = 30
+			particles.Speed = NumberRange.new(3, 6)
+			particles.SpreadAngle = Vector2.new(360, 360)
+			particles.Acceleration = Vector3.new(0, 2, 0)
+			particles.Parent = attachment
+			
+			-- Point light
+			local light = Instance.new("PointLight")
+			light.Color = Color3.fromRGB(255, 255, 150)
+			light.Brightness = 2
+			light.Range = 8
+			light.Parent = giftPart
+			
+			-- Billboard label
+			local ItemRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("ItemRegistry"))
+			local itemDef = ItemRegistry.GetItem(itemID)
+			local itemName = itemDef and itemDef.Name or itemID
+			
+			local billboard = Instance.new("BillboardGui")
+			billboard.Name = "GiftLabel"
+			billboard.Size = UDim2.new(0, 150, 0, 50)
+			billboard.StudsOffset = Vector3.new(0, 3, 0)
+			billboard.AlwaysOnTop = true
+			billboard.Adornee = giftPart
+			billboard.Parent = giftModel
+			
+			local frame = Instance.new("Frame")
+			frame.Size = UDim2.new(1, 0, 1, 0)
+			frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+			frame.BackgroundTransparency = 0.3
+			frame.BorderSizePixel = 0
+			frame.Parent = billboard
+			
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(0, 8)
+			corner.Parent = frame
+			
+			local label = Instance.new("TextLabel")
+			label.Size = UDim2.new(1, 0, 1, 0)
+			label.BackgroundTransparency = 1
+			label.TextColor3 = Color3.fromRGB(255, 255, 255)
+			label.Font = Enum.Font.GothamBold
+			label.TextScaled = true
+			label.Text = string.format("🎁 %dx %s", amount, itemName)
+			label.Parent = frame
+			
+			giftModel.Parent = giftsFolder
+			
+			-- Floating animation
+			task.spawn(function()
+				local startY = placePos.Y
+				local floatOffset = 0
+				local rotation = 0
+				while giftModel and giftModel.Parent and giftPart and giftPart.Parent do
+					floatOffset += 0.05
+					rotation += 1
+					local newY = startY + math.sin(floatOffset) * 0.5
+					giftPart.CFrame = CFrame.new(placePos.X, newY, placePos.Z) * CFrame.Angles(0, math.rad(rotation), 0)
+					task.wait(0.03)
+				end
+			end)
+			
+			-- Touch handler
+			giftPart.Touched:Connect(function(hit)
+				local touchPlayer = Players:GetPlayerFromCharacter(hit.Parent)
+				if not touchPlayer then return end
+				if giftModel:GetAttribute("Collected") then return end
+				giftModel:SetAttribute("Collected", true)
+				
+				local invService = getInventoryService()
+				if invService then
+					invService.AddItem(touchPlayer, itemID, amount)
+				end
+				giftModel:Destroy()
+			end)
+			
+			Log.Info(CONTEXT, string.format("%s spawned debug gift: %dx %s", player.Name, amount, itemName))
+		end
+		return
+	end
+	
 	-- /debughelp - show available commands
 	if lowerMessage == "/debughelp" then
-		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantshield <amt>, /grantitem <id> <amt>, /die, /shield, /spawnfood [attract]")
+		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantshield <amt>, /grantitem <id> <amt>, /die, /shield, /spawnfood [attract], /spawngift")
 		return
 	end
 end

@@ -9,8 +9,17 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+local ItemRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("ItemRegistry"))
 
 local CONTEXT = "ActionServer"
+
+-- Ensure Food folder exists in workspace
+local FoodFolder = workspace:FindFirstChild("Food")
+if not FoodFolder then
+	FoodFolder = Instance.new("Folder")
+	FoodFolder.Name = "Food"
+	FoodFolder.Parent = workspace
+end
 
 -- Lazy load services
 local InventoryService: any = nil
@@ -135,6 +144,10 @@ end
 -- FEED ACTION
 --============================================================================
 
+-- Food decay settings
+local FOOD_LIFETIME = 30  -- seconds before food despawns if not eaten
+local EAT_RATE = 10       -- how much food is consumed per eat tick by animals
+
 local function onFeedAction(player: Player)
 	local canDo, reason = canPerformAction(player, "FEED")
 	if not canDo then
@@ -155,25 +168,70 @@ local function onFeedAction(player: Player)
 	local root = character:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	
-	-- TODO: Implement actual feed mechanics
-	-- For now, just create a visual indicator
-	local feedIndicator = Instance.new("Part")
-	feedIndicator.Name = "FeedBait"
-	feedIndicator.Shape = Enum.PartType.Cylinder
-	feedIndicator.Size = Vector3.new(0.5, 3, 3)
-	feedIndicator.Color = Color3.fromRGB(139, 90, 43)  -- Brown
-	feedIndicator.Material = Enum.Material.SmoothPlastic
-	feedIndicator.Anchored = true
-	feedIndicator.CanCollide = false
-	feedIndicator.CFrame = CFrame.new(root.Position + root.CFrame.LookVector * 5) * CFrame.Angles(0, 0, math.rad(90))
-	feedIndicator.Parent = workspace
+	-- Get item definition for attractiveness values
+	local itemDef = ItemRegistry.GetItem("FOOD_BAIT")
+	local attractiveness = itemDef and itemDef.Attractiveness or 5
+	local foodAmount = itemDef and itemDef.FoodAmount or 100
 	
-	Log.Info(CONTEXT, string.format("%s placed bait", player.Name))
+	-- Place food in front of player
+	local placePosition = root.Position + root.CFrame.LookVector * 5
 	
-	-- Remove after 10 seconds
-	task.delay(10, function()
-		if feedIndicator and feedIndicator.Parent then
-			feedIndicator:Destroy()
+	-- Raycast down to find ground
+	local rayResult = workspace:Raycast(placePosition + Vector3.new(0, 5, 0), Vector3.new(0, -20, 0))
+	if rayResult then
+		placePosition = rayResult.Position + Vector3.new(0, 0.5, 0)
+	end
+	
+	local foodPart = Instance.new("Part")
+	foodPart.Name = "Bait_" .. player.Name
+	foodPart.Shape = Enum.PartType.Ball
+	foodPart.Size = Vector3.new(1.5, 1.5, 1.5)
+	foodPart.Color = Color3.fromRGB(180, 120, 60)  -- Brown/tan
+	foodPart.Material = Enum.Material.SmoothPlastic
+	foodPart.Anchored = true
+	foodPart.CanCollide = false
+	foodPart.Position = placePosition
+	
+	-- Set food attributes for flocking system
+	foodPart:SetAttribute("FoodAmount", foodAmount)
+	foodPart:SetAttribute("Attractiveness", attractiveness)
+	foodPart:SetAttribute("ItemID", "FOOD_BAIT")
+	foodPart:SetAttribute("PlacedBy", player.Name)
+	
+	-- Add a highlight effect
+	local highlight = Instance.new("Highlight")
+	highlight.FillColor = Color3.fromRGB(255, 200, 100)
+	highlight.FillTransparency = 0.7
+	highlight.OutlineColor = Color3.fromRGB(255, 180, 50)
+	highlight.OutlineTransparency = 0
+	highlight.Parent = foodPart
+	
+	-- Add particle effect
+	local particles = Instance.new("ParticleEmitter")
+	particles.Color = ColorSequence.new(Color3.fromRGB(255, 220, 150))
+	particles.Size = NumberSequence.new(0.3, 0)
+	particles.Lifetime = NumberRange.new(1, 2)
+	particles.Rate = 5
+	particles.Speed = NumberRange.new(1, 2)
+	particles.SpreadAngle = Vector2.new(180, 180)
+	particles.Parent = foodPart
+	
+	foodPart.Parent = FoodFolder
+	
+	Log.Info(CONTEXT, string.format("%s placed bait (Attractiveness: %d, Amount: %d)", player.Name, attractiveness, foodAmount))
+	
+	-- Despawn after lifetime (if not eaten first)
+	task.delay(FOOD_LIFETIME, function()
+		if foodPart and foodPart.Parent then
+			-- Fade out effect
+			for i = 1, 10 do
+				task.wait(0.1)
+				if not foodPart or not foodPart.Parent then break end
+				foodPart.Transparency = i * 0.1
+			end
+			if foodPart and foodPart.Parent then
+				foodPart:Destroy()
+			end
 		end
 	end)
 end

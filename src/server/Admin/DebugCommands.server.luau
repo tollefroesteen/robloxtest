@@ -14,7 +14,8 @@ local CONTEXT = "DebugCommands"
 -- List of admin user IDs (add your Roblox user ID here)
 -- In Studio, all players are treated as admins for testing
 local ADMIN_USER_IDS: { number } = {
-    7321086050
+    7321086050,
+    9332159012,
 	-- Add your user ID here, e.g.: 12345678,
 }
 
@@ -148,9 +149,49 @@ local function onPlayerChatted(player: Player, message: string): nil
 		return
 	end
 	
+	-- /spawnfood [attractiveness] - spawn food at player location for testing
+	local foodMatch = lowerMessage:match("^/spawnfood%s*(%d*)$")
+	if lowerMessage == "/spawnfood" or foodMatch then
+		local attract = tonumber(foodMatch) or 8
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root then
+			-- Ensure Food folder exists
+			local foodFolder = workspace:FindFirstChild("Food")
+			if not foodFolder then
+				foodFolder = Instance.new("Folder")
+				foodFolder.Name = "Food"
+				foodFolder.Parent = workspace
+			end
+			
+			-- Place food in front of player
+			local placePos = root.Position + root.CFrame.LookVector * 5
+			local rayResult = workspace:Raycast(placePos + Vector3.new(0, 5, 0), Vector3.new(0, -20, 0))
+			if rayResult then
+				placePos = rayResult.Position + Vector3.new(0, 0.5, 0)
+			end
+			
+			local food = Instance.new("Part")
+			food.Name = "DebugFood"
+			food.Shape = Enum.PartType.Ball
+			food.Size = Vector3.new(2, 2, 2)
+			food.Color = Color3.fromRGB(255, 200, 50)
+			food.Material = Enum.Material.Neon
+			food.Anchored = true
+			food.CanCollide = false
+			food.Position = placePos
+			food:SetAttribute("FoodAmount", 200)
+			food:SetAttribute("Attractiveness", attract)
+			food.Parent = foodFolder
+			
+			Log.Info(CONTEXT, string.format("%s spawned food (Attractiveness: %d)", player.Name, attract))
+		end
+		return
+	end
+	
 	-- /debughelp - show available commands
 	if lowerMessage == "/debughelp" then
-		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantitem <id> <amt>, /die")
+		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantitem <id> <amt>, /die, /spawnfood [attract]")
 		return
 	end
 end

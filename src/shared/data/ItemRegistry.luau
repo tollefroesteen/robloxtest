@@ -13,6 +13,9 @@ export type ItemDefinition = {
 	MaxStack: number,
 	Tradeable: boolean,
 	Consumable: boolean,
+	-- Food-specific properties
+	Attractiveness: number?,  -- How attractive to animals (0-10, higher = more attractive)
+	FoodAmount: number?,      -- How much food value when placed (depletes as animals eat)
 }
 
 -- Item categories
@@ -64,6 +67,8 @@ ItemRegistry.Items = {
 		MaxStack = 20,
 		Tradeable = true,
 		Consumable = true,
+		Attractiveness = 3,
+		FoodAmount = 50,
 	},
 	FOOD_MEAT = {
 		ID = "FOOD_MEAT",
@@ -73,6 +78,8 @@ ItemRegistry.Items = {
 		MaxStack = 10,
 		Tradeable = true,
 		Consumable = true,
+		Attractiveness = 5,
+		FoodAmount = 80,
 	},
 	FOOD_BAIT = {
 		ID = "FOOD_BAIT",
@@ -82,6 +89,8 @@ ItemRegistry.Items = {
 		MaxStack = 25,
 		Tradeable = true,
 		Consumable = true,
+		Attractiveness = 8,
+		FoodAmount = 100,
 	},
 	
 	-- Tools

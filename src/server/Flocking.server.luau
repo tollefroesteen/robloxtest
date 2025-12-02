@@ -2,6 +2,14 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Flock = workspace:WaitForChild("Flock")
 
+-- Ensure Food folder exists
+local FoodFolder = workspace:FindFirstChild("Food")
+if not FoodFolder then
+	FoodFolder = Instance.new("Folder")
+	FoodFolder.Name = "Food"
+	FoodFolder.Parent = workspace
+end
+
 -- Timestep
 local TICK = 1/20
 
@@ -14,6 +22,12 @@ local SEPARATION_DISTANCE = 6
 local BASE_PLAYER_AVOID_RADIUS = 35
 local PLAYER_PANIC_RADIUS = 9
 local BASE_FEAR_FACTOR = 1.0  -- Multiplier for panic/avoid behavior
+
+-- Food attraction settings
+local FOOD_ATTRACT_RADIUS = 60     -- How far animals can detect food
+local FOOD_EAT_DISTANCE = 3        -- How close to eat
+local FOOD_EAT_RATE = 15           -- Food consumed per tick when eating
+local FOOD_ATTRACT_WEIGHT = 2.5    -- How strongly food pulls vs other forces
 
 -- Motion shaping
 local TURN_SMOOTH = 0.22
@@ -44,6 +58,57 @@ local function getNeighbors(root, observationRadius)
 		end
 	end
 	return neighbors
+end
+
+-- Find the most attractive food for this animal
+local function findBestFood(animalPos: Vector3, hungerLevel: number?): (BasePart?, number)
+	local bestFood: BasePart? = nil
+	local bestScore = 0
+	local hunger = hungerLevel or 1.0  -- Default hunger level (1 = normal hunger)
+	
+	for _, food in ipairs(FoodFolder:GetChildren()) do
+		if not food:IsA("BasePart") then continue end
+		
+		local foodAmount = food:GetAttribute("FoodAmount") or 0
+		if foodAmount <= 0 then continue end
+		
+		local attractiveness = food:GetAttribute("Attractiveness") or 1
+		local distance = (food.Position - animalPos).Magnitude
+		
+		if distance < FOOD_ATTRACT_RADIUS then
+			-- Score based on: attractiveness, distance, and hunger
+			-- Closer + more attractive = higher score
+			local distanceFactor = 1 - (distance / FOOD_ATTRACT_RADIUS)
+			local score = attractiveness * distanceFactor * hunger
+			
+			if score > bestScore then
+				bestScore = score
+				bestFood = food
+			end
+		end
+	end
+	
+	return bestFood, bestScore
+end
+
+-- Handle animal eating food
+local function tryEatFood(animal: BasePart, food: BasePart): boolean
+	local distance = (food.Position - animal.Position).Magnitude
+	if distance > FOOD_EAT_DISTANCE then return false end
+	
+	local currentAmount = food:GetAttribute("FoodAmount") or 0
+	if currentAmount <= 0 then return false end
+	
+	-- Consume food
+	local newAmount = math.max(0, currentAmount - FOOD_EAT_RATE)
+	food:SetAttribute("FoodAmount", newAmount)
+	
+	-- Destroy if depleted
+	if newAmount <= 0 then
+		food:Destroy()
+	end
+	
+	return true
 end
 
 RunService.Heartbeat:Connect(function(dt)
@@ -136,6 +201,32 @@ RunService.Heartbeat:Connect(function(dt)
 				local t = 1 - (playerDist / avoidRadius) -- 0..1
 				local avoidForce = AVOID_FORCE * fearFactor
 				desired += playerDir.Unit * (t * avoidForce)
+			end
+			
+			-- Food attraction (only when not too scared)
+			-- If player is close, reduce food attraction (survival > eating)
+			local foodAttractionScale = 1.0
+			if playerDist < avoidRadius then
+				foodAttractionScale = math.max(0, (playerDist / avoidRadius) - 0.3)
+			end
+			
+			local hungerLevel = root:GetAttribute("HungerLevel") or 1.0
+			local bestFood, foodScore = findBestFood(pos, hungerLevel)
+			
+			if bestFood and foodScore > 0 and foodAttractionScale > 0 then
+				local toFood = (bestFood.Position - pos)
+				local foodDist = toFood.Magnitude
+				
+				-- Try to eat if close enough
+				if foodDist < FOOD_EAT_DISTANCE then
+					tryEatFood(root, bestFood)
+					-- Slow down while eating
+					vel = vel * 0.3
+				else
+					-- Move toward food
+					local foodForce = toFood.Unit * (foodScore * FOOD_ATTRACT_WEIGHT * foodAttractionScale)
+					desired += foodForce
+				end
 			end
 
 			if desired.Magnitude > 0 then

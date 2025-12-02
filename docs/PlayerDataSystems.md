@@ -6,20 +6,24 @@ This document covers the Inventory and Achievements systems, including how to us
 
 The player data systems consist of three main components:
 
-1. **Inventory System** - Tracks items players own (ammo, food, tools, materials)
+1. **Inventory System** - Tracks items players own (ammo, food, tools, materials, coins)
 2. **Achievements System** - Tracks stats, XP, levels, and achievement progress
 3. **Player Data Service** - Handles persistence via DataStore
+4. **Shop System** - Purchase items with coins, buy coins with Robux
 
 ```
 src/
 ├── shared/data/
 │   ├── PlayerDataTypes.luau    # Type definitions
 │   ├── ItemRegistry.luau       # Item definitions
-│   └── AchievementRegistry.luau # Achievement definitions
+│   ├── AchievementRegistry.luau # Achievement definitions
+│   └── ShopRegistry.luau       # Shop items & coin bundles
 └── server/Player/
     ├── InventoryService.luau   # Inventory management
     ├── AchievementsService.luau # Stats & achievements
     ├── PlayerDataService.luau  # Persistence layer
+    ├── ShopService.luau        # Shop purchase handling
+    ├── ShopServiceInit.server.luau # Shop initialization
     └── PlayerDataInit.server.luau # Initialization
 ```
 
@@ -289,13 +293,16 @@ end)
 
 ## Remote Events
 
-| Event                    | Direction      | Data                              |
-|--------------------------|---------------|-----------------------------------|
-| AchievementUnlockedEvent | Server→Client | achievementID, achievementName    |
-| InventoryUpdatedEvent    | Server→Client | inventory table                   |
-| StatsUpdatedEvent        | Server→Client | stats table                       |
-| LevelUpEvent             | Server→Client | newLevel                          |
-| CoinsAwardedEvent        | Server→Client | coinAmount (for animation only)   |
+| Event                    | Direction      | Data                                        |
+|--------------------------|---------------|---------------------------------------------|
+| AchievementUnlockedEvent | Server→Client | achievementID, achievementName              |
+| InventoryUpdatedEvent    | Server→Client | inventory table                             |
+| StatsUpdatedEvent        | Server→Client | stats table                                 |
+| LevelUpEvent             | Server→Client | newLevel                                    |
+| CoinsAwardedEvent        | Server→Client | coinAmount (for animation only)             |
+| ShopPurchaseRequestEvent | Client→Server | shopItemID                                  |
+| ShopPurchaseResultEvent  | Server→Client | success, itemID, quantity, itemName/message |
+| ShopBuyCoinsRequestEvent | Client→Server | bundleID                                    |
 
 ---
 
@@ -429,3 +436,136 @@ GameEndService (awards coins)
 | LEVEL_5              | Rising Star         | 5      | Items     |
 | LEVEL_10             | Experienced         | 10     | Items     |
 | LEVEL_25             | Veteran             | 25     | Items     |
+
+---
+
+## Shop System
+
+### Overview
+
+The shop allows players to:
+- **Purchase items with coins** (earned through gameplay)
+- **Purchase coins with Robux** (Developer Products)
+
+### Shop Categories
+
+| Category   | Items Available                    |
+|------------|-----------------------------------|
+| Ammo       | Basic Bullets, Tranq Darts, Nets   |
+| Food       | Apples, Meat, Animal Bait          |
+| Tools      | Portable Traps, Binoculars         |
+| Materials  | Rope, Wood                         |
+
+### API Reference (Server)
+
+```lua
+local ShopService = require(ServerScriptService.Server.Player.ShopService)
+
+-- Initialize with InventoryService dependency
+ShopService.Init(InventoryService)
+
+-- Purchase item with coins
+local success, message = ShopService.PurchaseItem(player, "SHOP_AMMO_BASIC_50")
+
+-- Process Robux purchase (called from MarketplaceService callback)
+local success = ShopService.ProcessRobuxPurchase(player, productId)
+
+-- Prompt coin bundle purchase dialog
+local success, message = ShopService.PromptCoinBundlePurchase(player, "COINS_1000")
+
+-- Get player's coin balance
+local coins = ShopService.GetPlayerCoins(player)
+```
+
+### Adding New Shop Items
+
+Edit `src/shared/data/ShopRegistry.luau`:
+
+```lua
+ShopRegistry.Items = {
+    NEW_SHOP_ITEM = {
+        ID = "NEW_SHOP_ITEM",
+        ItemID = "EXISTING_ITEM_ID",  -- Must exist in ItemRegistry
+        Quantity = 10,                 -- Amount player receives
+        CoinPrice = 50,                -- Cost in coins
+        Category = "Tools",            -- For shop UI organization
+        Featured = true,               -- Optional: highlight in shop
+        Discount = 20,                 -- Optional: show discount badge
+    },
+}
+```
+
+### Adding Coin Bundles
+
+```lua
+ShopRegistry.CoinBundles = {
+    COINS_NEW = {
+        ID = "COINS_NEW",
+        Name = "Mega Coins",
+        CoinAmount = 10000,           -- Coins awarded
+        RobuxPrice = 999,             -- Display price
+        BonusPercent = 50,            -- Optional: show bonus badge
+        ProductId = 123456789,        -- Your Developer Product ID
+        Featured = true,              -- Optional: "BEST VALUE" badge
+    },
+}
+```
+
+### Developer Products Setup
+
+1. Create Developer Products in Roblox Creator Hub
+2. Get the Product IDs
+3. Add them to `ShopRegistry.CoinBundles[bundleID].ProductId`
+4. The `ShopServiceInit` handles `MarketplaceService.ProcessReceipt`
+
+### Current Shop Items
+
+| ID                  | Item              | Qty | Price |
+|---------------------|-------------------|-----|-------|
+| SHOP_AMMO_BASIC_20  | Basic Bullets     | 20  | 10    |
+| SHOP_AMMO_BASIC_50  | Basic Bullets     | 50  | 20    |
+| SHOP_AMMO_TRANQ_10  | Tranquilizer Darts| 10  | 25    |
+| SHOP_AMMO_TRANQ_25  | Tranquilizer Darts| 25  | 50    |
+| SHOP_AMMO_NET_5     | Capture Nets      | 5   | 40    |
+| SHOP_FOOD_APPLE_10  | Apple             | 10  | 15    |
+| SHOP_FOOD_MEAT_5    | Cooked Meat       | 5   | 25    |
+| SHOP_FOOD_BAIT_10   | Animal Bait       | 10  | 30    |
+| SHOP_TOOL_TRAP_1    | Portable Trap     | 1   | 50    |
+| SHOP_TOOL_TRAP_3    | Portable Trap     | 3   | 120   |
+| SHOP_TOOL_BINOCULARS| Binoculars        | 1   | 100   |
+| SHOP_MAT_ROPE_20    | Rope              | 20  | 15    |
+| SHOP_MAT_WOOD_50    | Wood              | 50  | 20    |
+
+### Coin Bundles (Robux)
+
+| ID         | Name        | Coins | Robux | Bonus |
+|------------|-------------|-------|-------|-------|
+| COINS_100  | Coin Pouch  | 100   | 49    | -     |
+| COINS_500  | Coin Bag    | 550   | 199   | +10%  |
+| COINS_1000 | Coin Chest  | 1200  | 399   | +20%  |
+| COINS_5000 | Coin Vault  | 6500  | 1699  | +30%  |
+
+### Client Integration
+
+The Shop tab is available in the Player Menu (press `I`):
+
+```
+┌─────────────────────────────────────────────┐
+│ Player Menu                              X  │
+├─────────────────────────────────────────────┤
+│ [Inventory] [Shop] [Achievements] [Stats]   │
+├─────────────────────────────────────────────┤
+│ 💰 1,234 Coins              Your Balance    │
+│                                             │
+│ 🔫 Ammo                                     │
+│ ┌─────────────────────────────────────────┐ │
+│ │ Basic x20      💰 10          [Buy]     │ │
+│ │ Basic x50 -20% 💰 20          [Buy]     │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ 💎 Buy Coins with Robux                     │
+│ ┌─────────────────────────────────────────┐ │
+│ │ Coin Chest  1200 (+20%)      [R$ 399]   │ │
+│ └─────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+```

@@ -4,7 +4,7 @@ Use this checklist to track and complete improvements one-by-one.
 
 ## 🚧 Active Tasks
 
-_No active tasks - Phase 1 complete!_
+_No active tasks - Shop System complete!_
 
 ---
 
@@ -73,6 +73,35 @@ _No active tasks - Phase 1 complete!_
     - Blue beam effect activates via `FlockSpawnedEvent`
     - Fixed: SetNetworkOwner must be called after parenting to workspace
     - Fixed: BrickColor.Color conversion for Color3 property
+
+### Phase 2: Player Menu & Shop System
+- [x] [MENU-1] Create PlayerMenuController with tabbed UI (Inventory, Shop, Achievements, Stats)
+    - Opens with 'I' key or menu button
+    - Animated slide-in/out transitions
+    - Tab switching with content containers
+- [x] [MENU-2] Inventory tab: display items in grid with category colors and quantity badges
+- [x] [MENU-3] Achievements tab: grouped by status (In Progress, Locked, Completed)
+    - Progress bars and XP reward display
+    - Overall achievement summary header
+- [x] [MENU-4] Stats tab: Level & XP progress, game statistics, animal collection
+    - XP bar with gradient fill
+    - Next level reward preview
+    - Animal cards showing discovery status
+- [x] [MENU-5] Shop tab: purchase items with coins
+    - Coin balance display
+    - Category-organized item listings
+    - Discount badges and affordability indicators
+    - Buy buttons with server validation
+- [x] [MENU-6] Shop coin bundles: Robux purchase integration
+    - Developer Product prompts via MarketplaceService
+    - Bonus percentage badges
+    - Featured "BEST VALUE" indicators
+- [x] [SHOP-1] Create ShopRegistry with item prices and coin bundles
+- [x] [SHOP-2] Create ShopService with purchase validation and coin deduction
+- [x] [SHOP-3] Create ShopServiceInit with RemoteEvent handling and ProcessReceipt
+- [x] [SHOP-4] Add ShopPurchaseRequestEvent, ShopPurchaseResultEvent, ShopBuyCoinsRequestEvent
+- [x] [SHOP-5] Toast notifications for purchase success/failure feedback
+- [x] [SHOP-6] Auto-refresh shop when inventory changes (coin balance updates)
 
 ---
 

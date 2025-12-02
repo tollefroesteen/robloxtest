@@ -101,13 +101,20 @@ Winning players/teams earn the species they collected in their **Animal Index**,
 
 ---
 
-## **Phase 6 — Monetization & Progression (Optional)**
-### **1. Cosmetics**
+## **Phase 6 — Monetization & Progression** ✅ IN PROGRESS
+### **1. Shop System** ✅ COMPLETE
+- In-game shop accessible via Player Menu.
+- Purchase items (ammo, food, tools, materials) with coins.
+- Purchase coins with Robux (Developer Products).
+- Coin bundles with bonus percentages.
+- Toast notifications for purchase feedback.
+
+### **2. Cosmetics**
 - Skins for shepherd.
 - Trail effects.
 - Cage visual upgrades.
 
-### **2. Passes & Boosts**
+### **3. Passes & Boosts**
 - +XP pass.
 - Index‑themed collectibles.
 

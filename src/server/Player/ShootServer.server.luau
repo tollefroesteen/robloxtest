@@ -5,6 +5,21 @@ local lifeModule = require(game.ServerScriptService.Server.Player:WaitForChild("
 
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local ShootEvent = RemoteEvents.ShootEvent
+local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+
+-- Lazy load InventoryService to consume ammo
+local InventoryService: any = nil
+local function getInventoryService()
+	if not InventoryService then
+		local success, service = pcall(function()
+			return require(ServerScriptService.Server.Player.InventoryService)
+		end)
+		if success then
+			InventoryService = service
+		end
+	end
+	return InventoryService
+end
 
 -- Lazy load GameEndService to check game state
 local GameEndService: any = nil
@@ -20,6 +35,9 @@ local function getGameEndService()
 	return GameEndService
 end
 
+local AMMO_ITEM_ID = "AMMO_BASIC"
+local AMMO_PER_SHOT = 1
+
 local PROJECTILE_SPEED = 200
 local PROJECTILE_LIFETIME = 2
 local DAMAGE = 25
@@ -30,6 +48,22 @@ local function createProjectile(player)
 	local gameEndSvc = getGameEndService()
 	if gameEndSvc and gameEndSvc.IsProcessingGameEnd() then
 		return -- Silently ignore shots during game end
+	end
+	
+	-- Check and consume ammo
+	local invService = getInventoryService()
+	if invService then
+		if not invService.HasItem(player, AMMO_ITEM_ID, AMMO_PER_SHOT) then
+			Log.Info("ShootServer", string.format("%s tried to shoot but has no ammo", player.Name))
+			return -- No ammo, don't shoot
+		end
+		
+		-- Consume the ammo
+		local success, msg = invService.RemoveItem(player, AMMO_ITEM_ID, AMMO_PER_SHOT)
+		if not success then
+			Log.Warn("ShootServer", string.format("Failed to consume ammo for %s: %s", player.Name, msg))
+			return
+		end
 	end
 
 	local character = player.Character

@@ -16,6 +16,7 @@ local CONTEXT = "DebugCommands"
 local ADMIN_USER_IDS: { number } = {
     7321086050,
     9332159012,
+    6013582887
 	-- Add your user ID here, e.g.: 12345678,
 }
 

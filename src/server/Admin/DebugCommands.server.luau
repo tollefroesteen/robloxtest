@@ -47,6 +47,32 @@ local function getShieldService()
 	return ShieldService
 end
 
+local GameEndService: any = nil
+local function getGameEndService()
+	if not GameEndService then
+		local success, service = pcall(function()
+			return require(ServerScriptService.Server.Game.GameEndService)
+		end)
+		if success then
+			GameEndService = service
+		end
+	end
+	return GameEndService
+end
+
+local AchievementsService: any = nil
+local function getAchievementsService()
+	if not AchievementsService then
+		local success, service = pcall(function()
+			return require(ServerScriptService.Server.Player.AchievementsService)
+		end)
+		if success then
+			AchievementsService = service
+		end
+	end
+	return AchievementsService
+end
+
 -- Check if player is admin (or in Studio)
 local function isAdmin(player: Player): boolean
 	-- Always allow in Studio for testing
@@ -365,7 +391,63 @@ local function onPlayerChatted(player: Player, message: string): nil
 	
 	-- /debughelp - show available commands
 	if lowerMessage == "/debughelp" then
-		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantshield <amt>, /grantitem <id> <amt>, /die, /shield, /spawnfood [attract], /spawngift")
+		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantshield <amt>, /grantitem <id> <amt>, /die, /shield, /spawnfood [attract], /spawngift, /endgame, /resetachievements, /resetxp, /resetall")
+		return
+	end
+	
+	-- /endgame - force end the game for testing
+	if lowerMessage == "/endgame" then
+		local gameEndSvc = getGameEndService()
+		if gameEndSvc then
+			Log.Info(CONTEXT, string.format("%s triggered /endgame command", player.Name))
+			task.spawn(function()
+				gameEndSvc.ProcessGameEnd()
+			end)
+		else
+			Log.Warn(CONTEXT, "GameEndService not available")
+		end
+		return
+	end
+	
+	-- /resetachievements - reset all achievements for all players
+	if lowerMessage == "/resetachievements" then
+		local achievementsSvc = getAchievementsService()
+		if achievementsSvc then
+			for _, p in Players:GetPlayers() do
+				achievementsSvc.ResetAchievements(p)
+			end
+			Log.Info(CONTEXT, string.format("%s reset achievements for all players", player.Name))
+		else
+			Log.Warn(CONTEXT, "AchievementsService not available")
+		end
+		return
+	end
+	
+	-- /resetxp - reset XP and level for all players
+	if lowerMessage == "/resetxp" then
+		local achievementsSvc = getAchievementsService()
+		if achievementsSvc then
+			for _, p in Players:GetPlayers() do
+				achievementsSvc.ResetXP(p)
+			end
+			Log.Info(CONTEXT, string.format("%s reset XP for all players", player.Name))
+		else
+			Log.Warn(CONTEXT, "AchievementsService not available")
+		end
+		return
+	end
+	
+	-- /resetall - reset all stats, achievements, and XP for all players
+	if lowerMessage == "/resetall" then
+		local achievementsSvc = getAchievementsService()
+		if achievementsSvc then
+			for _, p in Players:GetPlayers() do
+				achievementsSvc.ResetAllStats(p)
+			end
+			Log.Info(CONTEXT, string.format("%s reset all stats for all players", player.Name))
+		else
+			Log.Warn(CONTEXT, "AchievementsService not available")
+		end
 		return
 	end
 end

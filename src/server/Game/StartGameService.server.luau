@@ -11,6 +11,7 @@ local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChi
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 local SpawnService = require(ServerScriptService.Server.Game.SpawnService)
 local TeamService = require(ServerScriptService.Server.Game.TeamService)
+local GameEndService = require(ServerScriptService.Server.Game.GameEndService)
 
 local StartGameEvent = ServerEvents.StartGameEvent
 local TimerEndedEvent = ServerEvents.TimerEndedEvent
@@ -57,12 +58,16 @@ StartGameRemote.OnServerEvent:Connect(function(player: Player)
 	Log.Info(CONTEXT, "Step 2: Enabling team spawning...")
 	SpawnService.SetGameActive(true)
 	
-	-- 3. Respawn all players at team spawn locations (now that teams are assigned)
-	Log.Info(CONTEXT, "Step 3: Respawning players at team spawns...")
+	-- 3. Start tracking achievements for this game
+	Log.Info(CONTEXT, "Step 3: Starting achievement tracking...")
+	GameEndService.StartGameTracking()
+	
+	-- 4. Respawn all players at team spawn locations (now that teams are assigned)
+	Log.Info(CONTEXT, "Step 4: Respawning players at team spawns...")
 	respawnAllPlayersAtTeamSpawns()
 	
-	-- 4. Fire the server-side BindableEvent to notify all other game systems
-	Log.Info(CONTEXT, "Step 4: Firing StartGameEvent BindableEvent")
+	-- 5. Fire the server-side BindableEvent to notify all other game systems
+	Log.Info(CONTEXT, "Step 5: Firing StartGameEvent BindableEvent")
 	StartGameEvent:Fire()
 end)
 
@@ -82,4 +87,12 @@ ResetGameRemote.OnServerEvent:Connect(function(player: Player)
 	
 	-- Reset spawn service state
 	SpawnService.SetGameActive(false)
+end)
+
+-- Handle players joining mid-game
+Players.PlayerAdded:Connect(function(player: Player)
+	if gameStarted then
+		-- Add player to achievement tracking for this game
+		GameEndService.AddPlayerToTracking(player)
+	end
 end)

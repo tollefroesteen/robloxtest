@@ -22,6 +22,35 @@ local InventoryService: any = nil
 
 -- Game state
 local isProcessingGameEnd = false
+local isGameActive = false  -- Track if game is in progress
+
+-- Track achievements unlocked during the game for each player
+local gameAchievements: { [Player]: { string } } = {}
+
+-- Achievement callback to capture unlocks during the game
+local function onAchievementUnlocked(player: Player, achievementID: string, _achievementDef: any): nil
+	if isGameActive and gameAchievements[player] then
+		table.insert(gameAchievements[player], achievementID)
+		Log.Info(CONTEXT, string.format("Tracked achievement for %s: %s", player.Name, achievementID))
+	end
+end
+
+-- Start tracking achievements for a new game
+function GameEndService.StartGameTracking(): nil
+	Log.Info(CONTEXT, "Starting game achievement tracking")
+	isGameActive = true
+	gameAchievements = {}
+	for _, player in Players:GetPlayers() do
+		gameAchievements[player] = {}
+	end
+end
+
+-- Add a player to tracking (for players who join mid-game)
+function GameEndService.AddPlayerToTracking(player: Player): nil
+	if isGameActive and not gameAchievements[player] then
+		gameAchievements[player] = {}
+	end
+end
 
 -- Set service dependencies (called by init script)
 function GameEndService.SetServices(teamSvc: any, trapCtrl: any, achievementsSvc: any, inventorySvc: any): nil
@@ -29,6 +58,11 @@ function GameEndService.SetServices(teamSvc: any, trapCtrl: any, achievementsSvc
 	TrapController = trapCtrl
 	AchievementsService = achievementsSvc
 	InventoryService = inventorySvc
+	
+	-- Register callback to capture achievements unlocked during the game
+	if AchievementsService and AchievementsService.OnAchievementCompleted then
+		AchievementsService.OnAchievementCompleted(onAchievementUnlocked)
+	end
 end
 
 -- Freeze all players (anchor them, disable controls)
@@ -193,6 +227,7 @@ function GameEndService.ProcessGameEnd(): nil
 	end
 	
 	isProcessingGameEnd = true
+	isGameActive = false  -- Stop tracking new achievements
 	Log.Info(CONTEXT, "Processing game end...")
 	
 	-- Step 1: Freeze everything
@@ -305,12 +340,44 @@ function GameEndService.ProcessGameEnd(): nil
 	
 	RemoteEvents.GameResultsEvent:FireAllClients(resultsData)
 	
+	-- Step 7: Send personalized game end sequence to each player
+	for _, result in winnerResults do
+		local playerAchievements = gameAchievements[result.player] or {}
+		Log.Info(CONTEXT, string.format("Sending %d achievements to winner %s", #playerAchievements, result.player.Name))
+		local sequenceData = {
+			results = resultsData,
+			coins = result.coins,
+			multiplier = GameEndService.CalculateBonusMultiplier(result.player),
+			achievements = playerAchievements,
+			newAnimals = result.newAnimals,
+			isWinner = true,
+		}
+		RemoteEvents.GameEndSequenceEvent:FireClient(result.player, sequenceData)
+	end
+	
+	for _, result in loserResults do
+		local playerAchievements = gameAchievements[result.player] or {}
+		Log.Info(CONTEXT, string.format("Sending %d achievements to loser %s", #playerAchievements, result.player.Name))
+		local sequenceData = {
+			results = resultsData,
+			coins = result.coins,
+			multiplier = GameEndService.CalculateBonusMultiplier(result.player),
+			achievements = playerAchievements,
+			newAnimals = result.newAnimals,
+			isWinner = false,
+		}
+		RemoteEvents.GameEndSequenceEvent:FireClient(result.player, sequenceData)
+	end
+	
 	Log.Info(CONTEXT, "Game end processing complete")
 	
 	-- Wait for results display duration before allowing reset
 	task.wait(GameEndConfig.RESULTS_DISPLAY_DURATION)
 	
 	isProcessingGameEnd = false
+	
+	-- Clear achievement tracking for next game
+	gameAchievements = {}
 end
 
 -- Reset game state (called when a new game starts)

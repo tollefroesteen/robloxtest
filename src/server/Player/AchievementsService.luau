@@ -287,4 +287,30 @@ function AchievementsService.GetAchievementProgress(player: Player, achievementI
 	return math.min(progress.CurrentValue / progress.TargetValue, 1)
 end
 
+-- Reset all achievements for a player (for testing/debug)
+function AchievementsService.ResetAchievements(player: Player): nil
+	playerAchievements[player] = {}
+	Log.Info(CONTEXT, string.format("Reset all achievements for %s", player.Name))
+	broadcastStatsUpdate(player)
+end
+
+-- Reset XP and level for a player (for testing/debug)
+function AchievementsService.ResetXP(player: Player): nil
+	local stats = playerStats[player]
+	if not stats then return end
+	
+	stats.ExperiencePoints = 0
+	stats.Level = 1
+	Log.Info(CONTEXT, string.format("Reset XP and level for %s", player.Name))
+	broadcastStatsUpdate(player)
+end
+
+-- Reset all stats for a player (for testing/debug)
+function AchievementsService.ResetAllStats(player: Player): nil
+	playerStats[player] = PlayerDataTypes.CreateDefaultStats()
+	playerAchievements[player] = {}
+	Log.Info(CONTEXT, string.format("Reset all stats and achievements for %s", player.Name))
+	broadcastStatsUpdate(player)
+end
+
 return AchievementsService

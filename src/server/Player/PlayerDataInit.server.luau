@@ -114,8 +114,8 @@ AchievementsService.OnAchievementCompleted(function(player, achievementID, achie
 		end
 	end
 	
-	-- Notify client of achievement unlock
-	RemoteEvents.AchievementUnlockedEvent:FireClient(player, achievementID, achievementDef.Name)
+	-- Note: AchievementUnlockedEvent is already fired by AchievementsService.UpdateProgress()
+	-- so we don't fire it again here to avoid duplicate notifications
 end)
 
 Log.Info(CONTEXT, "Player data systems initialized")

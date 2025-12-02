@@ -14,6 +14,7 @@ local CONTEXT = "DebugCommands"
 -- List of admin user IDs (add your Roblox user ID here)
 -- In Studio, all players are treated as admins for testing
 local ADMIN_USER_IDS: { number } = {
+    7321086050
 	-- Add your user ID here, e.g.: 12345678,
 }
 

@@ -137,9 +137,20 @@ local function onPlayerChatted(player: Player, message: string): nil
 		return
 	end
 	
+	-- /die - kill yourself to test respawn
+	if lowerMessage == "/die" then
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.Health = 0
+			Log.Info(CONTEXT, string.format("%s used /die command", player.Name))
+		end
+		return
+	end
+	
 	-- /debughelp - show available commands
 	if lowerMessage == "/debughelp" then
-		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantitem <id> <amt>")
+		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantitem <id> <amt>, /die")
 		return
 	end
 end

@@ -24,6 +24,7 @@ local UI_CONTROLLERS = {
 	"XPController",
 	"AchievementNotificationController",
 	"PlayerMenuController",
+	"RespawnController",
 }
 
 -- Controllers in the controllers folder

@@ -49,4 +49,7 @@ RemoteEvents.ShopPurchaseRequestEvent = getOrCreate("ShopPurchaseRequestEvent")
 RemoteEvents.ShopPurchaseResultEvent = getOrCreate("ShopPurchaseResultEvent")
 RemoteEvents.ShopBuyCoinsRequestEvent = getOrCreate("ShopBuyCoinsRequestEvent")
 
+-- Respawn events
+RemoteEvents.RespawnCountdownEvent = getOrCreate("RespawnCountdownEvent")
+
 return RemoteEvents

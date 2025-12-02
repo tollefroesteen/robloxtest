@@ -12,16 +12,64 @@ local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"
 local SpawnService = require(ServerScriptService.Server.Game.SpawnService)
 local TeamService = require(ServerScriptService.Server.Game.TeamService)
 local GameEndService = require(ServerScriptService.Server.Game.GameEndService)
+local TrapController = require(ServerScriptService.Server.Game.TrapController)
 
 local StartGameEvent = ServerEvents.StartGameEvent
 local TimerEndedEvent = ServerEvents.TimerEndedEvent
 local StartGameRemote = RemoteEvents.StartGameEvent
-local ResetGameRemote = RemoteEvents.ResetGameEvent
 
 local CONTEXT = "StartGameService"
 local gameStarted = false
 
 Log.Info(CONTEXT, "StartGameService initialized")
+
+-- Clean up game state before starting a new game
+local function cleanUpGameState()
+	Log.Info(CONTEXT, "Cleaning up game state...")
+	
+	-- Clear all animals from Flock folder
+	local Flock = workspace:FindFirstChild("Flock")
+	if Flock then
+		for _, child in Flock:GetChildren() do
+			child:Destroy()
+		end
+		Log.Info(CONTEXT, "Cleared Flock folder")
+	end
+	
+	-- Clear Food folder
+	local Food = workspace:FindFirstChild("Food")
+	if Food then
+		for _, child in Food:GetChildren() do
+			child:Destroy()
+		end
+		Log.Info(CONTEXT, "Cleared Food folder")
+	end
+	
+	-- Clear Gifts folder
+	local Gifts = workspace:FindFirstChild("Gifts")
+	if Gifts then
+		for _, child in Gifts:GetChildren() do
+			child:Destroy()
+		end
+		Log.Info(CONTEXT, "Cleared Gifts folder")
+	end
+	
+	-- Reset trap states
+	TrapController.ResetAllTraps()
+	TrapController.ResetCapturedAnimals()
+	TrapController.SetGameActive(true)
+	Log.Info(CONTEXT, "Reset trap controller")
+	
+	-- Reset team scores
+	TeamService.ResetTeamScores()
+	Log.Info(CONTEXT, "Reset team scores")
+	
+	-- Reset GameEndService state
+	GameEndService.ResetGameState()
+	Log.Info(CONTEXT, "Reset game end service state")
+	
+	Log.Info(CONTEXT, "Game state cleanup complete")
+end
 
 -- Respawn all players at their team spawn locations
 local function respawnAllPlayersAtTeamSpawns()
@@ -46,28 +94,31 @@ StartGameRemote.OnServerEvent:Connect(function(player: Player)
 	
 	gameStarted = true
 	
-	-- 1. Reset team scores and assign players to teams FIRST
-	Log.Info(CONTEXT, "Step 1: Assigning teams...")
-	TeamService.ResetTeamScores()
+	-- 1. Clean up any previous game state
+	Log.Info(CONTEXT, "Step 1: Cleaning up previous game state...")
+	cleanUpGameState()
+	
+	-- 2. Assign players to teams
+	Log.Info(CONTEXT, "Step 2: Assigning teams...")
 	TeamService.AssignAllPlayersToTeams()
 	
 	-- Small delay to ensure team assignments are fully applied
 	task.wait(0.1)
 	
-	-- 2. Enable team-based spawning
-	Log.Info(CONTEXT, "Step 2: Enabling team spawning...")
+	-- 3. Enable team-based spawning
+	Log.Info(CONTEXT, "Step 3: Enabling team spawning...")
 	SpawnService.SetGameActive(true)
 	
-	-- 3. Start tracking achievements for this game
-	Log.Info(CONTEXT, "Step 3: Starting achievement tracking...")
+	-- 4. Start tracking achievements for this game
+	Log.Info(CONTEXT, "Step 4: Starting achievement tracking...")
 	GameEndService.StartGameTracking()
 	
-	-- 4. Respawn all players at team spawn locations (now that teams are assigned)
-	Log.Info(CONTEXT, "Step 4: Respawning players at team spawns...")
+	-- 5. Respawn all players at team spawn locations (now that teams are assigned)
+	Log.Info(CONTEXT, "Step 5: Respawning players at team spawns...")
 	respawnAllPlayersAtTeamSpawns()
 	
-	-- 5. Fire the server-side BindableEvent to notify all other game systems
-	Log.Info(CONTEXT, "Step 5: Firing StartGameEvent BindableEvent")
+	-- 6. Fire the server-side BindableEvent to notify all other game systems
+	Log.Info(CONTEXT, "Step 6: Firing StartGameEvent BindableEvent")
 	StartGameEvent:Fire()
 end)
 
@@ -77,15 +128,6 @@ TimerEndedEvent.Event:Connect(function()
 	gameStarted = false
 	
 	-- Disable team-based spawning (back to default spawn)
-	SpawnService.SetGameActive(false)
-end)
-
--- Reset gameStarted when game is manually reset
-ResetGameRemote.OnServerEvent:Connect(function(player: Player)
-	Log.Info(CONTEXT, string.format("Game reset by %s, ready for new game", player.Name))
-	gameStarted = false
-	
-	-- Reset spawn service state
 	SpawnService.SetGameActive(false)
 end)
 

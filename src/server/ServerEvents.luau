@@ -21,4 +21,9 @@ GameEndProcessedEvent.Name = "GameEndProcessedEvent"
 GameEndProcessedEvent.Parent = nil -- Server-only
 ServerEvents.GameEndProcessedEvent = GameEndProcessedEvent
 
+local ForceEndGameEvent = Instance.new("BindableEvent")
+ForceEndGameEvent.Name = "ForceEndGameEvent"
+ForceEndGameEvent.Parent = nil -- Server-only, used to force end the game (e.g., /endgame command)
+ServerEvents.ForceEndGameEvent = ForceEndGameEvent
+
 return ServerEvents

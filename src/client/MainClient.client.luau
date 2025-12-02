@@ -15,7 +15,6 @@ local UI_CONTROLLER_FOLDER = "ui"
 local UI_CONTROLLERS = {
 	"MenuController",
 	"RunButtonController",
-	"ResetButtonController",
 	"StaminaController",
 	"HealthController",
 	"TimerController",

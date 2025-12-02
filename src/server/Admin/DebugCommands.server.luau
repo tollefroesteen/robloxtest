@@ -8,6 +8,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+local ServerEvents = require(ServerScriptService.Server.ServerEvents)
 
 local CONTEXT = "DebugCommands"
 
@@ -397,15 +398,9 @@ local function onPlayerChatted(player: Player, message: string): nil
 	
 	-- /endgame - force end the game for testing
 	if lowerMessage == "/endgame" then
-		local gameEndSvc = getGameEndService()
-		if gameEndSvc then
-			Log.Info(CONTEXT, string.format("%s triggered /endgame command", player.Name))
-			task.spawn(function()
-				gameEndSvc.ProcessGameEnd()
-			end)
-		else
-			Log.Warn(CONTEXT, "GameEndService not available")
-		end
+		Log.Info(CONTEXT, string.format("%s triggered /endgame command", player.Name))
+		-- Fire ForceEndGameEvent which will stop timer and trigger proper game end flow
+		ServerEvents.ForceEndGameEvent:Fire()
 		return
 	end
 	

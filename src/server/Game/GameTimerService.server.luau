@@ -31,6 +31,7 @@ local CONTEXT = "GameTimerService"
 
 local StartGameEvent = ServerEvents.StartGameEvent
 local TimerEndedEvent = ServerEvents.TimerEndedEvent
+local ForceEndGameEvent = ServerEvents.ForceEndGameEvent
 local TimerUpdateRemote = RemoteEvents.TimerUpdateEvent
 local EndGameRemote = RemoteEvents.EndGameEvent
 
@@ -95,5 +96,23 @@ RemoteEvents.ResetGameEvent.OnServerEvent:Connect(function(player: Player)
 		timerRunning = false
 		timeRemaining = 0
 		broadcastTimerUpdate(0)
+	end
+end)
+
+-- Listen for forced game end (e.g., /endgame command)
+ForceEndGameEvent.Event:Connect(function()
+	if timerRunning then
+		Log.Info(CONTEXT, "Force end game received, stopping timer")
+		timerRunning = false
+		timeRemaining = 0
+		broadcastTimerUpdate(0)
+		
+		-- Fire TimerEndedEvent to notify other systems
+		TimerEndedEvent:Fire()
+		
+		-- Fire EndGameEvent to notify clients
+		EndGameRemote:FireAllClients()
+	else
+		Log.Info(CONTEXT, "Force end game received, but timer not running")
 	end
 end)

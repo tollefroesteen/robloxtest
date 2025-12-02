@@ -27,6 +27,20 @@ local function getShieldService()
 	return ShieldService
 end
 
+-- Lazy load SpawnService for team-based spawning
+local SpawnService: any = nil
+local function getSpawnService()
+	if not SpawnService then
+		local success, service = pcall(function()
+			return require(ServerScriptService.Server.Game.SpawnService)
+		end)
+		if success then
+			SpawnService = service
+		end
+	end
+	return SpawnService
+end
+
 -- Stores each player's life points
 local playerLife = {}
 
@@ -145,6 +159,12 @@ local function startRespawnSequence(player: Player)
 	-- Signal countdown ended
 	RespawnCountdownEvent:FireClient(player, 0, false) -- false = ended
 
+	-- Set spawn location based on team before respawning
+	local spawnSvc = getSpawnService()
+	if spawnSvc then
+		spawnSvc.SetPlayerSpawnLocation(player)
+	end
+
 	-- Respawn player
 	player:LoadCharacter()
 
@@ -188,6 +208,11 @@ Players.PlayerAdded:Connect(function(player)
 	end)
 	
 	-- Manually load the character since CharacterAutoLoads is false
+	-- Set spawn location based on team (if in game) or default
+	local spawnSvc = getSpawnService()
+	if spawnSvc then
+		spawnSvc.SetPlayerSpawnLocation(player)
+	end
 	player:LoadCharacter()
 end)
 
@@ -195,6 +220,10 @@ end)
 for _, player in Players:GetPlayers() do
 	if not player.Character then
 		playerLife[player] = MAX_LIFE
+		local spawnSvc = getSpawnService()
+		if spawnSvc then
+			spawnSvc.SetPlayerSpawnLocation(player)
+		end
 		player:LoadCharacter()
 	end
 end

@@ -136,7 +136,7 @@ local function createGiftVisual(position: Vector3, giftData: { ItemID: string, A
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "GiftLabel"
 	billboard.Size = UDim2.new(0, 150, 0, 50)
-	billboard.StudsOffset = Vector3.new(0, 3, 0)
+	billboard.StudsOffset = Vector3.new(0, 6, 0)
 	billboard.AlwaysOnTop = true
 	billboard.Adornee = giftPart
 	billboard.Parent = giftModel
@@ -215,7 +215,7 @@ local function onGiftTouched(giftModel: Model, hit: BasePart)
 	if giftPart then
 		local tween = TweenService:Create(
 			giftPart,
-			TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+			TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.In),
 			{ Size = Vector3.new(0, 0, 0), Transparency = 1 }
 		)
 		tween:Play()
@@ -250,16 +250,26 @@ local function spawnGift()
 	
 	-- Spawn position (below UFO, at ground level)
 	local ufoPos = ufo.Position
-	local spawnPos = Vector3.new(ufoPos.X, 5, ufoPos.Z)
 	
-	-- Raycast to find actual ground
+	-- Raycast to find actual ground, excluding the UFO and gifts
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.FilterDescendantsInstances = { UFOModel, GiftsFolder }
+	
 	local rayResult = workspace:Raycast(
 		Vector3.new(ufoPos.X, ufoPos.Y, ufoPos.Z),
-		Vector3.new(0, -100, 0),
-		RaycastParams.new()
+		Vector3.new(0, -200, 0),
+		rayParams
 	)
+	
+	local spawnPos
 	if rayResult then
+		-- Spawn 2 studs above ground
 		spawnPos = rayResult.Position + Vector3.new(0, 2, 0)
+	else
+		-- Fallback: use terrain base level
+		spawnPos = Vector3.new(ufoPos.X, 2, ufoPos.Z)
+		Log.Warn(CONTEXT, "Raycast failed to find ground, using fallback position")
 	end
 	
 	-- Create the gift model

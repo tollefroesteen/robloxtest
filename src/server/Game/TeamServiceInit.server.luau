@@ -15,11 +15,12 @@ local CONTEXT = "TeamServiceInit"
 -- Initialize teams on server start
 TeamService.CreateTeams()
 
--- Listen for game start to assign teams
+-- Note: Team assignment and spawn is now handled by StartGameService
+-- to ensure proper ordering (teams assigned -> spawn locations set -> respawn)
+
+-- Listen for game start (other systems may still need to react)
 ServerEvents.StartGameEvent.Event:Connect(function()
-	Log.Info(CONTEXT, "Game started - assigning players to teams")
-	TeamService.ResetTeamScores()
-	TeamService.AssignAllPlayersToTeams()
+	Log.Info(CONTEXT, "Game started - teams already assigned by StartGameService")
 end)
 
 -- Listen for timer end (game over)

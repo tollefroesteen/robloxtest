@@ -1,6 +1,7 @@
 --!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 local ButtonEffects = require(script.Parent:WaitForChild("ButtonEffects"))
@@ -235,6 +236,58 @@ local function cycleMode(): nil
     updateModeButton()
 end
 
+-- Perform the current action (shared between button click and keyboard)
+local function performAction(): nil
+    -- Check if game is frozen
+    local gsc = getGameStateController()
+    if gsc and gsc.IsGameFrozen() then
+        Log.Info(CONTEXT, "Cannot perform action - game is frozen")
+        return
+    end
+    
+    -- Check if action can be used
+    if not canUseCurrentMode() then
+        Log.Info(CONTEXT, "Cannot perform action - insufficient items")
+        return
+    end
+    
+    -- Execute the action
+    local mode = getCurrentMode()
+    mode.OnActivate(player)
+end
+
+--============================================================================
+-- KEYBOARD INPUT
+--============================================================================
+
+-- Debounce for keyboard input
+local lastModeChangeTime = 0
+local MODE_CHANGE_COOLDOWN = 0.2  -- 200ms cooldown between mode changes
+
+-- Set up keyboard shortcuts
+local function setupKeyboardInput(): nil
+    UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessedEvent: boolean)
+        -- Ignore if typing in a text box or game already processed it
+        if gameProcessedEvent then return end
+        
+        -- E key = Action (same as action button)
+        if input.KeyCode == Enum.KeyCode.E then
+            performAction()
+        end
+        
+        -- Q key = Cycle Mode (same as mode button) with debounce
+        if input.KeyCode == Enum.KeyCode.Q then
+            local now = tick()
+            if now - lastModeChangeTime >= MODE_CHANGE_COOLDOWN then
+                lastModeChangeTime = now
+                cycleMode()
+            end
+        end
+    end)
+    
+    Log.Info(CONTEXT, "Keyboard shortcuts enabled: E=Action, Q=Cycle Mode")
+end
+
 --============================================================================
 -- INITIALIZATION
 --============================================================================
@@ -289,22 +342,7 @@ function MenuController.Init(): nil
 
     -- Action button click handler
     actionButton.MouseButton1Click:Connect(function()
-        -- Check if game is frozen
-        local gsc = getGameStateController()
-        if gsc and gsc.IsGameFrozen() then
-            Log.Info(CONTEXT, "Cannot perform action - game is frozen")
-            return
-        end
-        
-        -- Check if action can be used
-        if not canUseCurrentMode() then
-            Log.Info(CONTEXT, "Cannot perform action - insufficient items")
-            return
-        end
-        
-        -- Execute the action
-        local mode = getCurrentMode()
-        mode.OnActivate(player)
+        performAction()
     end)
     
     -- Mode button click handler
@@ -342,6 +380,9 @@ function MenuController.Init(): nil
     -- Initialize button states
     updateActionButton()
     updateModeButton()
+    
+    -- Set up keyboard shortcuts
+    setupKeyboardInput()
     
     Log.Info(CONTEXT, string.format("MenuController initialized with %d action modes", #ActionModes))
 end

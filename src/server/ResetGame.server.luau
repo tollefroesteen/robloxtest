@@ -1,7 +1,9 @@
 --!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local TrapController = require(game.ServerScriptService.Server.Game.TrapController)
+local SpawnService = require(ServerScriptService.Server.Game.SpawnService)
 local Flock = workspace:WaitForChild("Flock")
 
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
@@ -31,9 +33,10 @@ local function resetFlock()
 	end
 end
 
--- Respawn all players
+-- Respawn all players at their team spawn locations
 local function respawnAllPlayers()
 	for _, player in ipairs(Players:GetPlayers()) do
+		SpawnService.SetPlayerSpawnLocation(player)
 		player:LoadCharacter()
 	end
 end

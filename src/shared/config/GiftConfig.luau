@@ -5,8 +5,8 @@
 local GiftConfig = {}
 
 -- Spawn timing
-GiftConfig.MIN_INTERVAL = 30.0    -- Minimum seconds between gift spawns
-GiftConfig.MAX_INTERVAL = 90.0    -- Maximum seconds between gift spawns
+GiftConfig.MIN_INTERVAL = 15.0    -- Minimum seconds between gift spawns
+GiftConfig.MAX_INTERVAL = 30.0    -- Maximum seconds between gift spawns
 GiftConfig.MAX_GIFTS = 5          -- Maximum gifts in world at once
 GiftConfig.GIFT_LIFETIME = 60.0   -- Seconds before uncollected gift despawns
 

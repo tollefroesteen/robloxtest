@@ -1,0 +1,14 @@
+At game end:
+if achievement is made at game end the pop up still shows behind the game end GetAttribute
+It should be postponed/hidden. 
+
+The Game Over ui should have a button to either take player to lobby or rematch?
+
+ideas:
+turret to defend. 
+damage shield.
+harder achievements.
+traps
+speed ups
+attractivness player (animals follows) animal lover
+improve looks for animals

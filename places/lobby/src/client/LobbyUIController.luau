@@ -16,6 +16,8 @@ local LobbyUIController = {}
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+local statsLabel: TextLabel? = nil
+
 -- Create the main lobby UI
 local function createLobbyUI()
 	local screenGui = Instance.new("ScreenGui")
@@ -49,18 +51,18 @@ local function createLobbyUI()
 	title.Parent = mainFrame
 	
 	-- Stats display
-	local statsLabel = Instance.new("TextLabel")
-	statsLabel.Name = "StatsLabel"
-	statsLabel.Size = UDim2.new(1, -20, 0, 100)
-	statsLabel.Position = UDim2.new(0, 10, 0, 60)
-	statsLabel.BackgroundTransparency = 1
-	statsLabel.Text = "Loading stats..."
-	statsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	statsLabel.TextSize = 16
-	statsLabel.Font = Enum.Font.Gotham
-	statsLabel.TextXAlignment = Enum.TextXAlignment.Left
-	statsLabel.TextYAlignment = Enum.TextYAlignment.Top
-	statsLabel.Parent = mainFrame
+	local stats = Instance.new("TextLabel")
+	stats.Name = "StatsLabel"
+	stats.Size = UDim2.new(1, -20, 0, 100)
+	stats.Position = UDim2.new(0, 10, 0, 60)
+	stats.BackgroundTransparency = 1
+	stats.Text = "Loading stats..."
+	stats.TextColor3 = Color3.fromRGB(200, 200, 200)
+	stats.TextSize = 16
+	stats.Font = Enum.Font.Gotham
+	stats.TextXAlignment = Enum.TextXAlignment.Left
+	stats.TextYAlignment = Enum.TextYAlignment.Top
+	stats.Parent = mainFrame
 	
 	-- Play button
 	local playButton = Instance.new("TextButton")
@@ -85,25 +87,28 @@ local function createLobbyUI()
 		RemoteEvents.PlayRequestEvent:FireServer()
 	end)
 	
-	return screenGui, statsLabel
+	return stats
 end
 
-local lobbyUI, statsLabel = createLobbyUI()
-
--- Update stats display
-RemoteEvents.StatsUpdatedEvent.OnClientEvent:Connect(function(stats)
-	if statsLabel then
-		statsLabel.Text = string.format(
-			"Level: %d\nXP: %d\nCaptures: %d\nWins: %d\nGames: %d",
-			stats.Level or 1,
-			stats.ExperiencePoints or 0,
-			stats.TotalCaptures or 0,
-			stats.TotalWins or 0,
-			stats.TotalGamesPlayed or 0
-		)
-	end
-end)
-
-Log.Info(CONTEXT, "LobbyUIController initialized")
+-- Initialize the lobby UI
+function LobbyUIController.Init()
+	statsLabel = createLobbyUI()
+	
+	-- Update stats display when received from server
+	RemoteEvents.StatsUpdatedEvent.OnClientEvent:Connect(function(stats)
+		if statsLabel then
+			statsLabel.Text = string.format(
+				"Level: %d\nXP: %d\nCaptures: %d\nWins: %d\nGames: %d",
+				stats.Level or 1,
+				stats.ExperiencePoints or 0,
+				stats.TotalCaptures or 0,
+				stats.TotalWins or 0,
+				stats.TotalGamesPlayed or 0
+			)
+		end
+	end)
+	
+	Log.Info(CONTEXT, "LobbyUIController initialized")
+end
 
 return LobbyUIController

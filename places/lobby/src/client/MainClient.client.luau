@@ -8,17 +8,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
+-- UI Controllers
+local LobbyUIController = require(script.Parent:WaitForChild("LobbyUIController"))
+
 local CONTEXT = "LobbyClient"
 
 local player = Players.LocalPlayer
 
 Log.Info(CONTEXT, "Lobby client starting...")
 
--- TODO: Initialize lobby UI controllers
--- - Stats display
--- - Inventory preview
--- - Shop UI
--- - Matchmaking/Play button
--- - Leaderboards
+-- Initialize lobby UI
+LobbyUIController.Init()
 
 Log.Info(CONTEXT, "Lobby client initialized for " .. player.Name)

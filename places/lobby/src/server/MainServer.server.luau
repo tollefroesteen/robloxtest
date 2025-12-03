@@ -9,11 +9,9 @@ local TeleportService = game:GetService("TeleportService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
+local PlacesConfig = require(Shared:WaitForChild("PlacesConfig"))
 
 local CONTEXT = "LobbyServer"
-
--- Arena place ID (set this to your arena place ID)
-local ARENA_PLACE_ID = 0  -- TODO: Set your arena place ID here
 
 Log.Info(CONTEXT, "Lobby server starting...")
 
@@ -34,13 +32,13 @@ end)
 
 -- Teleport player to arena
 local function teleportToArena(player: Player)
-	if ARENA_PLACE_ID == 0 then
-		Log.Warn(CONTEXT, "Arena place ID not configured!")
+	if PlacesConfig.ARENA_PLACE_ID == 0 then
+		Log.Warn(CONTEXT, "Arena place ID not configured in PlacesConfig!")
 		return
 	end
 	
 	local success, err = pcall(function()
-		TeleportService:Teleport(ARENA_PLACE_ID, player)
+		TeleportService:Teleport(PlacesConfig.ARENA_PLACE_ID, player)
 	end)
 	
 	if not success then

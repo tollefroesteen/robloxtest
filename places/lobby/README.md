@@ -46,16 +46,18 @@ LobbyConfig.STATS_DISPLAY_ENABLED = true  -- Show player stats
 
 ## Setup
 
-### 1. Configure Arena Place ID
+### 1. Configure Place IDs
 
-Edit `src/server/MainServer.server.luau` and set your arena's place ID:
+Edit `shared/PlacesConfig.luau` (in the root shared folder) and set your place IDs:
 
 ```lua
-local ARENA_PLACE_ID = 123456789  -- Replace with your actual arena place ID
+PlacesConfig.LOBBY_PLACE_ID = 92585011660620  -- Your lobby place ID
+PlacesConfig.ARENA_PLACE_ID = 136622551290334  -- Your arena place ID
+PlacesConfig.UNIVERSE_ID = 111222333     -- Your universe/game ID
 ```
 
-To find your arena place ID:
-1. Open your arena place in Roblox Studio
+To find a place ID:
+1. Open the place in Roblox Studio
 2. Go to **File → Game Settings → Basic Info**
 3. Copy the **Place ID** (not Universe ID)
 
@@ -107,6 +109,7 @@ The lobby accesses shared code from `../../shared/`:
 | `Shared.data` | `shared/data/` | ItemRegistry, AchievementRegistry, etc. |
 | `Shared.util` | `shared/util/` | Log utility |
 | `Shared.RemoteEvents` | `shared/RemoteEvents.luau` | All remote events |
+| `Shared.PlacesConfig` | `shared/PlacesConfig.luau` | Place IDs for teleportation |
 | `Lobby` | `src/shared/` | LobbyConfig |
 
 ### Remote Events Used
@@ -203,8 +206,8 @@ end
 
 ## Troubleshooting
 
-### "Arena place ID not configured!"
-Set `ARENA_PLACE_ID` in `MainServer.server.luau` to your arena's place ID.
+### "Arena place ID not configured in PlacesConfig!"
+Set `ARENA_PLACE_ID` in `shared/PlacesConfig.luau` to your arena's place ID.
 
 ### Player data not showing
 Ensure `PlayerDataLoader.server.luau` is loading from the same DataStore key that arena uses.

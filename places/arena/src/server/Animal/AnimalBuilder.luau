@@ -269,24 +269,27 @@ function AnimalBuilder.BuildAnimal(templateID: string, animalColor: BrickColor):
 	bouncepart.Parent = visual
 	
 	-- Create all 4 legs as direct children of Bouncepart
+	-- ORIENTATION: Animals face -Z direction
+	-- OffsetFL is defined with front at -Z (front-left leg position)
+	-- Front legs: -Z, Back legs: +Z (mirrored from OffsetFL.Z)
 	local legConfig = template.Legs
 	local offsetFL = legConfig.OffsetFL
 	
-	-- Front Left
+	-- Front Left (as defined - front at -Z)
 	local legFL = createLeg("LegFL", template, bodyPos + offsetFL, animalColor)
 	legFL.Parent = bouncepart
 	
-	-- Front Right (mirror X)
+	-- Front Right (mirror X only, keep Z for front)
 	local offsetFR = Vector3.new(-offsetFL.X, offsetFL.Y, offsetFL.Z)
 	local legFR = createLeg("LegFR", template, bodyPos + offsetFR, animalColor)
 	legFR.Parent = bouncepart
 	
-	-- Back Left (mirror Z)
+	-- Back Left (mirror Z to put at back, keep X)
 	local offsetBL = Vector3.new(offsetFL.X, offsetFL.Y, -offsetFL.Z)
 	local legBL = createLeg("LegBL", template, bodyPos + offsetBL, animalColor)
 	legBL.Parent = bouncepart
 	
-	-- Back Right (mirror X and Z)
+	-- Back Right (mirror both X and Z)
 	local offsetBR = Vector3.new(-offsetFL.X, offsetFL.Y, -offsetFL.Z)
 	local legBR = createLeg("LegBR", template, bodyPos + offsetBR, animalColor)
 	legBR.Parent = bouncepart

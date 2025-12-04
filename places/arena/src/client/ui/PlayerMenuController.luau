@@ -29,6 +29,8 @@ local currentTab: string = "Inventory"
 local cachedInventory: { Items: { [string]: any } }? = nil
 local cachedStats: any = nil
 local cachedAchievements: { [string]: any }? = nil
+local cachedFavoriteAnimals: { string } = {}
+local canModifyFavorites: boolean = true
 
 -- UI references
 local menuGui: ScreenGui? = nil
@@ -1147,6 +1149,143 @@ local function populateStats(): nil
 	spacer2.Parent = statsContainer
 	order += 1
 	
+	-- Favorite Animals Section
+	local favoritesHeader = Instance.new("TextLabel")
+	favoritesHeader.Name = "FavoritesHeader"
+	favoritesHeader.Size = UDim2.new(1, -30, 0, 20)
+	favoritesHeader.BackgroundTransparency = 1
+	favoritesHeader.Text = "⭐ Favorite Animals (" .. #cachedFavoriteAnimals .. "/2)"
+	favoritesHeader.TextColor3 = Color3.fromRGB(255, 200, 100)
+	favoritesHeader.TextSize = 14
+	favoritesHeader.Font = Enum.Font.GothamBold
+	favoritesHeader.TextXAlignment = Enum.TextXAlignment.Left
+	favoritesHeader.LayoutOrder = order
+	favoritesHeader.Parent = statsContainer
+	order += 1
+	
+	-- Show favorite animals or empty state
+	if #cachedFavoriteAnimals > 0 then
+		for _, animalID in cachedFavoriteAnimals do
+			local animalDef = AnimalLibraryModule.GetByID(animalID)
+			if animalDef then
+				local favCard = Instance.new("Frame")
+				favCard.Name = animalID .. "FavCard"
+				favCard.Size = UDim2.new(1, -30, 0, 45)
+				favCard.BackgroundColor3 = Color3.fromRGB(60, 55, 35)
+				favCard.BorderSizePixel = 0
+				favCard.LayoutOrder = order
+				favCard.Parent = statsContainer
+				
+				local favCardCorner = Instance.new("UICorner")
+				favCardCorner.CornerRadius = UDim.new(0, 8)
+				favCardCorner.Parent = favCard
+				
+				-- Color badge
+				local color = animalDef.Color
+				if typeof(color) == "BrickColor" then
+					color = color.Color
+				end
+				
+				local favColorBadge = Instance.new("Frame")
+				favColorBadge.Name = "ColorBadge"
+				favColorBadge.Size = UDim2.new(0, 35, 0, 35)
+				favColorBadge.Position = UDim2.new(0, 8, 0.5, -17)
+				favColorBadge.BackgroundColor3 = color
+				favColorBadge.BorderSizePixel = 0
+				favColorBadge.Parent = favCard
+				
+				local favBadgeCorner = Instance.new("UICorner")
+				favBadgeCorner.CornerRadius = UDim.new(0, 6)
+				favBadgeCorner.Parent = favColorBadge
+				
+				-- Star icon inside badge
+				local starIcon = Instance.new("TextLabel")
+				starIcon.Name = "Star"
+				starIcon.Size = UDim2.new(1, 0, 1, 0)
+				starIcon.BackgroundTransparency = 1
+				starIcon.Text = "★"
+				starIcon.TextColor3 = Color3.fromRGB(50, 40, 20)
+				starIcon.TextSize = 18
+				starIcon.Font = Enum.Font.GothamBold
+				starIcon.Parent = favColorBadge
+				
+				-- Name
+				local favNameLabel = Instance.new("TextLabel")
+				favNameLabel.Name = "Name"
+				favNameLabel.Size = UDim2.new(0.6, -50, 0, 20)
+				favNameLabel.Position = UDim2.new(0, 50, 0, 5)
+				favNameLabel.BackgroundTransparency = 1
+				favNameLabel.Text = animalDef.Name
+				favNameLabel.TextColor3 = Color3.fromRGB(255, 230, 150)
+				favNameLabel.TextSize = 14
+				favNameLabel.Font = Enum.Font.GothamBold
+				favNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+				favNameLabel.Parent = favCard
+				
+				-- Rarity
+				local rarity = AnimalLibraryModule.GetRarity(animalDef.SpawnChance)
+				local favRarityLabel = Instance.new("TextLabel")
+				favRarityLabel.Name = "Rarity"
+				favRarityLabel.Size = UDim2.new(0.6, -50, 0, 14)
+				favRarityLabel.Position = UDim2.new(0, 50, 0, 26)
+				favRarityLabel.BackgroundTransparency = 1
+				favRarityLabel.Text = rarity .. " • " .. animalDef.PointValue .. " pts"
+				favRarityLabel.TextColor3 = Color3.fromRGB(180, 160, 120)
+				favRarityLabel.TextSize = 11
+				favRarityLabel.Font = Enum.Font.Gotham
+				favRarityLabel.TextXAlignment = Enum.TextXAlignment.Left
+				favRarityLabel.Parent = favCard
+				
+				order += 1
+			end
+		end
+	else
+		local emptyFavLabel = Instance.new("TextLabel")
+		emptyFavLabel.Name = "EmptyFavorites"
+		emptyFavLabel.Size = UDim2.new(1, -30, 0, 35)
+		emptyFavLabel.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+		emptyFavLabel.Text = "No favorite animals yet. Select from your captured animals below!"
+		emptyFavLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+		emptyFavLabel.TextSize = 11
+		emptyFavLabel.Font = Enum.Font.Gotham
+		emptyFavLabel.LayoutOrder = order
+		emptyFavLabel.Parent = statsContainer
+		
+		local emptyCorner = Instance.new("UICorner")
+		emptyCorner.CornerRadius = UDim.new(0, 6)
+		emptyCorner.Parent = emptyFavLabel
+		
+		order += 1
+	end
+	
+	-- Status indicator for whether favorites can be changed
+	if not canModifyFavorites then
+		local lockedNote = Instance.new("TextLabel")
+		lockedNote.Name = "LockedNote"
+		lockedNote.Size = UDim2.new(1, -30, 0, 22)
+		lockedNote.BackgroundColor3 = Color3.fromRGB(80, 60, 40)
+		lockedNote.Text = "⚠️ Favorites locked during active game"
+		lockedNote.TextColor3 = Color3.fromRGB(255, 200, 100)
+		lockedNote.TextSize = 11
+		lockedNote.Font = Enum.Font.GothamBold
+		lockedNote.LayoutOrder = order
+		lockedNote.Parent = statsContainer
+		
+		local lockedCorner = Instance.new("UICorner")
+		lockedCorner.CornerRadius = UDim.new(0, 4)
+		lockedCorner.Parent = lockedNote
+		
+		order += 1
+	end
+	
+	-- Spacer before collection
+	local spacer3 = Instance.new("Frame")
+	spacer3.Size = UDim2.new(1, 0, 0, 15)
+	spacer3.BackgroundTransparency = 1
+	spacer3.LayoutOrder = order
+	spacer3.Parent = statsContainer
+	order += 1
+	
 	-- Collection
 	local collectionHeader = Instance.new("TextLabel")
 	collectionHeader.Name = "CollectionHeader"
@@ -1201,11 +1340,16 @@ local function populateStats(): nil
 	for _, animal in animalData do
 		local isCaptured = capturedIndex[animal.ID] == true
 		local timesCaptured = animalCaptureCount[animal.ID] or 0
+		local isFavorite = table.find(cachedFavoriteAnimals, animal.ID) ~= nil
 		
 		local animalCard = Instance.new("Frame")
 		animalCard.Name = animal.ID .. "Card"
 		animalCard.Size = UDim2.new(1, -30, 0, 70)
-		animalCard.BackgroundColor3 = if isCaptured then Color3.fromRGB(40, 50, 45) else Color3.fromRGB(35, 35, 40)
+		-- Highlight favorite animals with a different background color
+		local cardBgColor = if not isCaptured then Color3.fromRGB(35, 35, 40)
+			elseif isFavorite then Color3.fromRGB(55, 50, 35) -- Golden tint for favorites
+			else Color3.fromRGB(40, 50, 45)
+		animalCard.BackgroundColor3 = cardBgColor
 		animalCard.BorderSizePixel = 0
 		animalCard.LayoutOrder = order
 		animalCard.Parent = statsContainer
@@ -1213,6 +1357,19 @@ local function populateStats(): nil
 		local cardCorner = Instance.new("UICorner")
 		cardCorner.CornerRadius = UDim.new(0, 8)
 		cardCorner.Parent = animalCard
+		
+		-- Favorite star indicator (top-right corner for favorites)
+		if isFavorite then
+			local favStar = Instance.new("TextLabel")
+			favStar.Name = "FavoriteStar"
+			favStar.Size = UDim2.new(0, 24, 0, 24)
+			favStar.Position = UDim2.new(1, -28, 0, 4)
+			favStar.BackgroundTransparency = 1
+			favStar.Text = "⭐"
+			favStar.TextSize = 16
+			favStar.Font = Enum.Font.GothamBold
+			favStar.Parent = animalCard
+		end
 		
 		-- Left color indicator / animal preview
 		local colorBadge = Instance.new("Frame")
@@ -1333,6 +1490,136 @@ local function populateStats(): nil
 		discoveryIcon.Font = Enum.Font.GothamBold
 		discoveryIcon.TextXAlignment = Enum.TextXAlignment.Right
 		discoveryIcon.Parent = statsFrame
+		
+		-- Favorite button (only for captured animals)
+		if isCaptured then
+			local favoriteButton = createTextButton(
+				"FavoriteButton",
+				if isFavorite then "★ Unfavorite" else "☆ Favorite",
+				UDim2.new(0, 80, 0, 22),
+				UDim2.new(0, 70, 0, 46),
+				if isFavorite then Color3.fromRGB(180, 140, 50) else Color3.fromRGB(70, 70, 80),
+				animalCard
+			)
+			favoriteButton.TextSize = 10
+			
+			-- Show disabled state if can't modify (game is active)
+			if not canModifyFavorites then
+				favoriteButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+				favoriteButton.TextColor3 = Color3.fromRGB(120, 120, 120)
+			end
+			
+			favoriteButton.MouseButton1Click:Connect(function()
+				if not canModifyFavorites then
+					-- Show tooltip that favorites can't be changed during game
+					Log.Info(CONTEXT, "Cannot change favorites during an active game")
+					
+					-- Show toast notification
+					if menuGui then
+						local existingToast = menuGui:FindFirstChild("FavoriteToast")
+						if existingToast then
+							existingToast:Destroy()
+						end
+						
+						local toast = Instance.new("Frame")
+						toast.Name = "FavoriteToast"
+						toast.Size = UDim2.new(0, 300, 0, 40)
+						toast.Position = UDim2.new(0.5, -150, 0, 80)
+						toast.BackgroundColor3 = Color3.fromRGB(150, 100, 50)
+						toast.BorderSizePixel = 0
+						toast.ZIndex = 100
+						toast.Parent = menuGui
+						
+						local toastCorner = Instance.new("UICorner")
+						toastCorner.CornerRadius = UDim.new(0, 8)
+						toastCorner.Parent = toast
+						
+						local toastText = Instance.new("TextLabel")
+						toastText.Size = UDim2.new(1, -20, 1, 0)
+						toastText.Position = UDim2.new(0, 10, 0, 0)
+						toastText.BackgroundTransparency = 1
+						toastText.Text = "⚠️ Cannot change favorites during a game"
+						toastText.TextColor3 = Color3.fromRGB(255, 255, 255)
+						toastText.TextSize = 13
+						toastText.Font = Enum.Font.GothamBold
+						toastText.TextXAlignment = Enum.TextXAlignment.Left
+						toastText.ZIndex = 101
+						toastText.Parent = toast
+						
+						task.delay(2, function()
+							if toast and toast.Parent then
+								local fadeTween = TweenService:Create(toast, TweenInfo.new(0.3), { BackgroundTransparency = 1 })
+								local textFade = TweenService:Create(toastText, TweenInfo.new(0.3), { TextTransparency = 1 })
+								fadeTween:Play()
+								textFade:Play()
+								fadeTween.Completed:Connect(function()
+									if toast and toast.Parent then
+										toast:Destroy()
+									end
+								end)
+							end
+						end)
+					end
+					return
+				end
+				
+				-- Check if trying to add a 3rd favorite
+				if not isFavorite and #cachedFavoriteAnimals >= 2 then
+					Log.Info(CONTEXT, "Maximum 2 favorites allowed")
+					
+					if menuGui then
+						local existingToast = menuGui:FindFirstChild("FavoriteToast")
+						if existingToast then
+							existingToast:Destroy()
+						end
+						
+						local toast = Instance.new("Frame")
+						toast.Name = "FavoriteToast"
+						toast.Size = UDim2.new(0, 320, 0, 40)
+						toast.Position = UDim2.new(0.5, -160, 0, 80)
+						toast.BackgroundColor3 = Color3.fromRGB(150, 80, 50)
+						toast.BorderSizePixel = 0
+						toast.ZIndex = 100
+						toast.Parent = menuGui
+						
+						local toastCorner = Instance.new("UICorner")
+						toastCorner.CornerRadius = UDim.new(0, 8)
+						toastCorner.Parent = toast
+						
+						local toastText = Instance.new("TextLabel")
+						toastText.Size = UDim2.new(1, -20, 1, 0)
+						toastText.Position = UDim2.new(0, 10, 0, 0)
+						toastText.BackgroundTransparency = 1
+						toastText.Text = "⚠️ You can only have 2 favorites. Remove one first."
+						toastText.TextColor3 = Color3.fromRGB(255, 255, 255)
+						toastText.TextSize = 12
+						toastText.Font = Enum.Font.GothamBold
+						toastText.TextXAlignment = Enum.TextXAlignment.Left
+						toastText.ZIndex = 101
+						toastText.Parent = toast
+						
+						task.delay(2.5, function()
+							if toast and toast.Parent then
+								local fadeTween = TweenService:Create(toast, TweenInfo.new(0.3), { BackgroundTransparency = 1 })
+								local textFade = TweenService:Create(toastText, TweenInfo.new(0.3), { TextTransparency = 1 })
+								fadeTween:Play()
+								textFade:Play()
+								fadeTween.Completed:Connect(function()
+									if toast and toast.Parent then
+										toast:Destroy()
+									end
+								end)
+							end
+						end)
+					end
+					return
+				end
+				
+				-- Send request to server
+				Log.Info(CONTEXT, string.format("Toggling favorite for %s", animal.ID))
+				RemoteEvents.SetFavoriteAnimalEvent:FireServer(animal.ID)
+			end)
+		end
 		
 		order += 1
 	end
@@ -1997,6 +2284,109 @@ function PlayerMenuController.Init(): nil
 			end)
 		end
 	end)
+	
+	-- Listen for favorite animals updates
+	RemoteEvents.FavoriteAnimalsUpdatedEvent.OnClientEvent:Connect(function(favorites: { string }, canModify: boolean, success: boolean?, errorMsg: string?)
+		Log.Info(CONTEXT, string.format("Favorite animals updated: %d favorites, canModify: %s", #favorites, tostring(canModify)))
+		
+		cachedFavoriteAnimals = favorites
+		canModifyFavorites = canModify
+		
+		-- Refresh stats tab if open to reflect changes
+		if isMenuOpen and currentTab == "Stats" then
+			populateStats()
+		end
+		
+		-- Show toast for success/failure on toggle
+		if success ~= nil then
+			if menuGui then
+				local existingToast = menuGui:FindFirstChild("FavoriteToast")
+				if existingToast then
+					existingToast:Destroy()
+				end
+				
+				if success then
+					local toast = Instance.new("Frame")
+					toast.Name = "FavoriteToast"
+					toast.Size = UDim2.new(0, 250, 0, 40)
+					toast.Position = UDim2.new(0.5, -125, 0, 80)
+					toast.BackgroundColor3 = Color3.fromRGB(50, 120, 80)
+					toast.BorderSizePixel = 0
+					toast.ZIndex = 100
+					toast.Parent = menuGui
+					
+					local toastCorner = Instance.new("UICorner")
+					toastCorner.CornerRadius = UDim.new(0, 8)
+					toastCorner.Parent = toast
+					
+					local toastText = Instance.new("TextLabel")
+					toastText.Size = UDim2.new(1, -20, 1, 0)
+					toastText.Position = UDim2.new(0, 10, 0, 0)
+					toastText.BackgroundTransparency = 1
+					toastText.Text = "⭐ Favorites updated!"
+					toastText.TextColor3 = Color3.fromRGB(255, 255, 255)
+					toastText.TextSize = 14
+					toastText.Font = Enum.Font.GothamBold
+					toastText.TextXAlignment = Enum.TextXAlignment.Left
+					toastText.ZIndex = 101
+					toastText.Parent = toast
+					
+					task.delay(2, function()
+						if toast and toast.Parent then
+							local fadeTween = TweenService:Create(toast, TweenInfo.new(0.3), { BackgroundTransparency = 1 })
+							local textFade = TweenService:Create(toastText, TweenInfo.new(0.3), { TextTransparency = 1 })
+							fadeTween:Play()
+							textFade:Play()
+							fadeTween.Completed:Connect(function()
+								if toast and toast.Parent then
+									toast:Destroy()
+								end
+							end)
+						end
+					end)
+				elseif errorMsg then
+					local toast = Instance.new("Frame")
+					toast.Name = "FavoriteToast"
+					toast.Size = UDim2.new(0, 300, 0, 40)
+					toast.Position = UDim2.new(0.5, -150, 0, 80)
+					toast.BackgroundColor3 = Color3.fromRGB(150, 60, 50)
+					toast.BorderSizePixel = 0
+					toast.ZIndex = 100
+					toast.Parent = menuGui
+					
+					local toastCorner = Instance.new("UICorner")
+					toastCorner.CornerRadius = UDim.new(0, 8)
+					toastCorner.Parent = toast
+					
+					local toastText = Instance.new("TextLabel")
+					toastText.Size = UDim2.new(1, -20, 1, 0)
+					toastText.Position = UDim2.new(0, 10, 0, 0)
+					toastText.BackgroundTransparency = 1
+					toastText.Text = "❌ " .. errorMsg
+					toastText.TextColor3 = Color3.fromRGB(255, 255, 255)
+					toastText.TextSize = 12
+					toastText.Font = Enum.Font.GothamBold
+					toastText.TextXAlignment = Enum.TextXAlignment.Left
+					toastText.ZIndex = 101
+					toastText.Parent = toast
+					
+					task.delay(3, function()
+						if toast and toast.Parent then
+							local fadeTween = TweenService:Create(toast, TweenInfo.new(0.3), { BackgroundTransparency = 1 })
+							local textFade = TweenService:Create(toastText, TweenInfo.new(0.3), { TextTransparency = 1 })
+							fadeTween:Play()
+							textFade:Play()
+							fadeTween.Completed:Connect(function()
+								if toast and toast.Parent then
+									toast:Destroy()
+								end
+							end)
+						end
+					end)
+				end
+			end
+		end
+	end)
 end
 
 -- Expose for external updates
@@ -2008,6 +2398,9 @@ function PlayerMenuController.UpdateStats(stats: any): nil
 	cachedStats = stats
 	if stats and stats.Achievements then
 		cachedAchievements = stats.Achievements
+	end
+	if stats and stats.FavoriteAnimals then
+		cachedFavoriteAnimals = stats.FavoriteAnimals
 	end
 end
 

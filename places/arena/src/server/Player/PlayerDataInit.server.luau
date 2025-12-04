@@ -9,6 +9,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PlayerDataService = require(ServerScriptService.Server.Player.PlayerDataService)
 local InventoryService = require(ServerScriptService.Server.Player.InventoryService)
 local AchievementsService = require(ServerScriptService.Server.Player.AchievementsService)
+local FavoriteAnimalsService = require(ServerScriptService.Server.Player.FavoriteAnimalsService)
+local TeamService = require(ServerScriptService.Server.Game.TeamService)
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
@@ -16,13 +18,21 @@ local CONTEXT = "PlayerDataInit"
 
 -- Connect services
 PlayerDataService.SetServices(InventoryService, AchievementsService)
+FavoriteAnimalsService.SetServices(TeamService, AchievementsService)
 
--- Initialize PlayerDataService
+-- Initialize services
 PlayerDataService.Init()
+FavoriteAnimalsService.Init()
 
 -- Handle players joining
 Players.PlayerAdded:Connect(function(player)
 	PlayerDataService.OnPlayerAdded(player)
+	
+	-- Initialize favorite animals from loaded stats
+	local stats = AchievementsService.GetStats(player)
+	if stats then
+		FavoriteAnimalsService.InitPlayer(player, stats)
+	end
 	
 	-- Send initial data to client after a brief delay
 	task.delay(1, function()
@@ -33,20 +43,22 @@ Players.PlayerAdded:Connect(function(player)
 		end
 		
 		-- Send stats WITH achievements included
-		local stats = AchievementsService.GetStats(player)
+		local currentStats = AchievementsService.GetStats(player)
 		local achievements = AchievementsService.GetAchievements(player)
-		if stats then
+		local favorites = FavoriteAnimalsService.GetFavorites(player)
+		if currentStats then
 			local payload = {
-				Level = stats.Level,
-				ExperiencePoints = stats.ExperiencePoints,
-				TotalCaptures = stats.TotalCaptures,
-				TotalWins = stats.TotalWins,
-				TotalLosses = stats.TotalLosses,
-				TotalGamesPlayed = stats.TotalGamesPlayed,
-				TotalKills = stats.TotalKills,
-				TotalDeaths = stats.TotalDeaths,
-				CapturedAnimalIndex = stats.CapturedAnimalIndex,
-				AnimalCaptureCount = stats.AnimalCaptureCount,
+				Level = currentStats.Level,
+				ExperiencePoints = currentStats.ExperiencePoints,
+				TotalCaptures = currentStats.TotalCaptures,
+				TotalWins = currentStats.TotalWins,
+				TotalLosses = currentStats.TotalLosses,
+				TotalGamesPlayed = currentStats.TotalGamesPlayed,
+				TotalKills = currentStats.TotalKills,
+				TotalDeaths = currentStats.TotalDeaths,
+				CapturedAnimalIndex = currentStats.CapturedAnimalIndex,
+				AnimalCaptureCount = currentStats.AnimalCaptureCount,
+				FavoriteAnimals = favorites,
 				Achievements = achievements or {},
 			}
 			RemoteEvents.StatsUpdatedEvent:FireClient(player, payload)
@@ -60,6 +72,12 @@ for _, player in Players:GetPlayers() do
 	task.spawn(function()
 		PlayerDataService.OnPlayerAdded(player)
 		
+		-- Initialize favorite animals from loaded stats
+		local stats = AchievementsService.GetStats(player)
+		if stats then
+			FavoriteAnimalsService.InitPlayer(player, stats)
+		end
+		
 		-- Send initial data
 		task.delay(1, function()
 			local inventory = InventoryService.GetInventory(player)
@@ -68,20 +86,22 @@ for _, player in Players:GetPlayers() do
 			end
 			
 			-- Send stats WITH achievements included
-			local stats = AchievementsService.GetStats(player)
+			local currentStats = AchievementsService.GetStats(player)
 			local achievements = AchievementsService.GetAchievements(player)
-			if stats then
+			local favorites = FavoriteAnimalsService.GetFavorites(player)
+			if currentStats then
 				local payload = {
-					Level = stats.Level,
-					ExperiencePoints = stats.ExperiencePoints,
-					TotalCaptures = stats.TotalCaptures,
-					TotalWins = stats.TotalWins,
-					TotalLosses = stats.TotalLosses,
-					TotalGamesPlayed = stats.TotalGamesPlayed,
-					TotalKills = stats.TotalKills,
-					TotalDeaths = stats.TotalDeaths,
-					CapturedAnimalIndex = stats.CapturedAnimalIndex,
-					AnimalCaptureCount = stats.AnimalCaptureCount,
+					Level = currentStats.Level,
+					ExperiencePoints = currentStats.ExperiencePoints,
+					TotalCaptures = currentStats.TotalCaptures,
+					TotalWins = currentStats.TotalWins,
+					TotalLosses = currentStats.TotalLosses,
+					TotalGamesPlayed = currentStats.TotalGamesPlayed,
+					TotalKills = currentStats.TotalKills,
+					TotalDeaths = currentStats.TotalDeaths,
+					CapturedAnimalIndex = currentStats.CapturedAnimalIndex,
+					AnimalCaptureCount = currentStats.AnimalCaptureCount,
+					FavoriteAnimals = favorites,
 					Achievements = achievements or {},
 				}
 				RemoteEvents.StatsUpdatedEvent:FireClient(player, payload)
@@ -92,6 +112,7 @@ end
 
 -- Handle players leaving
 Players.PlayerRemoving:Connect(function(player)
+	FavoriteAnimalsService.CleanupPlayer(player)
 	PlayerDataService.OnPlayerRemoving(player)
 end)
 

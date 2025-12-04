@@ -42,6 +42,9 @@ export type PlayerStats = {
 	
 	-- Per-animal capture counts
 	AnimalCaptureCount: { [string]: number },    -- Keyed by animal ID
+	
+	-- Favorite animals (up to 2, selected from captured animals)
+	FavoriteAnimals: { string },  -- Array of animal IDs (max 2)
 }
 
 export type PlayerData = {
@@ -78,6 +81,7 @@ function PlayerDataTypes.CreateDefaultStats(): PlayerStats
 		Level = 1,
 		CapturedAnimalIndex = {},
 		AnimalCaptureCount = {},
+		FavoriteAnimals = {},
 	}
 end
 

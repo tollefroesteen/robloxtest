@@ -63,4 +63,8 @@ RemoteEvents.ShieldStatusEvent = getOrCreate("ShieldStatusEvent")
 RemoteEvents.PlayRequestEvent = getOrCreate("PlayRequestEvent")
 RemoteEvents.TeleportToArenaEvent = getOrCreate("TeleportToArenaEvent")
 
+-- Favorite animals events
+RemoteEvents.SetFavoriteAnimalEvent = getOrCreate("SetFavoriteAnimalEvent")         -- Client -> Server: request to set/unset favorite
+RemoteEvents.FavoriteAnimalsUpdatedEvent = getOrCreate("FavoriteAnimalsUpdatedEvent") -- Server -> Client: sync current favorites
+
 return RemoteEvents

@@ -1,70 +1,31 @@
 --!strict
 -- PlayerDataLoader.server.luau (Lobby)
--- Loads player data for display in lobby (read-only, no modifications)
+-- Loads player data for display in lobby and handles favorite animal modifications
 
 local Players = game:GetService("Players")
-local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ServerScriptService = game:GetService("ServerScriptService")
+local Server = ServerScriptService:WaitForChild("Server")
+local FavoriteAnimalsService = require(Server:WaitForChild("FavoriteAnimalsService"))
+local InventoryService = require(Server:WaitForChild("InventoryService"))
+
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local PlayerDataTypes = require(Shared:WaitForChild("data"):WaitForChild("PlayerDataTypes"))
 local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
 local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "PlayerDataLoader"
 
--- Must match the arena's DataStore name!
-local DATA_STORE_NAME = "PlayerData_v1"
-
--- DataStore reference
-local dataStore: DataStore? = nil
-
--- Initialize DataStore
-local function initDataStore()
-	local success, result = pcall(function()
-		return DataStoreService:GetDataStore(DATA_STORE_NAME)
-	end)
-	
-	if success then
-		dataStore = result
-		Log.Info(CONTEXT, "DataStore initialized")
-	else
-		Log.Warn(CONTEXT, "DataStore unavailable (Studio mode?): " .. tostring(result))
-	end
-end
-
--- Load player data from DataStore
-local function loadPlayerData(player: Player): PlayerDataTypes.PlayerData
-	local key = "Player_" .. player.UserId
-	local data: PlayerDataTypes.PlayerData? = nil
-	
-	if dataStore then
-		local success, result = pcall(function()
-			return dataStore:GetAsync(key)
-		end)
-		
-		if success and result then
-			data = result :: PlayerDataTypes.PlayerData
-			Log.Info(CONTEXT, string.format("Loaded data for %s (Level %d, %d XP)", 
-				player.Name, data.Stats.Level, data.Stats.ExperiencePoints))
-		elseif not success then
-			Log.Warn(CONTEXT, string.format("Failed to load data for %s: %s", player.Name, tostring(result)))
-		else
-			Log.Info(CONTEXT, string.format("No existing data for %s, using defaults", player.Name))
-		end
-	else
-		Log.Warn(CONTEXT, "DataStore not available, using default data")
+-- Send player data to client for display
+local function sendPlayerDataToClient(player: Player)
+	-- Get data from FavoriteAnimalsService (which loads and caches it)
+	local data = FavoriteAnimalsService.GetPlayerData(player)
+	if not data then
+		Log.Warn(CONTEXT, string.format("No data available for %s", player.Name))
+		return
 	end
 	
-	-- Return loaded data or create default
-	return data or PlayerDataTypes.CreateDefaultPlayerData()
-end
-
--- Load and send player data to client for display
-local function loadPlayerDataForDisplay(player: Player)
-	local data = loadPlayerData(player)
-	
-	-- Send stats to client for UI display
+	-- Send stats to client for UI display (includes animal data for PlayerMenu)
 	RemoteEvents.StatsUpdatedEvent:FireClient(player, {
 		Level = data.Stats.Level,
 		ExperiencePoints = data.Stats.ExperiencePoints,
@@ -75,6 +36,10 @@ local function loadPlayerDataForDisplay(player: Player)
 		TotalKills = data.Stats.TotalKills,
 		TotalDeaths = data.Stats.TotalDeaths,
 		Achievements = data.Achievements or {},
+		-- Animal data for PlayerMenu favorites feature
+		CapturedAnimalIndex = data.Stats.CapturedAnimalIndex or {},
+		AnimalCaptureCount = data.Stats.AnimalCaptureCount or {},
+		FavoriteAnimals = data.Stats.FavoriteAnimals or {},
 	})
 	
 	-- Send inventory to client
@@ -83,16 +48,44 @@ local function loadPlayerDataForDisplay(player: Player)
 	Log.Info(CONTEXT, string.format("Sent display data to %s", player.Name))
 end
 
--- Initialize DataStore on startup
-initDataStore()
+-- Player joined
+local function onPlayerAdded(player: Player)
+	-- Initialize player in FavoriteAnimalsService (loads data)
+	FavoriteAnimalsService.InitPlayer(player)
+	
+	-- Small delay to ensure data is loaded
+	task.wait(0.1)
+	
+	-- Initialize InventoryService with the loaded inventory data
+	local data = FavoriteAnimalsService.GetPlayerData(player)
+	if data then
+		InventoryService.InitPlayer(player, data.Inventory)
+	end
+	
+	-- Send data to client
+	sendPlayerDataToClient(player)
+end
 
-Players.PlayerAdded:Connect(function(player)
-	task.spawn(loadPlayerDataForDisplay, player)
-end)
+-- Player leaving
+local function onPlayerRemoving(player: Player)
+	-- Save inventory changes back to player data before cleanup
+	local inventory = InventoryService.GetInventory(player)
+	local data = FavoriteAnimalsService.GetPlayerData(player)
+	if inventory and data then
+		data.Inventory = inventory
+	end
+	
+	InventoryService.CleanupPlayer(player)
+	FavoriteAnimalsService.CleanupPlayer(player)
+end
+
+-- Connect events
+Players.PlayerAdded:Connect(onPlayerAdded)
+Players.PlayerRemoving:Connect(onPlayerRemoving)
 
 -- Handle players already in game
 for _, player in Players:GetPlayers() do
-	task.spawn(loadPlayerDataForDisplay, player)
+	task.spawn(onPlayerAdded, player)
 end
 
 Log.Info(CONTEXT, "PlayerDataLoader initialized")

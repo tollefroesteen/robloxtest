@@ -10,6 +10,7 @@ local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
 -- UI Controllers
 local LobbyUIController = require(script.Parent:WaitForChild("LobbyUIController"))
+local PlayerMenuController = require(script.Parent:WaitForChild("ui"):WaitForChild("PlayerMenuController"))
 
 local CONTEXT = "LobbyClient"
 
@@ -19,5 +20,8 @@ Log.Info(CONTEXT, "Lobby client starting...")
 
 -- Initialize lobby UI
 LobbyUIController.Init()
+
+-- Initialize player menu (press I to open)
+PlayerMenuController.Init()
 
 Log.Info(CONTEXT, "Lobby client initialized for " .. player.Name)

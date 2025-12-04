@@ -34,17 +34,19 @@ Winning players/teams earn the species they collected in their **Animal Index**,
 
 ---
 
-## **Phase 2 — Species System & Variation**
-### **1. Species Attributes**
+## **Phase 2 — Species System & Variation** ✅ IN PROGRESS
+### **1. Species Attributes** ✅ COMPLETE
 - Speed tiers.
 - Fearfulness.
 - Hunger (animals move toward food sources).
 - Social level (affects flocking strength).
 - Score value.
 
-### **2. Species Assets & Variants**
-- Visual variations per species.
-- Animation sets (idle, run, panic, eat).
+### **2. Species Assets & Variants** ✅ COMPLETE
+- **Block-based template system** for procedural animal generation.
+- Each species defined in `AnimalTemplates.luau` with unique body/head/tail/decoration blocks.
+- Template IDs: FLUFFY (bunny), SLIME (blob), BEETLE (insect).
+- Animation controller handles leg movement with configurable pivot points.
 
 ### **3. Species Index System**
 - Persistent list stored per player.

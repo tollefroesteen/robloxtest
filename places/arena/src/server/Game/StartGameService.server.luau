@@ -138,3 +138,43 @@ Players.PlayerAdded:Connect(function(player: Player)
 		GameEndService.AddPlayerToTracking(player)
 	end
 end)
+
+-- Handle rematch requests from clients
+RemoteEvents.RematchRequestEvent.OnServerEvent:Connect(function(player: Player)
+	Log.Info(CONTEXT, string.format("Rematch requested by %s", player.Name))
+	
+	-- Only allow rematch if game has ended
+	if gameStarted then
+		Log.Warn(CONTEXT, string.format("Game still in progress, ignoring rematch request from %s", player.Name))
+		return
+	end
+	
+	-- Start a new game (same flow as normal start)
+	gameStarted = true
+	
+	-- 1. Clean up any previous game state
+	Log.Info(CONTEXT, "Rematch: Cleaning up previous game state...")
+	cleanUpGameState()
+	
+	-- 2. Assign players to teams (re-shuffle for fairness)
+	Log.Info(CONTEXT, "Rematch: Assigning teams...")
+	TeamService.AssignAllPlayersToTeams()
+	
+	task.wait(0.1)
+	
+	-- 3. Enable team-based spawning
+	Log.Info(CONTEXT, "Rematch: Enabling team spawning...")
+	SpawnService.SetGameActive(true)
+	
+	-- 4. Start tracking achievements for this game
+	Log.Info(CONTEXT, "Rematch: Starting achievement tracking...")
+	GameEndService.StartGameTracking()
+	
+	-- 5. Respawn all players at team spawn locations
+	Log.Info(CONTEXT, "Rematch: Respawning players at team spawns...")
+	respawnAllPlayersAtTeamSpawns()
+	
+	-- 6. Fire the server-side BindableEvent to notify all other game systems
+	Log.Info(CONTEXT, "Rematch: Firing StartGameEvent BindableEvent")
+	StartGameEvent:Fire()
+end)

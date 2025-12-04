@@ -59,10 +59,12 @@ Winning players/teams earn the species they collected in their **Animal Index**,
 - Independent cages.
 - Physics & AI balancing.
 
-### **2. Team Mode (2–8 players)**
+### **2. Team Mode (2–8 players)** ✅ ENHANCED
 - Players grouped into red/blue.
 - Shared team cage.
 - Team score tally.
+- **Team abandonment handling**: If all players leave a team, remaining team wins by forfeit after 30-second countdown.
+- Forfeited team receives no rewards; winners receive full rewards.
 
 ### **3. Practice Mode**
 - Solo arena.

@@ -12,3 +12,9 @@ traps
 speed ups
 attractivness player (animals follows) animal lover
 improve looks for animals
+
+--- FIXED ---
+- Team shirt color not applying correctly on game restart (fixed: connection tracking)
+- Coin counter showing higher than expected (was achievement bonus - clarified in UI)
+- MINIMUM_LOSER_COINS missing from GameEndConfig (added: 5 coins minimum)
+- Team abandonment/forfeit now properly handles winner determination

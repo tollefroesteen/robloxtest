@@ -31,4 +31,9 @@ PlayerScareEvent.Name = "PlayerScareEvent"
 PlayerScareEvent.Parent = nil -- Server-only, fired when player uses scare action
 ServerEvents.PlayerScareEvent = PlayerScareEvent
 
+local TeamAbandonedEvent = Instance.new("BindableEvent")
+TeamAbandonedEvent.Name = "TeamAbandonedEvent"
+TeamAbandonedEvent.Parent = nil -- Server-only, fired when all players leave a team during game
+ServerEvents.TeamAbandonedEvent = TeamAbandonedEvent
+
 return ServerEvents

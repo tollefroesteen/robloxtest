@@ -5,9 +5,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
 
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local AchievementRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("AchievementRegistry"))
+local PlacesConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PlacesConfig"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "GameEndController"
@@ -24,7 +26,6 @@ local currentTweens: { Tween } = {}
 local PHASE_DELAY = 1.5  -- Delay between phases
 local COIN_COUNT_DURATION = 2.0  -- How long the coin count-up animation takes
 local ACHIEVEMENT_DISPLAY_DURATION = 2.0  -- How long each achievement shows
-local FINAL_PHASE_DURATION = 7.0  -- How long to show the final "Game Over" screen before auto-dismiss
 
 -- Create the main screen GUI
 local function createScreenGui(): ScreenGui
@@ -159,7 +160,7 @@ local function clearUI(): nil
 end
 
 -- Phase 1: Show winner announcement
-local function showWinnerPhase(results: any, isWinner: boolean): nil
+local function showWinnerPhase(results: any, isWinner: boolean, isForfeit: boolean?): nil
 	if not mainFrame then return end
 	
 	-- Clear previous content
@@ -179,11 +180,14 @@ local function showWinnerPhase(results: any, isWinner: boolean): nil
 	fadeInText(banner, 0.8)
 	
 	-- Winning team info
+	local winText = isForfeit 
+		and string.format("%s Wins by Forfeit!", results.winningTeam)
+		or string.format("%s Wins!", results.winningTeam)
 	local winnerLabel = createLabel(
 		mainFrame, "WinnerTeam", 
 		UDim2.new(0.9, 0, 0.1, 0), 
 		UDim2.new(0.5, 0, 0.32, 0),
-		string.format("%s Wins!", results.winningTeam)
+		winText
 	)
 	winnerLabel.TextSize = 42
 	if results.winningTeam == "Red Team" then
@@ -209,7 +213,7 @@ local function showWinnerPhase(results: any, isWinner: boolean): nil
 		fadeInText(scoreLabel, 0.5)
 	end)
 	
-	-- Tie indicator
+	-- Tie or Forfeit indicator
 	if results.isTie then
 		local tieLabel = createLabel(
 			mainFrame, "TieIndicator",
@@ -223,11 +227,24 @@ local function showWinnerPhase(results: any, isWinner: boolean): nil
 		task.delay(0.9, function()
 			fadeInText(tieLabel, 0.5)
 		end)
+	elseif isForfeit then
+		local forfeitLabel = createLabel(
+			mainFrame, "ForfeitIndicator",
+			UDim2.new(0.9, 0, 0.08, 0),
+			UDim2.new(0.5, 0, 0.62, 0),
+			"(Opponent team left the game)"
+		)
+		forfeitLabel.TextSize = 24
+		forfeitLabel.TextColor3 = Color3.fromRGB(255, 180, 100)
+		
+		task.delay(0.9, function()
+			fadeInText(forfeitLabel, 0.5)
+		end)
 	end
 end
 
 -- Phase 2: Show coin reward with animation
-local function showCoinsPhase(coins: number, multiplier: number, isWinner: boolean): nil
+local function showCoinsPhase(coins: number, baseCoins: number, multiplier: number, isWinner: boolean): nil
 	if not mainFrame then return end
 	
 	-- Clear previous content
@@ -394,8 +411,8 @@ local function showNewAnimalsPhase(animalNames: { string }): nil
 	end
 end
 
--- Final phase: Show "Game Over" with prompt
-local function showFinalPhase(): nil
+-- Phase for forfeit losers - no rewards message
+local function showForfeitNoRewardsPhase(): nil
 	if not mainFrame then return end
 	
 	-- Clear previous content
@@ -405,29 +422,185 @@ local function showFinalPhase(): nil
 		end
 	end
 	
-	-- Game Over text
-	local gameOverLabel = createLabel(
-		mainFrame, "GameOver",
-		UDim2.new(0.9, 0, 0.2, 0),
-		UDim2.new(0.5, 0, 0.35, 0),
-		"GAME OVER"
-	)
-	gameOverLabel.TextSize = 64
-	gameOverLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	fadeInText(gameOverLabel, 0.8)
-	
-	-- Prompt to continue
-	local promptLabel = createLabel(
-		mainFrame, "Prompt",
+	-- No rewards header
+	local header = createLabel(
+		mainFrame, "NoRewardsHeader",
 		UDim2.new(0.9, 0, 0.1, 0),
-		UDim2.new(0.5, 0, 0.55, 0),
-		"Waiting for next game..."
+		UDim2.new(0.5, 0, 0.3, 0),
+		"❌ No Rewards ❌"
 	)
-	promptLabel.TextSize = 28
-	promptLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+	header.TextSize = 42
+	header.TextColor3 = Color3.fromRGB(200, 100, 100)
+	fadeInText(header, 0.5)
+	
+	-- Explanation
+	local explanation = createLabel(
+		mainFrame, "Explanation",
+		UDim2.new(0.8, 0, 0.15, 0),
+		UDim2.new(0.5, 0, 0.5, 0),
+		"Your team forfeited by leaving the game."
+	)
+	explanation.TextSize = 28
+	explanation.TextColor3 = Color3.fromRGB(200, 200, 200)
+	
+	task.delay(0.3, function()
+		fadeInText(explanation, 0.5)
+	end)
+	
+	local subtext = createLabel(
+		mainFrame, "Subtext",
+		UDim2.new(0.8, 0, 0.1, 0),
+		UDim2.new(0.5, 0, 0.65, 0),
+		"Stay in the game to earn rewards!"
+	)
+	subtext.TextSize = 22
+	subtext.TextColor3 = Color3.fromRGB(150, 150, 150)
+	
+	task.delay(0.6, function()
+		fadeInText(subtext, 0.5)
+	end)
+end
+
+-- Final phase: Show buttons for Lobby and Rematch
+local function showFinalPhase(): nil
+	if not mainFrame then return end
+	
+	-- Clear previous content
+	for _, child in mainFrame:GetChildren() do
+		if child:IsA("TextLabel") or child:IsA("TextButton") and child.Name ~= "UICorner" then
+			child:Destroy()
+		end
+	end
+	
+	-- "What's next?" text
+	local headerLabel = createLabel(
+		mainFrame, "Header",
+		UDim2.new(0.9, 0, 0.15, 0),
+		UDim2.new(0.5, 0, 0.25, 0),
+		"What's next?"
+	)
+	headerLabel.TextSize = 48
+	headerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	fadeInText(headerLabel, 0.5)
+	
+	-- Button container
+	local buttonContainer = Instance.new("Frame")
+	buttonContainer.Name = "ButtonContainer"
+	buttonContainer.Size = UDim2.new(0.8, 0, 0.25, 0)
+	buttonContainer.Position = UDim2.new(0.5, 0, 0.55, 0)
+	buttonContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+	buttonContainer.BackgroundTransparency = 1
+	buttonContainer.Parent = mainFrame
+	
+	-- Lobby button
+	local lobbyButton = Instance.new("TextButton")
+	lobbyButton.Name = "LobbyButton"
+	lobbyButton.Size = UDim2.new(0.45, 0, 1, 0)
+	lobbyButton.Position = UDim2.new(0, 0, 0, 0)
+	lobbyButton.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+	lobbyButton.Text = "🏠 Lobby"
+	lobbyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	lobbyButton.TextSize = 32
+	lobbyButton.Font = Enum.Font.GothamBold
+	lobbyButton.AutoButtonColor = true
+	lobbyButton.Parent = buttonContainer
+	
+	local lobbyCorner = Instance.new("UICorner")
+	lobbyCorner.CornerRadius = UDim.new(0, 12)
+	lobbyCorner.Parent = lobbyButton
+	
+	local lobbyStroke = Instance.new("UIStroke")
+	lobbyStroke.Color = Color3.fromRGB(100, 150, 255)
+	lobbyStroke.Thickness = 2
+	lobbyStroke.Parent = lobbyButton
+	
+	-- Rematch button
+	local rematchButton = Instance.new("TextButton")
+	rematchButton.Name = "RematchButton"
+	rematchButton.Size = UDim2.new(0.45, 0, 1, 0)
+	rematchButton.Position = UDim2.new(0.55, 0, 0, 0)
+	rematchButton.BackgroundColor3 = Color3.fromRGB(80, 180, 100)
+	rematchButton.Text = "🔄 Rematch"
+	rematchButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	rematchButton.TextSize = 32
+	rematchButton.Font = Enum.Font.GothamBold
+	rematchButton.AutoButtonColor = true
+	rematchButton.Parent = buttonContainer
+	
+	local rematchCorner = Instance.new("UICorner")
+	rematchCorner.CornerRadius = UDim.new(0, 12)
+	rematchCorner.Parent = rematchButton
+	
+	local rematchStroke = Instance.new("UIStroke")
+	rematchStroke.Color = Color3.fromRGB(100, 220, 130)
+	rematchStroke.Thickness = 2
+	rematchStroke.Parent = rematchButton
+	
+	-- Lobby button click handler
+	lobbyButton.MouseButton1Click:Connect(function()
+		lobbyButton.Text = "Teleporting..."
+		lobbyButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+		
+		if PlacesConfig.LOBBY_PLACE_ID == 0 then
+			Log.Warn(CONTEXT, "Lobby place ID not configured!")
+			lobbyButton.Text = "Not configured"
+			return
+		end
+		
+		local success, err = pcall(function()
+			TeleportService:Teleport(PlacesConfig.LOBBY_PLACE_ID, player)
+		end)
+		
+		if not success then
+			Log.Warn(CONTEXT, "Failed to teleport to lobby: " .. tostring(err))
+			lobbyButton.Text = "Failed!"
+			task.delay(2, function()
+				if lobbyButton and lobbyButton.Parent then
+					lobbyButton.Text = "🏠 Lobby"
+					lobbyButton.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+				end
+			end)
+		end
+	end)
+	
+	-- Rematch button click handler
+	rematchButton.MouseButton1Click:Connect(function()
+		rematchButton.Text = "Starting..."
+		rematchButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+		
+		-- Fire rematch request to server
+		RemoteEvents.RematchRequestEvent:FireServer()
+		
+		-- Clear UI after requesting rematch
+		task.delay(1, function()
+			clearUI()
+		end)
+	end)
+	
+	-- Fade in buttons
+	lobbyButton.BackgroundTransparency = 1
+	lobbyButton.TextTransparency = 1
+	rematchButton.BackgroundTransparency = 1
+	rematchButton.TextTransparency = 1
+	
+	task.delay(0.3, function()
+		local lobbyTween = TweenService:Create(
+			lobbyButton,
+			TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ BackgroundTransparency = 0, TextTransparency = 0 }
+		)
+		lobbyTween:Play()
+		table.insert(currentTweens, lobbyTween)
+	end)
 	
 	task.delay(0.5, function()
-		fadeInText(promptLabel, 0.5)
+		local rematchTween = TweenService:Create(
+			rematchButton,
+			TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ BackgroundTransparency = 0, TextTransparency = 0 }
+		)
+		rematchTween:Play()
+		table.insert(currentTweens, rematchTween)
 	end)
 end
 
@@ -459,15 +632,21 @@ local function runGameEndSequence(data: any): nil
 		isWinner = localTeam and localTeam.Name == data.results.winningTeam
 	end
 	
+	local isForfeit = data.isForfeit or false
+	
 	-- Phase 1: Winner announcement
 	task.wait(0.5)
-	showWinnerPhase(data.results, isWinner)
+	showWinnerPhase(data.results, isWinner, isForfeit)
 	
-	-- Phase 2: Coins earned
+	-- Phase 2: Coins earned (skip if forfeit loser with 0 coins)
 	task.wait(PHASE_DELAY + 1.5)
 	if data.coins and data.coins > 0 then
-		showCoinsPhase(data.coins, data.multiplier or 1.0, isWinner)
+		showCoinsPhase(data.coins, data.baseCoins or data.coins, data.multiplier or 1.0, isWinner)
 		task.wait(PHASE_DELAY + COIN_COUNT_DURATION)
+	elseif isForfeit and not isWinner then
+		-- Show "no rewards" message for forfeit losers
+		showForfeitNoRewardsPhase()
+		task.wait(PHASE_DELAY + 1.0)
 	end
 	
 	-- Phase 3: Achievements (if any)
@@ -486,9 +665,7 @@ local function runGameEndSequence(data: any): nil
 	task.wait(PHASE_DELAY)
 	showFinalPhase()
 	
-	-- Auto-dismiss after final phase duration
-	task.wait(FINAL_PHASE_DURATION)
-	clearUI()
+	-- No auto-dismiss - player must choose Lobby or Rematch
 	
 	Log.Info(CONTEXT, "Game end sequence complete")
 end

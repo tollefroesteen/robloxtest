@@ -92,7 +92,8 @@ end
 
 -- Initialize the lobby UI
 function LobbyUIController.Init()
-	statsLabel = createLobbyUI()
+	-- DISABLED: Old UI hidden in favor of portal teleport system
+	-- statsLabel = createLobbyUI()
 	
 	-- Update stats display when received from server
 	RemoteEvents.StatsUpdatedEvent.OnClientEvent:Connect(function(stats)
@@ -108,7 +109,7 @@ function LobbyUIController.Init()
 		end
 	end)
 	
-	Log.Info(CONTEXT, "LobbyUIController initialized")
+	Log.Info(CONTEXT, "LobbyUIController initialized (UI disabled - using portal system)")
 end
 
 return LobbyUIController

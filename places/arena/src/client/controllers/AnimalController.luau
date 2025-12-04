@@ -5,6 +5,9 @@ local AnimalController = {}
 
 local Flock = workspace:WaitForChild("Flock") :: Folder
 
+-- Debug flag - set to true to see bind pose capture info
+local DEBUG_BIND_POSE = false
+
 -- === BODY FOLLOW TUNING ===
 local FOLLOW_LERP    = 0.28
 local ROTATION_LERP  = 0.15
@@ -56,11 +59,11 @@ local function getOffset(leg)
 	)
 end
 
--- ✅ Bind pose storage + cached part references (LO-1)
+-- ✅ Bind pose storage
 -- [root] = {
 --   visualLocal = CFrame,
 --   bounceLocal = CFrame,
---   legs = { [leg] = CFrame },
+--   legs = { [legName] = CFrame },  -- Use NAME as key, not Part reference
 --   visualPart = BasePart,
 --   bouncePart = BasePart
 -- }
@@ -69,6 +72,9 @@ local lastPos = {}
 
 local function captureBindPose(root)
 	if bindPose[root] then return end
+	
+	-- Don't capture bind pose until animal is ready (positions are finalized)
+	if root:GetAttribute("ReadyForFlocking") ~= true then return end
 
 	local data = {
 		legs = {}
@@ -79,23 +85,57 @@ local function captureBindPose(root)
 		if c:IsA("BasePart") and c ~= root then
 			local visual = c
 			data.visualLocal = root.CFrame:ToObjectSpace(visual.CFrame)
-			data.visualPart = visual  -- ✅ cache reference
+			data.visualPart = visual
 
 			-- find bounce
 			for _, b in ipairs(visual:GetChildren()) do
 				if b:IsA("BasePart") then
 					local bounce = b
 					data.bounceLocal = visual.CFrame:ToObjectSpace(bounce.CFrame)
-					data.bouncePart = bounce  -- ✅ cache reference
+					data.bouncePart = bounce
 
-					-- find legs
+					-- find legs - ONLY parts named LegFL, LegFR, LegBL, LegBR
+					-- Store by NAME not by Part reference
+					local legCount = 0
+					local maxLegDistance = 0
+					local legDebugInfo = {}
 					for _, l in ipairs(bounce:GetChildren()) do
-						if l:IsA("BasePart") then
-							data.legs[l] = bounce.CFrame:ToObjectSpace(l.CFrame)
+						if l:IsA("BasePart") and (l.Name == "LegFL" or l.Name == "LegFR" or l.Name == "LegBL" or l.Name == "LegBR") then
+							local legLocal = bounce.CFrame:ToObjectSpace(l.CFrame)
+							data.legs[l.Name] = legLocal  -- Use NAME as key
+							legCount += 1
+							
+							local legDist = legLocal.Position.Magnitude
+							if legDist > maxLegDistance then
+								maxLegDistance = legDist
+							end
+							
+							table.insert(legDebugInfo, string.format("%s: dist=%.2f pos=(%.1f,%.1f,%.1f)", 
+								l.Name, legDist, legLocal.Position.X, legLocal.Position.Y, legLocal.Position.Z))
 						end
 					end
-
-					bindPose[root] = data
+					
+					if DEBUG_BIND_POSE then
+						print(string.format("[BindPose] Animal %s: found %d legs, maxDist=%.2f", 
+							tostring(root), legCount, maxLegDistance))
+						for _, info in legDebugInfo do
+							print("  " .. info)
+						end
+						print(string.format("  Bounce world pos: (%.1f, %.1f, %.1f)", 
+							bounce.Position.X, bounce.Position.Y, bounce.Position.Z))
+					end
+					
+					-- Only save if we found all 4 legs and they're within reasonable distance
+					if legCount == 4 and maxLegDistance < 10 then
+						bindPose[root] = data
+						if DEBUG_BIND_POSE then
+							print(string.format("[BindPose] ✅ SAVED bind pose for %s", tostring(root)))
+						end
+					else
+						if DEBUG_BIND_POSE then
+							print(string.format("[BindPose] ❌ REJECTED - legCount=%d, maxDist=%.2f", legCount, maxLegDistance))
+						end
+					end
 					return
 				end
 			end
@@ -110,7 +150,10 @@ function AnimalController.Init()
 		for _, root in ipairs(Flock:GetChildren()) do
 			if not root:IsA("BasePart") then continue end
 
-			-- First-ever sighting → capture Studio bind pose
+			-- Don't process animals that aren't ready yet
+			if root:GetAttribute("ReadyForFlocking") ~= true then continue end
+
+			-- First-ever sighting → capture bind pose
 			captureBindPose(root)
 			local conf = bindPose[root]
 			if not conf then continue end
@@ -122,7 +165,7 @@ function AnimalController.Init()
 			local visualLocal = conf.visualLocal
 			local bounceLocal = conf.bounceLocal
 
-			-- Use cached visual reference (no tree scan)
+			-- Use cached visual reference
 			local visual = conf.visualPart
 			if not visual or not visual.Parent then continue end
 
@@ -138,7 +181,7 @@ function AnimalController.Init()
 			local bodyPos = Vector3.new(newPos.X, newPos.Y + bob, newPos.Z)
 			local bounceCF = CFrame.new(bodyPos, bodyPos + facing)
 
-			-- Use cached bounce reference (no tree scan)
+			-- Use cached bounce reference
 			local bounce = conf.bouncePart
 			if not bounce or not bounce.Parent then continue end
 
@@ -155,9 +198,10 @@ function AnimalController.Init()
 				CFrame.new(newPos.X, newPos.Y + legYOffset, newPos.Z)
 				* CFrame.fromOrientation(visual.CFrame:ToOrientation())
 
-			-- animate legs
-			for leg, baseLegLocal in pairs(conf.legs) do
-				if not leg.Parent then continue end -- leg might get removed
+			-- animate legs - look up by NAME each frame
+			for legName, baseLegLocal in pairs(conf.legs) do
+				local leg = bounce:FindFirstChild(legName)
+				if not leg or not leg:IsA("BasePart") then continue end
 
 				local stance = getOffset(leg)
 				local pivot = getPivotLocal(leg)
@@ -172,7 +216,7 @@ function AnimalController.Init()
 					continue
 				end
 
-				local phaseOffset = LegOffsets[leg.Name] or 0
+				local phaseOffset = LegOffsets[legName] or 0
 				local step = t * LEG_FREQUENCY + bodyPhase + phaseOffset
 
 				local swing = math.rad(LEG_SWING_DEGREES) * math.sin(step)

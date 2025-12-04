@@ -88,8 +88,14 @@ Templates.FLUFFY = {
 		{ Size = Vector3.new(1.2, 1.1, 1.0), Offset = Vector3.new(0, 0.4, -1.9) },
 		-- Snout/muzzle (cute and small)
 		{ Size = Vector3.new(0.5, 0.4, 0.35), Offset = Vector3.new(0, 0.05, -2.4) },
-		-- Nose
-		{ Size = Vector3.new(0.2, 0.15, 0.1), Offset = Vector3.new(0, 0.0, -2.6), Color = Color3.fromRGB(40, 30, 30) },
+		-- Nose (bigger, more visible)
+		{ Size = Vector3.new(0.25, 0.2, 0.15), Offset = Vector3.new(0, 0.05, -2.6), Color = Color3.fromRGB(40, 30, 30) },
+		-- Eyes (cute cartoon eyes)
+		{ Size = Vector3.new(0.25, 0.3, 0.15), Offset = Vector3.new(-0.3, 0.55, -2.35), Color = Color3.fromRGB(30, 30, 30) },
+		{ Size = Vector3.new(0.25, 0.3, 0.15), Offset = Vector3.new(0.3, 0.55, -2.35), Color = Color3.fromRGB(30, 30, 30) },
+		-- Eye highlights
+		{ Size = Vector3.new(0.08, 0.1, 0.05), Offset = Vector3.new(-0.25, 0.62, -2.4), Color = Color3.fromRGB(255, 255, 255) },
+		{ Size = Vector3.new(0.08, 0.1, 0.05), Offset = Vector3.new(0.35, 0.62, -2.4), Color = Color3.fromRGB(255, 255, 255) },
 		-- Big floppy ears (cartoon style)
 		{ Size = Vector3.new(0.2, 0.5, 0.4), Offset = Vector3.new(-0.65, 0.5, -1.7) },
 		{ Size = Vector3.new(0.2, 0.5, 0.4), Offset = Vector3.new(0.65, 0.5, -1.7) },
@@ -132,15 +138,18 @@ Templates.SLIME = {
 		{ Size = Vector3.new(0.5, 0.6, 0.7), Offset = Vector3.new(-1.1, 0.3, 0), Material = Enum.Material.Neon, Transparency = 0.35 },
 		{ Size = Vector3.new(0.5, 0.6, 0.7), Offset = Vector3.new(1.1, 0.3, 0), Material = Enum.Material.Neon, Transparency = 0.35 },
 	},
-	HeadBlocks = {  -- Face at front (-Z) - just eyes
-		-- Big cartoon eyes
-		{ Size = Vector3.new(0.4, 0.5, 0.2), Offset = Vector3.new(-0.4, 0.5, -1.1), Color = Color3.fromRGB(255, 255, 255) },
-		{ Size = Vector3.new(0.4, 0.5, 0.2), Offset = Vector3.new(0.4, 0.5, -1.1), Color = Color3.fromRGB(255, 255, 255) },
-		-- Pupils
-		{ Size = Vector3.new(0.2, 0.25, 0.1), Offset = Vector3.new(-0.4, 0.45, -1.2), Color = Color3.fromRGB(20, 20, 20) },
-		{ Size = Vector3.new(0.2, 0.25, 0.1), Offset = Vector3.new(0.4, 0.45, -1.2), Color = Color3.fromRGB(20, 20, 20) },
-		-- Happy mouth
-		{ Size = Vector3.new(0.5, 0.15, 0.1), Offset = Vector3.new(0, -0.1, -1.15), Color = Color3.fromRGB(200, 100, 100) },
+	HeadBlocks = {  -- Face at front (-Z) - eyes stick OUT from body
+		-- Big cartoon eyes (moved further out, bigger, opaque)
+		{ Size = Vector3.new(0.5, 0.6, 0.3), Offset = Vector3.new(-0.45, 0.55, -1.35), Color = Color3.fromRGB(255, 255, 255) },
+		{ Size = Vector3.new(0.5, 0.6, 0.3), Offset = Vector3.new(0.45, 0.55, -1.35), Color = Color3.fromRGB(255, 255, 255) },
+		-- Pupils (larger, further out)
+		{ Size = Vector3.new(0.25, 0.35, 0.15), Offset = Vector3.new(-0.45, 0.5, -1.5), Color = Color3.fromRGB(20, 20, 20) },
+		{ Size = Vector3.new(0.25, 0.35, 0.15), Offset = Vector3.new(0.45, 0.5, -1.5), Color = Color3.fromRGB(20, 20, 20) },
+		-- Eye highlights
+		{ Size = Vector3.new(0.1, 0.12, 0.08), Offset = Vector3.new(-0.35, 0.65, -1.55), Color = Color3.fromRGB(255, 255, 255) },
+		{ Size = Vector3.new(0.1, 0.12, 0.08), Offset = Vector3.new(0.55, 0.65, -1.55), Color = Color3.fromRGB(255, 255, 255) },
+		-- Happy mouth (wider, more visible, further out)
+		{ Size = Vector3.new(0.6, 0.2, 0.15), Offset = Vector3.new(0, -0.05, -1.35), Color = Color3.fromRGB(220, 80, 100) },
 	},
 	Legs = {
 		Blocks = {

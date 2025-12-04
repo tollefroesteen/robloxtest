@@ -77,15 +77,32 @@ function module.SetupTrap(trap: BasePart): nil
 		return hit ~= nil and hit:IsA("BasePart") and hit.Parent == Flock
 	end
 
+	-- Determine if this is Team B's trap (needs 180 degree rotation)
+	local trapTeamName = trap:GetAttribute("Team")
+	local isTeamB = trapTeamName == "B"
+
 	local function getSlotCFrame(index: number): CFrame
 		local col = (index - 1) % GRID_COLS
 		local row = math.floor((index - 1) / GRID_COLS)
-		local offset = CFrame.new(
+		local localOffset = Vector3.new(
 			(col - (GRID_COLS - 1)/2) * CELL_SPACING_X,
 			Y_OFFSET,
 			row * CELL_SPACING_Z
 		)
-		return trap.CFrame * offset
+		-- Calculate world position from trap's CFrame
+		local worldPos = trap.CFrame:PointToWorldSpace(localOffset)
+		
+		-- Make animals face toward the center of the arena (roughly 0,0,0)
+		-- This ensures both teams' animals face "outward" from their cage
+		local toCenter = Vector3.new(0, worldPos.Y, 0) - worldPos
+		local lookDir = toCenter.Unit
+		
+		-- If trap is near center, fall back to trap's look direction
+		if toCenter.Magnitude < 10 then
+			lookDir = trap.CFrame.LookVector
+		end
+		
+		return CFrame.lookAt(worldPos, worldPos + lookDir)
 	end
 
 	local function placeCaptured(part: BasePart): nil

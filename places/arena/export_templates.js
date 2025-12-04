@@ -63,7 +63,11 @@ const TEMPLATES = {
         HeadBlocks: [
             { Size: new Vector3(1.2, 1.1, 1.0), Offset: new Vector3(0, 0.4, -1.9) },
             { Size: new Vector3(0.5, 0.4, 0.35), Offset: new Vector3(0, 0.05, -2.4) },
-            { Size: new Vector3(0.2, 0.15, 0.1), Offset: new Vector3(0, 0.0, -2.6) },
+            { Size: new Vector3(0.25, 0.2, 0.15), Offset: new Vector3(0, 0.05, -2.6) },
+            { Size: new Vector3(0.25, 0.3, 0.15), Offset: new Vector3(-0.3, 0.55, -2.35) },
+            { Size: new Vector3(0.25, 0.3, 0.15), Offset: new Vector3(0.3, 0.55, -2.35) },
+            { Size: new Vector3(0.08, 0.1, 0.05), Offset: new Vector3(-0.25, 0.62, -2.4) },
+            { Size: new Vector3(0.08, 0.1, 0.05), Offset: new Vector3(0.35, 0.62, -2.4) },
             { Size: new Vector3(0.2, 0.5, 0.4), Offset: new Vector3(-0.65, 0.5, -1.7) },
             { Size: new Vector3(0.2, 0.5, 0.4), Offset: new Vector3(0.65, 0.5, -1.7) },
             { Size: new Vector3(0.8, 0.5, 0.4), Offset: new Vector3(0, 0.85, -1.7) },
@@ -95,11 +99,13 @@ const TEMPLATES = {
             { Size: new Vector3(0.5, 0.6, 0.7), Offset: new Vector3(1.1, 0.3, 0) },
         ],
         HeadBlocks: [
-            { Size: new Vector3(0.4, 0.5, 0.2), Offset: new Vector3(-0.4, 0.5, -1.1) },
-            { Size: new Vector3(0.4, 0.5, 0.2), Offset: new Vector3(0.4, 0.5, -1.1) },
-            { Size: new Vector3(0.2, 0.25, 0.1), Offset: new Vector3(-0.4, 0.45, -1.2) },
-            { Size: new Vector3(0.2, 0.25, 0.1), Offset: new Vector3(0.4, 0.45, -1.2) },
-            { Size: new Vector3(0.5, 0.15, 0.1), Offset: new Vector3(0, -0.1, -1.15) },
+            { Size: new Vector3(0.5, 0.6, 0.3), Offset: new Vector3(-0.45, 0.55, -1.35) },
+            { Size: new Vector3(0.5, 0.6, 0.3), Offset: new Vector3(0.45, 0.55, -1.35) },
+            { Size: new Vector3(0.25, 0.35, 0.15), Offset: new Vector3(-0.45, 0.5, -1.5) },
+            { Size: new Vector3(0.25, 0.35, 0.15), Offset: new Vector3(0.45, 0.5, -1.5) },
+            { Size: new Vector3(0.1, 0.12, 0.08), Offset: new Vector3(-0.35, 0.65, -1.55) },
+            { Size: new Vector3(0.1, 0.12, 0.08), Offset: new Vector3(0.55, 0.65, -1.55) },
+            { Size: new Vector3(0.6, 0.2, 0.15), Offset: new Vector3(0, -0.05, -1.35) },
         ],
         Legs: {
             Blocks: [

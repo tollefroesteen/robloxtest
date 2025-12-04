@@ -10,6 +10,33 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 local ServerEvents = require(ServerScriptService.Server.ServerEvents)
 
+-- Lazy load animal modules
+local AnimalLibraryModule: any = nil
+local function getAnimalLibrary()
+	if not AnimalLibraryModule then
+		local success, service = pcall(function()
+			return require(ServerScriptService.Server.Animal.AnimalLibraryModule)
+		end)
+		if success then
+			AnimalLibraryModule = service
+		end
+	end
+	return AnimalLibraryModule
+end
+
+local AnimalBuilder: any = nil
+local function getAnimalBuilder()
+	if not AnimalBuilder then
+		local success, service = pcall(function()
+			return require(ServerScriptService.Server.Animal.AnimalBuilder)
+		end)
+		if success then
+			AnimalBuilder = service
+		end
+	end
+	return AnimalBuilder
+end
+
 local CONTEXT = "DebugCommands"
 
 -- List of admin user IDs (add your Roblox user ID here)
@@ -199,6 +226,152 @@ local function onPlayerChatted(player: Player, message: string): nil
 		if humanoid then
 			humanoid.Health = 0
 			Log.Info(CONTEXT, string.format("%s used /die command", player.Name))
+		end
+		return
+	end
+	
+	-- Helper function to spawn an animal in front of player
+	-- readyDelay: time in seconds before marking ReadyForFlocking (default 0.5)
+	local function spawnAnimalInFront(animalDef: any, player: Player, offset: number?, readyDelay: number?): boolean
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if not root then
+			Log.Warn(CONTEXT, "Player has no HumanoidRootPart")
+			return false
+		end
+		
+		local builder = getAnimalBuilder()
+		if not builder then
+			Log.Warn(CONTEXT, "AnimalBuilder not available")
+			return false
+		end
+		
+		-- Ensure Flock folder exists
+		local flockFolder = workspace:FindFirstChild("Flock")
+		if not flockFolder then
+			flockFolder = Instance.new("Folder")
+			flockFolder.Name = "Flock"
+			flockFolder.Parent = workspace
+		end
+		
+		-- Calculate spawn position in front of player
+		local spawnOffset = offset or 10
+		local spawnPos = root.Position + root.CFrame.LookVector * spawnOffset
+		local targetPos = Vector3.new(spawnPos.X, spawnPos.Y + 2, spawnPos.Z)
+		
+		-- Build the animal DIRECTLY at spawn position (no moving needed)
+		local templateID = animalDef.Template or "DEFAULT"
+		local clone = builder.BuildAnimal(templateID, animalDef.Color, targetPos)
+		
+		-- Set attributes
+		clone:SetAttribute("TemplateID", templateID)
+		clone:SetAttribute("PointValue", animalDef.PointValue)
+		clone:SetAttribute("CurrentPointValue", animalDef.PointValue)
+		clone:SetAttribute("MaxSpeed", animalDef.MaxSpeed)
+		clone:SetAttribute("Hungriness", animalDef.Hungriness)
+		clone:SetAttribute("FearFactor", animalDef.FearFactor)
+		clone:SetAttribute("ObservationRadius", animalDef.ObservationRadius)
+		clone:SetAttribute("ID", animalDef.ID)
+		clone:SetAttribute("Team", "None")
+		clone:SetAttribute("InCage", false)
+		clone:SetAttribute("MovementState", "Idle")
+		
+		-- Set color on body
+		local visual = clone:FindFirstChild("Visual")
+		if visual then
+			local bouncepart = visual:FindFirstChild("Bouncepart")
+			if bouncepart then
+				bouncepart.Color = animalDef.Color.Color
+			end
+		end
+		
+		-- Animal is already at correct position - just parent to workspace
+		clone.Parent = flockFolder
+		clone:SetNetworkOwner(nil)
+		
+		-- Mark as ready for flocking AFTER positions have replicated to clients
+		-- Use delay to give network time to sync part positions
+		local delay = readyDelay or 0.5
+		task.delay(delay, function()
+			if clone and clone.Parent then
+				clone:SetAttribute("ReadyForFlocking", true)
+			end
+		end)
+		
+		-- Fire spawn events
+		local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+		RemoteEvents.AnimalSpawnedEvent:FireAllClients(clone)
+		ServerEvents.FlockSpawnedEvent:Fire(clone)
+		
+		return true
+	end
+	
+	-- /spawnanimal <id> [delay] - spawn a specific animal by ID in front of player
+	-- Optional delay parameter (in seconds) controls ReadyForFlocking timing (default 0.5)
+	local spawnAnimalMatch = lowerMessage:match("^/spawnanimal%s+([%w_]+)%s*(%d*%.?%d*)$")
+	if spawnAnimalMatch then
+		local animalID, delayStr = lowerMessage:match("^/spawnanimal%s+([%w_]+)%s*(%d*%.?%d*)$")
+		animalID = animalID:upper()
+		local readyDelay = tonumber(delayStr) or 0.5
+		local library = getAnimalLibrary()
+		if library then
+			local animalDef = library.GetByID(animalID)
+			if animalDef then
+				if spawnAnimalInFront(animalDef, player, nil, readyDelay) then
+					Log.Info(CONTEXT, string.format("%s spawned animal: %s (%s) with delay %.2fs", player.Name, animalID, animalDef.Name, readyDelay))
+				end
+			else
+				Log.Warn(CONTEXT, string.format("Animal not found: %s. Use /listanimals to see valid IDs", animalID))
+			end
+		else
+			Log.Warn(CONTEXT, "AnimalLibraryModule not available")
+		end
+		return
+	end
+	
+	-- /spawnrandom [count] [delay] - spawn 1 or more random animals in front of player
+	-- Optional delay parameter (in seconds) controls ReadyForFlocking timing (default 0.5)
+	-- Examples: /spawnrandom, /spawnrandom 5, /spawnrandom 10 2.0
+	local spawnRandomMatch = lowerMessage:match("^/spawnrandom%s*(%d*)%s*(%d*%.?%d*)$")
+	if lowerMessage == "/spawnrandom" or spawnRandomMatch then
+		local countStr, delayStr = lowerMessage:match("^/spawnrandom%s*(%d*)%s*(%d*%.?%d*)$")
+		local count = tonumber(countStr) or 1
+		count = math.clamp(count, 1, 20) -- Limit to 20 max
+		local readyDelay = tonumber(delayStr) or 0.5
+		
+		local library = getAnimalLibrary()
+		if library then
+			local spawned = 0
+			for i = 1, count do
+				local animalDef = library.GetRandomType()
+				-- Spread animals out at different distances
+				local offset = 10 + (i - 1) * 3
+				if spawnAnimalInFront(animalDef, player, offset, readyDelay) then
+					spawned += 1
+				end
+				-- Small delay between spawns to ensure proper initialization
+				if i < count then
+					task.wait(0.1)
+				end
+			end
+			Log.Info(CONTEXT, string.format("%s spawned %d random animals with delay %.2fs", player.Name, spawned, readyDelay))
+		else
+			Log.Warn(CONTEXT, "AnimalLibraryModule not available")
+		end
+		return
+	end
+	
+	-- /listanimals - list all available animal IDs
+	if lowerMessage == "/listanimals" then
+		local library = getAnimalLibrary()
+		if library then
+			Log.Info(CONTEXT, "=== Available Animals ===")
+			for _, animalDef in library.List do
+				Log.Info(CONTEXT, string.format("  %s: %s (Template: %s, Points: %d, SpawnChance: %d%%)", 
+					animalDef.ID, animalDef.Name, animalDef.Template or "DEFAULT", animalDef.PointValue, animalDef.SpawnChance or 0))
+			end
+		else
+			Log.Warn(CONTEXT, "AnimalLibraryModule not available")
 		end
 		return
 	end
@@ -413,6 +586,7 @@ local function onPlayerChatted(player: Player, message: string): nil
 		Log.Info(CONTEXT, "Achievements: /grantallbonusachievements, /setlevel <level>")
 		Log.Info(CONTEXT, "Scores: /setredscore <score>, /setbluescore <score>, /setscore <red> <blue>, /resetscores")
 		Log.Info(CONTEXT, "Teams: /switchteam [red|blue], /teamstatus, /setgameactive <true|false>, /simulateforfeit <red|blue>")
+		Log.Info(CONTEXT, "Animals: /spawnanimal <id> [delay], /spawnrandom [count] [delay], /listanimals")
 		return
 	end
 	

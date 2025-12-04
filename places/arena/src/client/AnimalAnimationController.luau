@@ -4,6 +4,9 @@ local AnimalAnimationController = {}
 
 local Flock = workspace:WaitForChild("Flock")
 
+-- Debug flag - set to true to see bind pose capture info
+local DEBUG_BIND_POSE = true
+
 -- === BODY FOLLOW TUNING ===
 local FOLLOW_LERP    = 0.28
 local ROTATION_LERP  = 0.15
@@ -59,13 +62,16 @@ end
 -- [root] = {
 --   visualLocal = CFrame,
 --   bounceLocal = CFrame,
---   legs = { [leg] = CFrame }
+--   legs = { [legName] = CFrame }  -- Use NAME as key, not Part reference
 -- }
 local bindPose = {}
 local lastPos = {}
 
 local function captureBindPose(root)
 	if bindPose[root] then return end
+	
+	-- Don't capture bind pose until animal is ready (positions are finalized)
+	if root:GetAttribute("ReadyForFlocking") ~= true then return end
 
 	local data = {
 		legs = {}
@@ -84,13 +90,51 @@ local function captureBindPose(root)
 					data.bounceLocal = visual.CFrame:ToObjectSpace(bounce.CFrame)
 
 					-- find legs - ONLY parts named LegFL, LegFR, LegBL, LegBR
+					-- Store by NAME not by Part reference (parts can change during replication)
+					local legCount = 0
+					local maxLegDistance = 0
+					local legDebugInfo = {}
 					for _, l in ipairs(bounce:GetChildren()) do
 						if l:IsA("BasePart") and (l.Name == "LegFL" or l.Name == "LegFR" or l.Name == "LegBL" or l.Name == "LegBR") then
-							data.legs[l] = bounce.CFrame:ToObjectSpace(l.CFrame)
+							local legLocal = bounce.CFrame:ToObjectSpace(l.CFrame)
+							data.legs[l.Name] = legLocal  -- Use NAME as key
+							legCount += 1
+							
+							-- Track max distance from bounce to leg (should be small, < 5 studs)
+							local legDist = legLocal.Position.Magnitude
+							if legDist > maxLegDistance then
+								maxLegDistance = legDist
+							end
+							
+							table.insert(legDebugInfo, string.format("%s: dist=%.2f pos=(%.1f,%.1f,%.1f)", 
+								l.Name, legDist, legLocal.Position.X, legLocal.Position.Y, legLocal.Position.Z))
 						end
 					end
-
-					bindPose[root] = data
+					
+					if DEBUG_BIND_POSE then
+						print(string.format("[BindPose] Animal %s: found %d legs, maxDist=%.2f", 
+							tostring(root), legCount, maxLegDistance))
+						for _, info in legDebugInfo do
+							print("  " .. info)
+						end
+						print(string.format("  Bounce world pos: (%.1f, %.1f, %.1f)", 
+							bounce.Position.X, bounce.Position.Y, bounce.Position.Z))
+					end
+					
+					-- Only save bind pose if:
+					-- 1. We found all 4 legs
+					-- 2. All legs are within reasonable distance from bouncepart (< 10 studs)
+					--    If legs are far away, they weren't properly positioned yet
+					if legCount == 4 and maxLegDistance < 10 then
+						bindPose[root] = data
+						if DEBUG_BIND_POSE then
+							print(string.format("[BindPose] ✅ SAVED bind pose for %s", tostring(root)))
+						end
+					else
+						if DEBUG_BIND_POSE then
+							print(string.format("[BindPose] ❌ REJECTED - legCount=%d, maxDist=%.2f", legCount, maxLegDistance))
+						end
+					end
 					return
 				end
 			end
@@ -104,6 +148,9 @@ function AnimalAnimationController.Init()
 
 		for _, root in ipairs(Flock:GetChildren()) do
 			if not root:IsA("BasePart") then continue end
+
+			-- Don't process animals that aren't ready yet (still being positioned)
+			if root:GetAttribute("ReadyForFlocking") ~= true then continue end
 
 			-- First-ever sighting → capture Studio bind pose
 			captureBindPose(root)
@@ -165,9 +212,10 @@ function AnimalAnimationController.Init()
 				CFrame.new(newPos.X, newPos.Y + legYOffset, newPos.Z)
 				* CFrame.fromOrientation(visual.CFrame:ToOrientation())
 
-			-- animate legs
-			for leg, baseLegLocal in pairs(conf.legs) do
-				if not leg.Parent then continue end -- leg might get removed
+			-- animate legs - look up legs by NAME each frame
+			for legName, baseLegLocal in pairs(conf.legs) do
+				local leg = bounce:FindFirstChild(legName)
+				if not leg or not leg:IsA("BasePart") then continue end
 
 				local stance = getOffset(leg)
 				local pivot = getPivotLocal(leg)
@@ -182,7 +230,7 @@ function AnimalAnimationController.Init()
 					continue
 				end
 
-				local phaseOffset = LegOffsets[leg.Name] or 0
+				local phaseOffset = LegOffsets[legName] or 0
 				local step = t * LEG_FREQUENCY + bodyPhase + phaseOffset
 
 				local swing = math.rad(LEG_SWING_DEGREES) * math.sin(step)

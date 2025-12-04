@@ -13,6 +13,7 @@ export type AchievementDefinition = {
 	TargetValue: number,      -- Value needed to complete
 	RewardXP: number,         -- XP awarded on completion
 	RewardItems: { [string]: number }?,  -- Optional item rewards (itemID -> quantity)
+	CoinBonus: number?,       -- Permanent coin bonus when completed (0.10 = +10%)
 	Hidden: boolean,          -- Hidden until unlocked?
 	Repeatable: boolean,      -- Can be completed multiple times?
 }
@@ -67,6 +68,7 @@ AchievementRegistry.Achievements = {
 		Category = "Capture",
 		TargetValue = 100,
 		RewardXP = 500,
+		CoinBonus = 0.15,  -- +15% coins permanently
 		Hidden = false,
 		Repeatable = false,
 	},
@@ -132,6 +134,7 @@ AchievementRegistry.Achievements = {
 		Category = "Milestones",
 		TargetValue = 10,
 		RewardXP = 300,
+		CoinBonus = 0.10,  -- +10% coins permanently
 		Hidden = false,
 		Repeatable = false,
 	},
@@ -142,6 +145,7 @@ AchievementRegistry.Achievements = {
 		Category = "Milestones",
 		TargetValue = 50,
 		RewardXP = 1000,
+		CoinBonus = 0.25,  -- +25% coins permanently
 		Hidden = false,
 		Repeatable = false,
 	},
@@ -198,6 +202,7 @@ AchievementRegistry.Achievements = {
 		TargetValue = 10,
 		RewardXP = 0,
 		RewardItems = { ["AMMO_TRANQ"] = 25 },
+		CoinBonus = 0.05,  -- +5% coins permanently
 		Hidden = false,
 		Repeatable = false,
 	},
@@ -209,6 +214,7 @@ AchievementRegistry.Achievements = {
 		TargetValue = 25,
 		RewardXP = 0,
 		RewardItems = { ["TOOL_TRAP"] = 3 },
+		CoinBonus = 0.15,  -- +15% coins permanently
 		Hidden = false,
 		Repeatable = false,
 	},

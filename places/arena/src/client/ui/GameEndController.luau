@@ -160,7 +160,7 @@ local function clearUI(): nil
 end
 
 -- Phase 1: Show winner announcement
-local function showWinnerPhase(results: any, isWinner: boolean): nil
+local function showWinnerPhase(results: any, isWinner: boolean, isForfeit: boolean?): nil
 	if not mainFrame then return end
 	
 	-- Clear previous content
@@ -180,11 +180,14 @@ local function showWinnerPhase(results: any, isWinner: boolean): nil
 	fadeInText(banner, 0.8)
 	
 	-- Winning team info
+	local winText = isForfeit 
+		and string.format("%s Wins by Forfeit!", results.winningTeam)
+		or string.format("%s Wins!", results.winningTeam)
 	local winnerLabel = createLabel(
 		mainFrame, "WinnerTeam", 
 		UDim2.new(0.9, 0, 0.1, 0), 
 		UDim2.new(0.5, 0, 0.32, 0),
-		string.format("%s Wins!", results.winningTeam)
+		winText
 	)
 	winnerLabel.TextSize = 42
 	if results.winningTeam == "Red Team" then
@@ -210,7 +213,7 @@ local function showWinnerPhase(results: any, isWinner: boolean): nil
 		fadeInText(scoreLabel, 0.5)
 	end)
 	
-	-- Tie indicator
+	-- Tie or Forfeit indicator
 	if results.isTie then
 		local tieLabel = createLabel(
 			mainFrame, "TieIndicator",
@@ -224,11 +227,24 @@ local function showWinnerPhase(results: any, isWinner: boolean): nil
 		task.delay(0.9, function()
 			fadeInText(tieLabel, 0.5)
 		end)
+	elseif isForfeit then
+		local forfeitLabel = createLabel(
+			mainFrame, "ForfeitIndicator",
+			UDim2.new(0.9, 0, 0.08, 0),
+			UDim2.new(0.5, 0, 0.62, 0),
+			"(Opponent team left the game)"
+		)
+		forfeitLabel.TextSize = 24
+		forfeitLabel.TextColor3 = Color3.fromRGB(255, 180, 100)
+		
+		task.delay(0.9, function()
+			fadeInText(forfeitLabel, 0.5)
+		end)
 	end
 end
 
 -- Phase 2: Show coin reward with animation
-local function showCoinsPhase(coins: number, multiplier: number, isWinner: boolean): nil
+local function showCoinsPhase(coins: number, baseCoins: number, multiplier: number, isWinner: boolean): nil
 	if not mainFrame then return end
 	
 	-- Clear previous content
@@ -393,6 +409,56 @@ local function showNewAnimalsPhase(animalNames: { string }): nil
 		-- Limit to 4 visible at once
 		if i >= 4 then break end
 	end
+end
+
+-- Phase for forfeit losers - no rewards message
+local function showForfeitNoRewardsPhase(): nil
+	if not mainFrame then return end
+	
+	-- Clear previous content
+	for _, child in mainFrame:GetChildren() do
+		if child:IsA("TextLabel") and child.Name ~= "UICorner" then
+			child:Destroy()
+		end
+	end
+	
+	-- No rewards header
+	local header = createLabel(
+		mainFrame, "NoRewardsHeader",
+		UDim2.new(0.9, 0, 0.1, 0),
+		UDim2.new(0.5, 0, 0.3, 0),
+		"❌ No Rewards ❌"
+	)
+	header.TextSize = 42
+	header.TextColor3 = Color3.fromRGB(200, 100, 100)
+	fadeInText(header, 0.5)
+	
+	-- Explanation
+	local explanation = createLabel(
+		mainFrame, "Explanation",
+		UDim2.new(0.8, 0, 0.15, 0),
+		UDim2.new(0.5, 0, 0.5, 0),
+		"Your team forfeited by leaving the game."
+	)
+	explanation.TextSize = 28
+	explanation.TextColor3 = Color3.fromRGB(200, 200, 200)
+	
+	task.delay(0.3, function()
+		fadeInText(explanation, 0.5)
+	end)
+	
+	local subtext = createLabel(
+		mainFrame, "Subtext",
+		UDim2.new(0.8, 0, 0.1, 0),
+		UDim2.new(0.5, 0, 0.65, 0),
+		"Stay in the game to earn rewards!"
+	)
+	subtext.TextSize = 22
+	subtext.TextColor3 = Color3.fromRGB(150, 150, 150)
+	
+	task.delay(0.6, function()
+		fadeInText(subtext, 0.5)
+	end)
 end
 
 -- Final phase: Show buttons for Lobby and Rematch
@@ -566,15 +632,21 @@ local function runGameEndSequence(data: any): nil
 		isWinner = localTeam and localTeam.Name == data.results.winningTeam
 	end
 	
+	local isForfeit = data.isForfeit or false
+	
 	-- Phase 1: Winner announcement
 	task.wait(0.5)
-	showWinnerPhase(data.results, isWinner)
+	showWinnerPhase(data.results, isWinner, isForfeit)
 	
-	-- Phase 2: Coins earned
+	-- Phase 2: Coins earned (skip if forfeit loser with 0 coins)
 	task.wait(PHASE_DELAY + 1.5)
 	if data.coins and data.coins > 0 then
-		showCoinsPhase(data.coins, data.multiplier or 1.0, isWinner)
+		showCoinsPhase(data.coins, data.baseCoins or data.coins, data.multiplier or 1.0, isWinner)
 		task.wait(PHASE_DELAY + COIN_COUNT_DURATION)
+	elseif isForfeit and not isWinner then
+		-- Show "no rewards" message for forfeit losers
+		showForfeitNoRewardsPhase()
+		task.wait(PHASE_DELAY + 1.0)
 	end
 	
 	-- Phase 3: Achievements (if any)

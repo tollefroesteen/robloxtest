@@ -32,6 +32,7 @@ local CONTEXT = "GameTimerService"
 local StartGameEvent = ServerEvents.StartGameEvent
 local TimerEndedEvent = ServerEvents.TimerEndedEvent
 local ForceEndGameEvent = ServerEvents.ForceEndGameEvent
+local TeamAbandonedEvent = ServerEvents.TeamAbandonedEvent
 local TimerUpdateRemote = RemoteEvents.TimerUpdateEvent
 local EndGameRemote = RemoteEvents.EndGameEvent
 
@@ -114,5 +115,39 @@ ForceEndGameEvent.Event:Connect(function()
 		EndGameRemote:FireAllClients()
 	else
 		Log.Info(CONTEXT, "Force end game received, but timer not running")
+	end
+end)
+
+-- Listen for team abandonment (one team has no players left)
+TeamAbandonedEvent.Event:Connect(function(abandonedTeam: Team?, winningTeam: Team?)
+	if not timerRunning then
+		Log.Info(CONTEXT, "Team abandoned but timer not running, ignoring")
+		return
+	end
+	
+	if abandonedTeam == nil and winningTeam == nil then
+		-- Both teams empty, end immediately
+		Log.Info(CONTEXT, "Both teams abandoned, ending game immediately")
+		timerRunning = false
+		timeRemaining = 0
+		broadcastTimerUpdate(0)
+		TimerEndedEvent:Fire()
+		EndGameRemote:FireAllClients()
+		return
+	end
+	
+	-- One team abandoned, give remaining team limited time to finish
+	local abandonmentTime = GameTimerConfig.ABANDONMENT_TIME
+	
+	-- Only reduce timer if current time is greater than abandonment time
+	if timeRemaining > abandonmentTime then
+		Log.Info(CONTEXT, string.format("Team abandoned! Setting timer to %d seconds for remaining team", abandonmentTime))
+		timeRemaining = abandonmentTime
+		broadcastTimerUpdate(timeRemaining)
+		
+		-- Notify clients about the forfeit situation
+		RemoteEvents.TeamForfeitEvent:FireAllClients(abandonedTeam.Name, winningTeam.Name, abandonmentTime)
+	else
+		Log.Info(CONTEXT, string.format("Team abandoned but timer already at %d seconds (less than %d)", timeRemaining, abandonmentTime))
 	end
 end)

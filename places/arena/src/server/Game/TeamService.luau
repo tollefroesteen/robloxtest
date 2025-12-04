@@ -5,9 +5,11 @@
 local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+local ServerEvents = require(ServerScriptService.Server.ServerEvents)
 
 local CONTEXT = "TeamService"
 
@@ -36,6 +38,15 @@ local teamScores: { [Team]: number } = {}
 
 -- Track CharacterAdded connections per player to avoid duplicate handlers
 local playerCharacterConnections: { [Player]: RBXScriptConnection } = {}
+
+-- Track if game is currently active (for abandonment detection)
+local isGameActive = false
+
+-- Track if abandonment has already been triggered (to avoid duplicate events)
+local abandonmentTriggered = false
+
+-- Track which team abandoned (for game end processing)
+local abandonedTeam: Team? = nil
 
 -- Creates the teams programmatically
 function TeamService.CreateTeams(): nil
@@ -281,12 +292,123 @@ function TeamService.GetTeamConfig(team: Team): { Name: string, Color: BrickColo
 	return nil
 end
 
+-- Set game active state (called by StartGameService/GameEndService)
+function TeamService.SetGameActive(active: boolean): nil
+	isGameActive = active
+	if active then
+		abandonmentTriggered = false
+		abandonedTeam = nil
+	end
+	Log.Info(CONTEXT, string.format("Game active state set to: %s", tostring(active)))
+end
+
+-- Check if game is active
+function TeamService.IsGameActive(): boolean
+	return isGameActive
+end
+
+-- Get the team that abandoned (if any)
+function TeamService.GetAbandonedTeam(): Team?
+	return abandonedTeam
+end
+
+-- Set a team as forfeited (for admin/debug purposes or external triggers)
+-- This sets the abandoned team, clears their score to 0, and fires the abandonment event
+function TeamService.SetTeamForfeit(team: Team): boolean
+	if not team then
+		Log.Warn(CONTEXT, "Cannot forfeit - invalid team")
+		return false
+	end
+	
+	if not isGameActive then
+		Log.Warn(CONTEXT, "Cannot forfeit - game is not active")
+		return false
+	end
+	
+	if abandonmentTriggered then
+		Log.Warn(CONTEXT, "Cannot forfeit - abandonment already triggered")
+		return false
+	end
+	
+	-- Set abandonment state
+	abandonmentTriggered = true
+	abandonedTeam = team
+	
+	-- Set forfeited team's score to 0
+	if teamScores[team] then
+		teamScores[team] = 0
+		Log.Info(CONTEXT, string.format("%s score set to 0 due to forfeit", team.Name))
+		TeamService.BroadcastTeamScores()
+	end
+	
+	-- Determine winning team
+	local winningTeam = if team == redTeam then blueTeam else redTeam
+	
+	Log.Info(CONTEXT, string.format("%s forfeited! %s wins.", team.Name, winningTeam and winningTeam.Name or "Unknown"))
+	
+	-- Fire the abandonment event
+	ServerEvents.TeamAbandonedEvent:Fire(team, winningTeam)
+	
+	return true
+end
+
+-- Check if a team has been abandoned (no players left)
+local function checkForTeamAbandonment(leavingPlayer: Player): nil
+	if not isGameActive or abandonmentTriggered then return end
+	if not redTeam or not blueTeam then return end
+	
+	-- Get player counts (excluding the leaving player since they're still technically in the game)
+	local redPlayers = redTeam:GetPlayers()
+	local bluePlayers = blueTeam:GetPlayers()
+	
+	-- Remove leaving player from count
+	local redCount = #redPlayers
+	local blueCount = #bluePlayers
+	
+	for _, p in redPlayers do
+		if p == leavingPlayer then
+			redCount -= 1
+			break
+		end
+	end
+	
+	for _, p in bluePlayers do
+		if p == leavingPlayer then
+			blueCount -= 1
+			break
+		end
+	end
+	
+	Log.Info(CONTEXT, string.format("Team count check - Red: %d, Blue: %d (after %s leaves)", redCount, blueCount, leavingPlayer.Name))
+	
+	-- Check if one team is empty while the other has players
+	if redCount == 0 and blueCount > 0 then
+		abandonmentTriggered = true
+		abandonedTeam = redTeam
+		Log.Info(CONTEXT, "Red Team abandoned! Blue Team wins by forfeit.")
+		ServerEvents.TeamAbandonedEvent:Fire(redTeam, blueTeam)
+	elseif blueCount == 0 and redCount > 0 then
+		abandonmentTriggered = true
+		abandonedTeam = blueTeam
+		Log.Info(CONTEXT, "Blue Team abandoned! Red Team wins by forfeit.")
+		ServerEvents.TeamAbandonedEvent:Fire(blueTeam, redTeam)
+	elseif redCount == 0 and blueCount == 0 then
+		-- Both teams empty - no winner
+		abandonmentTriggered = true
+		Log.Info(CONTEXT, "Both teams abandoned! No winner.")
+		ServerEvents.TeamAbandonedEvent:Fire(nil, nil)
+	end
+end
+
 -- Clean up player connections when they leave
 Players.PlayerRemoving:Connect(function(player: Player)
 	if playerCharacterConnections[player] then
 		playerCharacterConnections[player]:Disconnect()
 		playerCharacterConnections[player] = nil
 	end
+	
+	-- Check if this causes a team to be abandoned
+	checkForTeamAbandonment(player)
 end)
 
 return TeamService

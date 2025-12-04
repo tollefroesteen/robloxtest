@@ -8,6 +8,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local GameEndConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("config"):WaitForChild("GameEndConfig"))
+local AchievementRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("AchievementRegistry"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "GameEndService"
@@ -42,6 +43,11 @@ function GameEndService.StartGameTracking(): nil
 	gameAchievements = {}
 	for _, player in Players:GetPlayers() do
 		gameAchievements[player] = {}
+	end
+	
+	-- Notify TeamService that game is active (for abandonment detection)
+	if TeamService then
+		TeamService.SetGameActive(true)
 	end
 end
 
@@ -146,12 +152,14 @@ function GameEndService.CalculateBonusMultiplier(player: Player): number
 		return bonusMultiplier
 	end
 	
-	-- Add achievement-based bonuses
-	for achievementID, bonus in GameEndConfig.Bonuses.ACHIEVEMENT_BONUSES do
-		if AchievementsService.IsAchievementCompleted(player, achievementID) then
-			bonusMultiplier += bonus
-			Log.Info(CONTEXT, string.format("%s has achievement bonus %s: +%.0f%%", 
-				player.Name, achievementID, bonus * 100))
+	-- Add achievement-based bonuses (read from AchievementRegistry)
+	for achievementID, achievementDef in AchievementRegistry.Achievements do
+		if achievementDef.CoinBonus and achievementDef.CoinBonus > 0 then
+			if AchievementsService.IsAchievementCompleted(player, achievementID) then
+				bonusMultiplier += achievementDef.CoinBonus
+				Log.Info(CONTEXT, string.format("%s has achievement bonus %s: +%.0f%%", 
+					player.Name, achievementID, achievementDef.CoinBonus * 100))
+			end
 		end
 	end
 	
@@ -230,6 +238,11 @@ function GameEndService.ProcessGameEnd(): nil
 	isGameActive = false  -- Stop tracking new achievements
 	Log.Info(CONTEXT, "Processing game end...")
 	
+	-- Notify TeamService that game is no longer active
+	if TeamService then
+		TeamService.SetGameActive(false)
+	end
+	
 	-- Step 1: Freeze everything
 	if TrapController then
 		TrapController.SetGameActive(false)
@@ -247,11 +260,31 @@ function GameEndService.ProcessGameEnd(): nil
 		return
 	end
 	
-	local winningTeam, winningScore, isTie = TeamService.DetermineWinner()
+	-- Check if this is a forfeit situation (one team abandoned)
+	local abandonedTeam = TeamService.GetAbandonedTeam()
+	local isForfeit = abandonedTeam ~= nil
+	
 	local redTeam, blueTeam = TeamService.GetTeams()
 	
-	if not winningTeam or not redTeam or not blueTeam then
+	if not redTeam or not blueTeam then
 		Log.Warn(CONTEXT, "Could not determine winner - teams not found")
+		isProcessingGameEnd = false
+		return
+	end
+	
+	-- Determine winner: In forfeit, the non-abandoned team wins regardless of score
+	local winningTeam, winningScore, isTie
+	if isForfeit then
+		-- Winner is the team that did NOT abandon
+		winningTeam = if abandonedTeam == redTeam then blueTeam else redTeam
+		winningScore = TeamService.GetTeamScore(winningTeam)
+		isTie = false
+	else
+		winningTeam, winningScore, isTie = TeamService.DetermineWinner()
+	end
+	
+	if not winningTeam then
+		Log.Warn(CONTEXT, "Could not determine winner")
 		isProcessingGameEnd = false
 		return
 	end
@@ -259,8 +292,13 @@ function GameEndService.ProcessGameEnd(): nil
 	local losingTeam = if winningTeam == redTeam then blueTeam else redTeam
 	local losingScore = TeamService.GetTeamScore(losingTeam)
 	
-	Log.Info(CONTEXT, string.format("Winner: %s (Score: %d), Loser: %s (Score: %d), Tie: %s",
-		winningTeam.Name, winningScore, losingTeam.Name, losingScore, tostring(isTie)))
+	if isForfeit then
+		Log.Info(CONTEXT, string.format("FORFEIT - Winner: %s (Score: %d), Loser (abandoned): %s (Score: %d)",
+			winningTeam.Name, winningScore, losingTeam.Name, losingScore))
+	else
+		Log.Info(CONTEXT, string.format("Winner: %s (Score: %d), Loser: %s (Score: %d), Tie: %s",
+			winningTeam.Name, winningScore, losingTeam.Name, losingScore, tostring(isTie)))
+	end
 	
 	-- Step 3: Get captured animals for each team
 	local winningTeamAnimals = {}
@@ -272,7 +310,7 @@ function GameEndService.ProcessGameEnd(): nil
 	end
 	
 	-- Step 4: Process winning team players
-	local winnerResults: { { player: Player, coins: number, newAnimals: { string } } } = {}
+	local winnerResults: { { player: Player, coins: number, baseCoins: number, newAnimals: { string } } } = {}
 	
 	for _, player in winningTeam:GetPlayers() do
 		-- Update stats
@@ -296,12 +334,15 @@ function GameEndService.ProcessGameEnd(): nil
 		table.insert(winnerResults, {
 			player = player,
 			coins = awardedCoins,
+			baseCoins = baseCoins,
 			newAnimals = newAnimals,
 		})
 	end
 	
 	-- Step 5: Process losing team players
-	local loserResults: { { player: Player, coins: number, newAnimals: { string } } } = {}
+	-- Note: In forfeit situations, losing team players have already left, so this loop may be empty
+	-- If they somehow reconnected or there are remaining players, they get NO rewards for forfeit
+	local loserResults: { { player: Player, coins: number, baseCoins: number, newAnimals: { string } } } = {}
 	
 	for _, player in losingTeam:GetPlayers() do
 		-- Update stats
@@ -310,11 +351,20 @@ function GameEndService.ProcessGameEnd(): nil
 			AchievementsService.IncrementStat(player, "TotalGamesPlayed", 1)
 		end
 		
-		-- Calculate coin reward (25% of team score)
-		local baseCoins = math.floor(losingScore * GameEndConfig.LOSER_COIN_MULTIPLIER)
-		local awardedCoins = awardCoins(player, baseCoins, false)
+		local awardedCoins = 0
+		local baseCoins = 0
 		
-		-- Track new animal discoveries (for display)
+		-- Only award coins if NOT a forfeit
+		if not isForfeit then
+			-- Calculate coin reward (25% of team score, minimum guaranteed)
+			baseCoins = math.floor(losingScore * GameEndConfig.LOSER_COIN_MULTIPLIER)
+			baseCoins = math.max(baseCoins, GameEndConfig.MINIMUM_LOSER_COINS)
+			awardedCoins = awardCoins(player, baseCoins, false)
+		else
+			Log.Info(CONTEXT, string.format("No coins for %s - team forfeited", player.Name))
+		end
+		
+		-- Track new animal discoveries (for display) - still award discoveries even in forfeit
 		local newAnimals = updatePlayerAchievements(player, losingTeamAnimals)
 		
 		-- Notify player of new discoveries
@@ -325,6 +375,7 @@ function GameEndService.ProcessGameEnd(): nil
 		table.insert(loserResults, {
 			player = player,
 			coins = awardedCoins,
+			baseCoins = baseCoins,
 			newAnimals = newAnimals,
 		})
 	end
@@ -336,6 +387,7 @@ function GameEndService.ProcessGameEnd(): nil
 		losingTeam = losingTeam.Name,
 		losingScore = losingScore,
 		isTie = isTie,
+		isForfeit = isForfeit,
 	}
 	
 	RemoteEvents.GameResultsEvent:FireAllClients(resultsData)
@@ -347,10 +399,12 @@ function GameEndService.ProcessGameEnd(): nil
 		local sequenceData = {
 			results = resultsData,
 			coins = result.coins,
+			baseCoins = result.baseCoins,
 			multiplier = GameEndService.CalculateBonusMultiplier(result.player),
 			achievements = playerAchievements,
 			newAnimals = result.newAnimals,
 			isWinner = true,
+			isForfeit = isForfeit,
 		}
 		RemoteEvents.GameEndSequenceEvent:FireClient(result.player, sequenceData)
 	end
@@ -361,10 +415,12 @@ function GameEndService.ProcessGameEnd(): nil
 		local sequenceData = {
 			results = resultsData,
 			coins = result.coins,
+			baseCoins = result.baseCoins,
 			multiplier = GameEndService.CalculateBonusMultiplier(result.player),
 			achievements = playerAchievements,
 			newAnimals = result.newAnimals,
 			isWinner = false,
+			isForfeit = isForfeit,
 		}
 		RemoteEvents.GameEndSequenceEvent:FireClient(result.player, sequenceData)
 	end

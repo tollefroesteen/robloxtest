@@ -103,6 +103,28 @@ _No active tasks - Shop System complete!_
 - [x] [SHOP-5] Toast notifications for purchase success/failure feedback
 - [x] [SHOP-6] Auto-refresh shop when inventory changes (coin balance updates)
 
+### Phase 3: Team Abandonment & Forfeit System
+- [x] [FORFEIT-1] Detect when all players leave a team during active game
+    - TeamService tracks player count per team on PlayerRemoving
+    - Fires TeamAbandonedEvent when one team becomes empty
+- [x] [FORFEIT-2] Trigger 30-second countdown when team abandons
+    - GameTimerService listens for TeamAbandonedEvent
+    - Sets remaining time to ABANDONMENT_TIME (30 seconds)
+    - Broadcasts timer update to all clients
+- [x] [FORFEIT-3] Client forfeit notifications
+    - TimerController shows flashing "FORFEIT!" notification
+    - GameEndController shows "Wins by Forfeit!" message
+    - Losing team sees "Your team forfeited" with no rewards
+- [x] [FORFEIT-4] Forfeit reward logic
+    - Winner determined by non-abandoned team (ignores score)
+    - Forfeited team score set to 0 immediately
+    - Winners receive full rewards, losers receive nothing
+- [x] [FORFEIT-5] Admin commands for testing forfeit
+    - /simulateforfeit <red|blue> - triggers abandonment flow
+    - /teaminfo - shows player count per team
+    - TeamService.SetTeamForfeit() for programmatic triggers
+- [x] [FORFEIT-6] Fixed MINIMUM_LOSER_COINS missing from GameEndConfig
+
 ---
 
 ## 📝 Notes

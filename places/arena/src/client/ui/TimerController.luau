@@ -108,6 +108,26 @@ RemoteEvents.EndGameEvent.OnClientEvent:Connect(function()
 	updateTimerUI()
 end)
 
+-- Listen for team forfeit (opponent left)
+RemoteEvents.TeamForfeitEvent.OnClientEvent:Connect(function(abandonedTeamName: string, winningTeamName: string, remainingTime: number)
+	Log.Info(CONTEXT, string.format("Team forfeit: %s abandoned, %s wins. %d seconds remaining.", abandonedTeamName, winningTeamName, remainingTime))
+	
+	-- Update total time to new remaining time for color calculations
+	totalTime = remainingTime
+	
+	-- Show notification to player (simple approach - update timer label temporarily)
+	if timerLabel then
+		-- Flash the text to indicate forfeit
+		task.spawn(function()
+			local originalText = timerLabel.Text
+			timerLabel.Text = "FORFEIT!"
+			timerLabel.TextColor3 = Color3.fromRGB(255, 150, 50)
+			task.wait(1.5)
+			-- Timer will be updated by next TimerUpdateEvent
+		end)
+	end
+end)
+
 -- Listen for game reset
 RemoteEvents.ResetGameEvent.OnClientEvent:Connect(function()
 	timeRemaining = 0

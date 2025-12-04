@@ -1,16 +1,44 @@
--- ModuleScript: AnimalLibraryModule (Server Redirect)
--- This file redirects to the shared AnimalLibraryModule for data consistency
--- The actual animal data is now in shared/data/AnimalLibraryModule.luau
+-- ModuleScript: AnimalLibraryModule
+-- AnimalLibraryModule.luau
+-- Defines all animal types with their stats, appearance, templates, and descriptions
+-- This module is shared between client and server
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SharedAnimalLibrary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("AnimalLibraryModule"))
-
--- Re-export the shared module
-return SharedAnimalLibrary
-
---[[ LEGACY DATA MOVED TO SHARED
--- Define your animals with SpawnChance and unique ID
 local AnimalLibrary = {}
+
+-- Template IDs from AnimalTemplates.luau:
+-- DEFAULT - Original simple sheep
+-- FLUFFY - Woolly sheep with multiple fluffy blocks
+-- SLIME - Bouncy blob creature
+-- BEETLE - Hard-shell insect
+-- BUNNY - Cute hopping rabbit
+-- PIG - Chubby pink pig
+-- TURTLE - Slow shelled creature
+-- CRAB - Wide sideways crab
+-- COW - Sturdy farm cow
+-- CHICKEN - Fluffy farm bird
+-- GOAT - Mountain climber with horns
+-- DUCK - Waddling water bird
+-- FROG - Hoppy amphibian
+-- HEDGEHOG - Spiky ball creature
+-- MOUSE - Tiny quick rodent
+-- PENGUIN - Waddling arctic bird
+-- RACCOON - Masked mischief maker
+-- SNAIL - Slow spiral shell
+-- SQUIRREL - Bushy-tailed nut collector
+--
+-- === UFO EXPERIMENTAL ANIMALS ===
+-- ZORB_SHEEP - Glowing cosmic sheep
+-- CHROMA_CHICK - Color-shifting alien chicken
+-- GRAVI_TOAD - Gravity-defying mega frog
+-- PORKULON - Cyber-pig with antennae
+-- BUNNOCTOPUS - Tentacled rabbit hybrid
+-- DUCKZILLA - Giant mutant duck
+-- MOOSETRONAUT - Space cow with rocket legs
+-- HEDGEBORG - Cybernetic hedgehog
+-- SNAILSTORM - Lightning-fast electric snail
+-- VOID_GOAT - Reality-bending cosmic goat
+
+-- Define your animals with SpawnChance and unique ID
 AnimalLibrary.List = {
 	-- === COMMON ANIMALS (High spawn chance) ===
 	{
@@ -423,6 +451,24 @@ function AnimalLibrary.GetByID(id)
 		end
 	end
 	return nil
+end
+
+-- Helper: Get rarity based on spawn chance
+function AnimalLibrary.GetRarity(spawnChance: number): string
+	if spawnChance >= 25 then
+		return "Common"
+	elseif spawnChance >= 10 then
+		return "Uncommon"
+	elseif spawnChance >= 3 then
+		return "Rare"
+	else
+		return "Legendary"
+	end
+end
+
+-- Helper: Get total count of animals
+function AnimalLibrary.GetTotalCount(): number
+	return #AnimalLibrary.List
 end
 
 return AnimalLibrary

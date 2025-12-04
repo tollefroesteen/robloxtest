@@ -16,6 +16,9 @@
         "RemoteEvents": {
           "$path": "../../shared/RemoteEvents.luau"
         },
+        "PlacesConfig": {
+          "$path": "../../shared/PlacesConfig.luau"
+        },
         "config": {
           "$path": "src/shared/config"
         }

@@ -44,6 +44,7 @@ RemoteEvents.GameResultsEvent = getOrCreate("GameResultsEvent")
 RemoteEvents.CoinsAwardedEvent = getOrCreate("CoinsAwardedEvent")
 RemoteEvents.NewAnimalDiscoveredEvent = getOrCreate("NewAnimalDiscoveredEvent")
 RemoteEvents.GameEndSequenceEvent = getOrCreate("GameEndSequenceEvent")
+RemoteEvents.RematchRequestEvent = getOrCreate("RematchRequestEvent")
 
 -- Shop events
 RemoteEvents.ShopPurchaseRequestEvent = getOrCreate("ShopPurchaseRequestEvent")

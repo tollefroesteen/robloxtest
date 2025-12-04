@@ -5,9 +5,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local TeleportService = game:GetService("TeleportService")
 
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local AchievementRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("AchievementRegistry"))
+local PlacesConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("PlacesConfig"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "GameEndController"
@@ -24,7 +26,6 @@ local currentTweens: { Tween } = {}
 local PHASE_DELAY = 1.5  -- Delay between phases
 local COIN_COUNT_DURATION = 2.0  -- How long the coin count-up animation takes
 local ACHIEVEMENT_DISPLAY_DURATION = 2.0  -- How long each achievement shows
-local FINAL_PHASE_DURATION = 7.0  -- How long to show the final "Game Over" screen before auto-dismiss
 
 -- Create the main screen GUI
 local function createScreenGui(): ScreenGui
@@ -394,40 +395,146 @@ local function showNewAnimalsPhase(animalNames: { string }): nil
 	end
 end
 
--- Final phase: Show "Game Over" with prompt
+-- Final phase: Show buttons for Lobby and Rematch
 local function showFinalPhase(): nil
 	if not mainFrame then return end
 	
 	-- Clear previous content
 	for _, child in mainFrame:GetChildren() do
-		if child:IsA("TextLabel") and child.Name ~= "UICorner" then
+		if child:IsA("TextLabel") or child:IsA("TextButton") and child.Name ~= "UICorner" then
 			child:Destroy()
 		end
 	end
 	
-	-- Game Over text
-	local gameOverLabel = createLabel(
-		mainFrame, "GameOver",
-		UDim2.new(0.9, 0, 0.2, 0),
-		UDim2.new(0.5, 0, 0.35, 0),
-		"GAME OVER"
+	-- "What's next?" text
+	local headerLabel = createLabel(
+		mainFrame, "Header",
+		UDim2.new(0.9, 0, 0.15, 0),
+		UDim2.new(0.5, 0, 0.25, 0),
+		"What's next?"
 	)
-	gameOverLabel.TextSize = 64
-	gameOverLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	fadeInText(gameOverLabel, 0.8)
+	headerLabel.TextSize = 48
+	headerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	fadeInText(headerLabel, 0.5)
 	
-	-- Prompt to continue
-	local promptLabel = createLabel(
-		mainFrame, "Prompt",
-		UDim2.new(0.9, 0, 0.1, 0),
-		UDim2.new(0.5, 0, 0.55, 0),
-		"Waiting for next game..."
-	)
-	promptLabel.TextSize = 28
-	promptLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+	-- Button container
+	local buttonContainer = Instance.new("Frame")
+	buttonContainer.Name = "ButtonContainer"
+	buttonContainer.Size = UDim2.new(0.8, 0, 0.25, 0)
+	buttonContainer.Position = UDim2.new(0.5, 0, 0.55, 0)
+	buttonContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+	buttonContainer.BackgroundTransparency = 1
+	buttonContainer.Parent = mainFrame
+	
+	-- Lobby button
+	local lobbyButton = Instance.new("TextButton")
+	lobbyButton.Name = "LobbyButton"
+	lobbyButton.Size = UDim2.new(0.45, 0, 1, 0)
+	lobbyButton.Position = UDim2.new(0, 0, 0, 0)
+	lobbyButton.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+	lobbyButton.Text = "🏠 Lobby"
+	lobbyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	lobbyButton.TextSize = 32
+	lobbyButton.Font = Enum.Font.GothamBold
+	lobbyButton.AutoButtonColor = true
+	lobbyButton.Parent = buttonContainer
+	
+	local lobbyCorner = Instance.new("UICorner")
+	lobbyCorner.CornerRadius = UDim.new(0, 12)
+	lobbyCorner.Parent = lobbyButton
+	
+	local lobbyStroke = Instance.new("UIStroke")
+	lobbyStroke.Color = Color3.fromRGB(100, 150, 255)
+	lobbyStroke.Thickness = 2
+	lobbyStroke.Parent = lobbyButton
+	
+	-- Rematch button
+	local rematchButton = Instance.new("TextButton")
+	rematchButton.Name = "RematchButton"
+	rematchButton.Size = UDim2.new(0.45, 0, 1, 0)
+	rematchButton.Position = UDim2.new(0.55, 0, 0, 0)
+	rematchButton.BackgroundColor3 = Color3.fromRGB(80, 180, 100)
+	rematchButton.Text = "🔄 Rematch"
+	rematchButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	rematchButton.TextSize = 32
+	rematchButton.Font = Enum.Font.GothamBold
+	rematchButton.AutoButtonColor = true
+	rematchButton.Parent = buttonContainer
+	
+	local rematchCorner = Instance.new("UICorner")
+	rematchCorner.CornerRadius = UDim.new(0, 12)
+	rematchCorner.Parent = rematchButton
+	
+	local rematchStroke = Instance.new("UIStroke")
+	rematchStroke.Color = Color3.fromRGB(100, 220, 130)
+	rematchStroke.Thickness = 2
+	rematchStroke.Parent = rematchButton
+	
+	-- Lobby button click handler
+	lobbyButton.MouseButton1Click:Connect(function()
+		lobbyButton.Text = "Teleporting..."
+		lobbyButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+		
+		if PlacesConfig.LOBBY_PLACE_ID == 0 then
+			Log.Warn(CONTEXT, "Lobby place ID not configured!")
+			lobbyButton.Text = "Not configured"
+			return
+		end
+		
+		local success, err = pcall(function()
+			TeleportService:Teleport(PlacesConfig.LOBBY_PLACE_ID, player)
+		end)
+		
+		if not success then
+			Log.Warn(CONTEXT, "Failed to teleport to lobby: " .. tostring(err))
+			lobbyButton.Text = "Failed!"
+			task.delay(2, function()
+				if lobbyButton and lobbyButton.Parent then
+					lobbyButton.Text = "🏠 Lobby"
+					lobbyButton.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+				end
+			end)
+		end
+	end)
+	
+	-- Rematch button click handler
+	rematchButton.MouseButton1Click:Connect(function()
+		rematchButton.Text = "Starting..."
+		rematchButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+		
+		-- Fire rematch request to server
+		RemoteEvents.RematchRequestEvent:FireServer()
+		
+		-- Clear UI after requesting rematch
+		task.delay(1, function()
+			clearUI()
+		end)
+	end)
+	
+	-- Fade in buttons
+	lobbyButton.BackgroundTransparency = 1
+	lobbyButton.TextTransparency = 1
+	rematchButton.BackgroundTransparency = 1
+	rematchButton.TextTransparency = 1
+	
+	task.delay(0.3, function()
+		local lobbyTween = TweenService:Create(
+			lobbyButton,
+			TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ BackgroundTransparency = 0, TextTransparency = 0 }
+		)
+		lobbyTween:Play()
+		table.insert(currentTweens, lobbyTween)
+	end)
 	
 	task.delay(0.5, function()
-		fadeInText(promptLabel, 0.5)
+		local rematchTween = TweenService:Create(
+			rematchButton,
+			TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ BackgroundTransparency = 0, TextTransparency = 0 }
+		)
+		rematchTween:Play()
+		table.insert(currentTweens, rematchTween)
 	end)
 end
 
@@ -486,9 +593,7 @@ local function runGameEndSequence(data: any): nil
 	task.wait(PHASE_DELAY)
 	showFinalPhase()
 	
-	-- Auto-dismiss after final phase duration
-	task.wait(FINAL_PHASE_DURATION)
-	clearUI()
+	-- No auto-dismiss - player must choose Lobby or Rematch
 	
 	Log.Info(CONTEXT, "Game end sequence complete")
 end

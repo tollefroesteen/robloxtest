@@ -1348,12 +1348,10 @@ local function populateStats(): nil
 	-- Update canvas size for scrolling
 	-- Calculate based on content: we need to account for all elements
 	-- Each animal card is 70px + 8px padding = 78px
-	-- We have 28 animals plus header elements
 	local animalCount = AnimalLibraryModule.GetTotalCount()
 	local baseHeight = 500 -- Level card, reward card, headers, stat rows, spacers
 	local animalCardsHeight = animalCount * 80 -- 70px card + padding each
 	local totalHeight = baseHeight + animalCardsHeight + 100 -- Extra buffer
-	print("[PlayerMenu] Stats canvas size set to:", totalHeight, "for", animalCount, "animals")
 	statsContainer.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 end
 

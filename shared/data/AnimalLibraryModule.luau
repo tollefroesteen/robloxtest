@@ -251,7 +251,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.2,
 		FearFactor = 0.05,
 		ObservationRadius = 10,
-		SpawnChance = 5
+		SpawnChance = 50
 	},
 	{
 		ID = "BT01",
@@ -264,7 +264,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.3,
 		FearFactor = 0.95,
 		ObservationRadius = 15,
-		SpawnChance = 4
+		SpawnChance = 50
 	},
 	{
 		ID = "SL01",
@@ -277,7 +277,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.85,
 		FearFactor = 0.4,
 		ObservationRadius = 35,
-		SpawnChance = 5
+		SpawnChance = 50
 	},
 	
 	-- === EXPERIMENTAL UFO ANIMALS (Alien-Hybrid Creatures) ===
@@ -295,7 +295,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.1,
 		FearFactor = 0.3,
 		ObservationRadius = 50,
-		SpawnChance = 4
+		SpawnChance = 50
 	},
 	{
 		ID = "XC01",
@@ -308,7 +308,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.3,
 		FearFactor = 0.6,
 		ObservationRadius = 25,
-		SpawnChance = 4
+		SpawnChance = 50
 	},
 	{
 		ID = "XG01",
@@ -321,7 +321,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.95,
 		FearFactor = 0.2,
 		ObservationRadius = 60,
-		SpawnChance = 3
+		SpawnChance = 50
 	},
 	{
 		ID = "XP01",
@@ -334,7 +334,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.99,
 		FearFactor = 0.15,
 		ObservationRadius = 45,
-		SpawnChance = 3
+		SpawnChance = 50
 	},
 	{
 		ID = "XB01",
@@ -347,7 +347,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.8,
 		FearFactor = 0.5,
 		ObservationRadius = 40,
-		SpawnChance = 3
+		SpawnChance = 50
 	},
 	{
 		ID = "XD01",
@@ -360,7 +360,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.7,
 		FearFactor = 0.0,
 		ObservationRadius = 70,
-		SpawnChance = 2
+		SpawnChance = 50
 	},
 	{
 		ID = "XM01",
@@ -373,7 +373,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.4,
 		FearFactor = 0.25,
 		ObservationRadius = 55,
-		SpawnChance = 3
+		SpawnChance = 50
 	},
 	{
 		ID = "XH01",
@@ -386,7 +386,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.0,
 		FearFactor = 0.1,
 		ObservationRadius = 100,
-		SpawnChance = 2
+		SpawnChance = 50
 	},
 	{
 		ID = "XS01",
@@ -399,7 +399,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.5,
 		FearFactor = 0.8,
 		ObservationRadius = 80,
-		SpawnChance = 1
+		SpawnChance = 50
 	},
 	{
 		ID = "XV01",
@@ -412,7 +412,7 @@ AnimalLibrary.List = {
 		Hungriness = 0.0,
 		FearFactor = 0.0,
 		ObservationRadius = 150,
-		SpawnChance = 1
+		SpawnChance = 50
 	},
 }
 

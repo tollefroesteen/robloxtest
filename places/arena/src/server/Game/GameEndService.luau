@@ -176,7 +176,7 @@ local function awardCoins(player: Player, baseAmount: number, isWinner: boolean)
 	
 	-- Calculate final amount with bonuses
 	local bonusMultiplier = GameEndService.CalculateBonusMultiplier(player)
-	local finalAmount = math.floor(baseAmount * bonusMultiplier)
+	local finalAmount = math.round(baseAmount * bonusMultiplier)
 	
 	-- Add coins to inventory
 	local success, message = InventoryService.AddItem(player, "COIN", finalAmount)

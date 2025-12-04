@@ -74,6 +74,19 @@ local function getAchievementsService()
 	return AchievementsService
 end
 
+local TeamService: any = nil
+local function getTeamService()
+	if not TeamService then
+		local success, service = pcall(function()
+			return require(ServerScriptService.Server.Game.TeamService)
+		end)
+		if success then
+			TeamService = service
+		end
+	end
+	return TeamService
+end
+
 -- Check if player is admin (or in Studio)
 local function isAdmin(player: Player): boolean
 	-- Always allow in Studio for testing
@@ -392,7 +405,7 @@ local function onPlayerChatted(player: Player, message: string): nil
 	
 	-- /debughelp - show available commands
 	if lowerMessage == "/debughelp" then
-		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantshield <amt>, /grantitem <id> <amt>, /die, /shield, /spawnfood [attract], /spawngift, /endgame, /resetachievements, /resetxp, /resetall")
+		Log.Info(CONTEXT, "Debug commands: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantshield <amt>, /grantitem <id> <amt>, /die, /shield, /spawnfood [attract], /spawngift, /endgame, /resetachievements, /resetxp, /resetall, /setredscore <score>, /setbluescore <score>, /setscore <red> <blue>, /resetscores")
 		return
 	end
 	
@@ -442,6 +455,84 @@ local function onPlayerChatted(player: Player, message: string): nil
 			Log.Info(CONTEXT, string.format("%s reset all stats for all players", player.Name))
 		else
 			Log.Warn(CONTEXT, "AchievementsService not available")
+		end
+		return
+	end
+	
+	-- /setredscore <score> - set Red Team score
+	local redScoreMatch = lowerMessage:match("^/setredscore%s+(%d+)$")
+	if redScoreMatch then
+		local score = tonumber(redScoreMatch)
+		if score then
+			local teamSvc = getTeamService()
+			if teamSvc then
+				local redTeam = teamSvc.GetTeamByName("Red Team")
+				if redTeam then
+					teamSvc.SetTeamScore(redTeam, score)
+					Log.Info(CONTEXT, string.format("%s set Red Team score to %d", player.Name, score))
+				else
+					Log.Warn(CONTEXT, "Red Team not found")
+				end
+			else
+				Log.Warn(CONTEXT, "TeamService not available")
+			end
+		end
+		return
+	end
+	
+	-- /setbluescore <score> - set Blue Team score
+	local blueScoreMatch = lowerMessage:match("^/setbluescore%s+(%d+)$")
+	if blueScoreMatch then
+		local score = tonumber(blueScoreMatch)
+		if score then
+			local teamSvc = getTeamService()
+			if teamSvc then
+				local blueTeam = teamSvc.GetTeamByName("Blue Team")
+				if blueTeam then
+					teamSvc.SetTeamScore(blueTeam, score)
+					Log.Info(CONTEXT, string.format("%s set Blue Team score to %d", player.Name, score))
+				else
+					Log.Warn(CONTEXT, "Blue Team not found")
+				end
+			else
+				Log.Warn(CONTEXT, "TeamService not available")
+			end
+		end
+		return
+	end
+	
+	-- /setscore <red> <blue> - set both team scores at once
+	local redScore, blueScore = lowerMessage:match("^/setscore%s+(%d+)%s+(%d+)$")
+	if redScore and blueScore then
+		local rScore = tonumber(redScore)
+		local bScore = tonumber(blueScore)
+		if rScore and bScore then
+			local teamSvc = getTeamService()
+			if teamSvc then
+				local redTeam = teamSvc.GetTeamByName("Red Team")
+				local blueTeam = teamSvc.GetTeamByName("Blue Team")
+				if redTeam and blueTeam then
+					teamSvc.SetTeamScore(redTeam, rScore)
+					teamSvc.SetTeamScore(blueTeam, bScore)
+					Log.Info(CONTEXT, string.format("%s set scores: Red=%d, Blue=%d", player.Name, rScore, bScore))
+				else
+					Log.Warn(CONTEXT, "Teams not found")
+				end
+			else
+				Log.Warn(CONTEXT, "TeamService not available")
+			end
+		end
+		return
+	end
+	
+	-- /resetscores - reset both team scores to 0
+	if lowerMessage == "/resetscores" then
+		local teamSvc = getTeamService()
+		if teamSvc then
+			teamSvc.ResetTeamScores()
+			Log.Info(CONTEXT, string.format("%s reset team scores", player.Name))
+		else
+			Log.Warn(CONTEXT, "TeamService not available")
 		end
 		return
 	end

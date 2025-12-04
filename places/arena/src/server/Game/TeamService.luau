@@ -207,6 +207,17 @@ function TeamService.ResetTeamScores(): nil
 	TeamService.BroadcastTeamScores()
 end
 
+-- Set team score directly (for admin/debug purposes)
+function TeamService.SetTeamScore(team: Team, score: number): nil
+	if not teamScores[team] then
+		Log.Warn(CONTEXT, "Cannot set score - invalid team")
+		return
+	end
+	teamScores[team] = math.max(0, score)
+	Log.Info(CONTEXT, string.format("%s score set to: %d", team.Name, teamScores[team]))
+	TeamService.BroadcastTeamScores()
+end
+
 -- Get a team by name
 function TeamService.GetTeamByName(name: string): Team?
 	if redTeam and redTeam.Name == name then return redTeam end

@@ -1,5 +1,19 @@
 -- ModuleScript: PartLibraryModule
+-- AnimalLibraryModule.luau
+-- Defines all animal types with their stats, appearance, and templates
+
 local PartLibrary = {}
+
+-- Template IDs from AnimalTemplates.luau:
+-- DEFAULT - Original simple sheep
+-- FLUFFY - Woolly sheep with multiple fluffy blocks
+-- SLIME - Bouncy blob creature
+-- BEETLE - Hard-shell insect
+-- BUNNY - Cute hopping rabbit
+-- PIG - Chubby pink pig
+-- TURTLE - Slow shelled creature
+-- CRAB - Wide sideways crab
+-- COW - Sturdy farm cow
 
 -- Define your parts with SpawnChance and unique ID
 PartLibrary.List = {
@@ -7,6 +21,7 @@ PartLibrary.List = {
 		ID = "RR01",
 		Name = "WhiteRover",
 		Color = BrickColor.new("Bright white"),
+		Template = "FLUFFY",  -- Woolly sheep
 		PointValue = 1,
 		MaxSpeed = 0.37,
 		Hungriness = 0.5,
@@ -18,6 +33,7 @@ PartLibrary.List = {
 		ID = "BB01",
 		Name = "BlueBouncer",
 		Color = BrickColor.new("Bright blue"),
+		Template = "SLIME",  -- Bouncy blob
 		PointValue = 3,
 		MaxSpeed = 0.75,
 		Hungriness = 0.8,
@@ -29,6 +45,7 @@ PartLibrary.List = {
 		ID = "YC01",
 		Name = "YellowCrawler",
 		Color = BrickColor.new("Bright yellow"),
+		Template = "BEETLE",  -- Hard shell insect
 		PointValue = 5,
 		MaxSpeed = 0.8,
 		Hungriness = 0.3,
@@ -40,6 +57,7 @@ PartLibrary.List = {
 	-- 	ID = "OC01",
 	-- 	Name = "OrangeCrawler",
 	-- 	Color = BrickColor.new("Bright orange"),
+	-- 	Template = "CRAB",
 	-- 	PointValue = 6,
 	-- 	MaxSpeed = 0.15,
 	-- 	Hungriness = 0.3,
@@ -51,6 +69,7 @@ PartLibrary.List = {
 	-- 	ID = "GS01",
 	-- 	Name = "GreenScout",
 	-- 	Color = BrickColor.new("Bright green"),
+	-- 	Template = "BIRD",
 	-- 	PointValue = 8,
 	-- 	MaxSpeed = 0.35,
 	-- 	Hungriness = 0.9,
@@ -60,8 +79,9 @@ PartLibrary.List = {
 	-- },
 	-- {
 	-- 	ID = "BS01",
-	-- 	Name = "BlusihScout",
+	-- 	Name = "BluishScout",
 	-- 	Color = BrickColor.new("Bright bluish green"),
+	-- 	Template = "BUNNY",
 	-- 	PointValue = 10,
 	-- 	MaxSpeed = 0.35,
 	-- 	Hungriness = 0.9,

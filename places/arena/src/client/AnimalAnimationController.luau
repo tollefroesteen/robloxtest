@@ -83,9 +83,9 @@ local function captureBindPose(root)
 					local bounce = b
 					data.bounceLocal = visual.CFrame:ToObjectSpace(bounce.CFrame)
 
-					-- find legs
+					-- find legs - ONLY parts named LegFL, LegFR, LegBL, LegBR
 					for _, l in ipairs(bounce:GetChildren()) do
-						if l:IsA("BasePart") then
+						if l:IsA("BasePart") and (l.Name == "LegFL" or l.Name == "LegFR" or l.Name == "LegBL" or l.Name == "LegBR") then
 							data.legs[l] = bounce.CFrame:ToObjectSpace(l.CFrame)
 						end
 					end

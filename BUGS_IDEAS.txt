@@ -18,3 +18,6 @@ improve looks for animals
 - Coin counter showing higher than expected (was achievement bonus - clarified in UI)
 - MINIMUM_LOSER_COINS missing from GameEndConfig (added: 5 coins minimum)
 - Team abandonment/forfeit now properly handles winner determination
+
+
+The AnimalTemplate.rbxmx is the currently used representation of an animal. It has hirearchy/construction that is tied to an animation system. We would like to have every animal defined in the AnimationLibraryModule to have a a unique look. Can you provide different looks and feel by consturction body parts based on primitives or other ways that would look like animal bodypart that make the amimal qute or intersting but still fitt the same structure as the AnimalTemplate.rbxmx. Then the animals in the AnimalLibraryModule could have a property that points to what template they should be using. 

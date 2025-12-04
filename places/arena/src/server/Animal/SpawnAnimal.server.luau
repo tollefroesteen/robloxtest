@@ -6,12 +6,17 @@ local StartGameEvent = ServerEvents.StartGameEvent
 local spawnEvent = ServerEvents.FlockSpawnedEvent
 local animalsFolder = ServerScriptService.Server.Animal
 local PartLibrary = require(animalsFolder:WaitForChild("AnimalLibraryModule"))
+local AnimalBuilder = require(animalsFolder:WaitForChild("AnimalBuilder"))
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local AnimalTemplate = ReplicatedStorage:WaitForChild("AnimalTemplate")
+-- Keep AnimalTemplate as fallback if builder fails
+local AnimalTemplate = ReplicatedStorage:FindFirstChild("AnimalTemplate")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local AnimalSpawnedEvent = RemoteEvents.AnimalSpawnedEvent
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+
+-- Configuration flag: set to true to use new template system, false for legacy template
+local USE_DYNAMIC_TEMPLATES = true
 
 
 local UFOModel = workspace.UFO
@@ -57,7 +62,23 @@ local function spawnPart()
 	local ufoPos = ufo.Position
 	local chosenType = PartLibrary.GetRandomType()
 
-	local clone = AnimalTemplate:Clone()
+	local clone
+	
+	if USE_DYNAMIC_TEMPLATES then
+		-- Build animal dynamically from template configuration
+		local templateID = chosenType.Template or "BASIC_QUADRUPED"
+		clone = AnimalBuilder.BuildAnimal(templateID, chosenType.Color)
+		clone:SetAttribute("TemplateID", templateID)
+		Log.Debug("SpawnAnimal", string.format("Built animal using template: %s", templateID))
+	else
+		-- Legacy: clone static template from ReplicatedStorage
+		if AnimalTemplate then
+			clone = AnimalTemplate:Clone()
+		else
+			Log.Warn("SpawnAnimal", "AnimalTemplate not found in ReplicatedStorage")
+			return
+		end
+	end
 	
 	-- Calculate offset from template position to spawn position
 	local templatePos = clone.Position
@@ -76,7 +97,14 @@ local function spawnPart()
 	clone:SetAttribute("InCage", false)
 	clone:SetAttribute("MovementState", "Falling")
 
-	clone.Visual.Bouncepart.Color = chosenType.Color.Color -- Convert BrickColor to Color3
+	-- Set color on body (Bouncepart)
+	local visual = clone:FindFirstChild("Visual")
+	if visual then
+		local bouncepart = visual:FindFirstChild("Bouncepart")
+		if bouncepart then
+			bouncepart.Color = chosenType.Color.Color -- Convert BrickColor to Color3
+		end
+	end
 	
 	-- Move all parts to spawn position (all are anchored, so move each individually)
 	clone.CFrame = clone.CFrame + offset
@@ -92,7 +120,8 @@ local function spawnPart()
 
 	-- Telemetry: increment spawn count
 	spawnCount += 1
-	Log.Debug("SpawnAnimal", string.format("Spawned animal #%d (Type: %s, Points: %d)", spawnCount, chosenType.ID, chosenType.PointValue))
+	Log.Debug("SpawnAnimal", string.format("Spawned animal #%d (Type: %s, Points: %d, Template: %s)", 
+		spawnCount, chosenType.ID, chosenType.PointValue, chosenType.Template or "BASIC_QUADRUPED"))
 
 	AnimalSpawnedEvent:FireAllClients(clone)
 	spawnEvent:Fire(clone)

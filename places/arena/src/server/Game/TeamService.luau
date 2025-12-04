@@ -34,6 +34,9 @@ local blueTeam: Team? = nil
 -- Team scores
 local teamScores: { [Team]: number } = {}
 
+-- Track CharacterAdded connections per player to avoid duplicate handlers
+local playerCharacterConnections: { [Player]: RBXScriptConnection } = {}
+
 -- Creates the teams programmatically
 function TeamService.CreateTeams(): nil
 	Log.Info(CONTEXT, "Creating teams...")
@@ -133,10 +136,23 @@ function TeamService.AssignPlayerToTeam(player: Player): nil
 	if shirtColor then
 		colorPlayerCharacter(player, shirtColor)
 		
-		-- Also color when character respawns
-		player.CharacterAdded:Connect(function(character)
+		-- Disconnect any existing CharacterAdded connection (from previous team assignment)
+		if playerCharacterConnections[player] then
+			playerCharacterConnections[player]:Disconnect()
+			playerCharacterConnections[player] = nil
+		end
+		
+		-- Connect new CharacterAdded handler with current team color
+		playerCharacterConnections[player] = player.CharacterAdded:Connect(function(character)
 			task.wait(0.1) -- Wait for character to fully load
-			colorPlayerCharacter(player, shirtColor)
+			-- Get the current team color (in case team changed)
+			local currentTeam = player.Team
+			if currentTeam then
+				local currentColor = getTeamShirtColor(currentTeam)
+				if currentColor then
+					colorPlayerCharacter(player, currentColor)
+				end
+			end
 		end)
 	end
 	
@@ -264,5 +280,13 @@ function TeamService.GetTeamConfig(team: Team): { Name: string, Color: BrickColo
 	end
 	return nil
 end
+
+-- Clean up player connections when they leave
+Players.PlayerRemoving:Connect(function(player: Player)
+	if playerCharacterConnections[player] then
+		playerCharacterConnections[player]:Disconnect()
+		playerCharacterConnections[player] = nil
+	end
+end)
 
 return TeamService

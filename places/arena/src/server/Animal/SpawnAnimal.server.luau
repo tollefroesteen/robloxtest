@@ -6,12 +6,17 @@ local StartGameEvent = ServerEvents.StartGameEvent
 local spawnEvent = ServerEvents.FlockSpawnedEvent
 local animalsFolder = ServerScriptService.Server.Animal
 local PartLibrary = require(animalsFolder:WaitForChild("AnimalLibraryModule"))
+local AnimalBuilder = require(animalsFolder:WaitForChild("AnimalBuilder"))
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local AnimalTemplate = ReplicatedStorage:WaitForChild("AnimalTemplate")
+-- Keep AnimalTemplate as fallback if builder fails
+local AnimalTemplate = ReplicatedStorage:FindFirstChild("AnimalTemplate")
 local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
 local AnimalSpawnedEvent = RemoteEvents.AnimalSpawnedEvent
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+
+-- Configuration flag: set to true to use new template system, false for legacy template
+local USE_DYNAMIC_TEMPLATES = true
 
 
 local UFOModel = workspace.UFO
@@ -56,13 +61,34 @@ local function spawnPart()
 	end
 	local ufoPos = ufo.Position
 	local chosenType = PartLibrary.GetRandomType()
-
-	local clone = AnimalTemplate:Clone()
-	
-	-- Calculate offset from template position to spawn position
-	local templatePos = clone.Position
 	local spawnPos = Vector3.new(ufoPos.X, spawnHeight, ufoPos.Z)
-	local offset = spawnPos - templatePos
+
+	local clone
+	
+	if USE_DYNAMIC_TEMPLATES then
+		-- Build animal dynamically from template configuration AT spawn position
+		local templateID = chosenType.Template or "BASIC_QUADRUPED"
+		clone = AnimalBuilder.BuildAnimal(templateID, chosenType.Color, spawnPos)
+		clone:SetAttribute("TemplateID", templateID)
+		Log.Debug("SpawnAnimal", string.format("Built animal using template: %s", templateID))
+	else
+		-- Legacy: clone static template from ReplicatedStorage
+		if AnimalTemplate then
+			clone = AnimalTemplate:Clone()
+			-- Legacy mode still needs to move parts
+			local templatePos = clone.Position
+			local offset = spawnPos - templatePos
+			clone.CFrame = clone.CFrame + offset
+			for _, child in ipairs(clone:GetDescendants()) do
+				if child:IsA("BasePart") then
+					child.CFrame = child.CFrame + offset
+				end
+			end
+		else
+			Log.Warn("SpawnAnimal", "AnimalTemplate not found in ReplicatedStorage")
+			return
+		end
+	end
 
 	-- Attributes
 	clone:SetAttribute("PointValue", chosenType.PointValue)
@@ -76,23 +102,32 @@ local function spawnPart()
 	clone:SetAttribute("InCage", false)
 	clone:SetAttribute("MovementState", "Falling")
 
-	clone.Visual.Bouncepart.Color = chosenType.Color.Color -- Convert BrickColor to Color3
-	
-	-- Move all parts to spawn position (all are anchored, so move each individually)
-	clone.CFrame = clone.CFrame + offset
-	for _, child in ipairs(clone:GetDescendants()) do
-		if child:IsA("BasePart") then
-			child.CFrame = child.CFrame + offset
+	-- Set color on body (Bouncepart)
+	local visual = clone:FindFirstChild("Visual")
+	if visual then
+		local bouncepart = visual:FindFirstChild("Bouncepart")
+		if bouncepart then
+			bouncepart.Color = chosenType.Color.Color -- Convert BrickColor to Color3
 		end
 	end
 	
-	clone.Parent = workspace.Flock  -- put in workspace after positioning
+	-- Animal is already at correct position - just parent to workspace
+	clone.Parent = workspace.Flock
 	
-	clone:SetNetworkOwner(nil) -- server owns, allows client visual control (must be parented to workspace first)
+	clone:SetNetworkOwner(nil)
+	
+	-- Mark as ready for flocking AFTER positions have replicated to clients
+	-- Use delay to give network time to sync part positions
+	task.delay(0.5, function()
+		if clone and clone.Parent then
+			clone:SetAttribute("ReadyForFlocking", true)
+		end
+	end)
 
 	-- Telemetry: increment spawn count
 	spawnCount += 1
-	Log.Debug("SpawnAnimal", string.format("Spawned animal #%d (Type: %s, Points: %d)", spawnCount, chosenType.ID, chosenType.PointValue))
+	Log.Debug("SpawnAnimal", string.format("Spawned animal #%d (Type: %s, Points: %d, Template: %s)", 
+		spawnCount, chosenType.ID, chosenType.PointValue, chosenType.Template or "BASIC_QUADRUPED"))
 
 	AnimalSpawnedEvent:FireAllClients(clone)
 	spawnEvent:Fire(clone)

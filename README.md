@@ -136,6 +136,49 @@ PlayerGui [PlayerGui]
 			TextLabel [TextLabel]
 ```
 
+---
+
+## Animal System Architecture
+
+### Template-Based Animal Creation
+Animals are defined using block-based templates in `AnimalTemplates.luau` and constructed by `AnimalBuilder.luau`.
+
+**Hierarchy:**
+```
+AnimalTemplate (root Part, invisible, physics body)
+└── Visual (Part, invisible, follows root)
+    └── Bouncepart (Part, main body, visible)
+        ├── Body2, Body3... (welded body blocks)
+        ├── Head1, Head2... (welded head blocks)
+        ├── Tail1, Tail2... (welded tail blocks)
+        ├── Deco1, Deco2... (welded decoration blocks)
+        ├── LegFL (anchored, animated)
+        ├── LegFR (anchored, animated)
+        ├── LegBL (anchored, animated)
+        └── LegBR (anchored, animated)
+```
+
+**Key Design Decisions:**
+- Body parts are **welded** to Bouncepart (move with physics)
+- Legs are **anchored** and animated via client-side `AnimalController`
+- All positioning uses **CFrame-relative math** for consistent placement
+- `ReadyForFlocking` attribute delays animation until model is fully replicated
+- Bind pose capture uses **leg names as keys** (not Part references) to survive replication
+
+### Available Templates
+| ID | Name | Description |
+|----|------|-------------|
+| RR01 | FLUFFY | Multi-block bunny with ears |
+| BB01 | SLIME | Translucent blob with eyes |
+| YC01 | BEETLE | Segmented body with antennae |
+
+### Admin Commands (Debug)
+- `/spawnanimal <id> [delay]` - Spawn specific animal (e.g., `/spawnanimal RR01`)
+- `/spawnrandom [count] [delay]` - Spawn random animals (e.g., `/spawnrandom 10`)
+- `/listanimals` - List all available animal IDs
+
+---
+
 ### Controllers → GUI Elements
 | Controller | File | GUI Elements | Purpose |
 |------------|------|--------------|---------|

@@ -4,7 +4,7 @@ Use this checklist to track and complete improvements one-by-one.
 
 ## 🚧 Active Tasks
 
-_No active tasks - Shop System complete!_
+_No active tasks - Animal Template System complete!_
 
 ---
 
@@ -102,6 +102,32 @@ _No active tasks - Shop System complete!_
 - [x] [SHOP-4] Add ShopPurchaseRequestEvent, ShopPurchaseResultEvent, ShopBuyCoinsRequestEvent
 - [x] [SHOP-5] Toast notifications for purchase success/failure feedback
 - [x] [SHOP-6] Auto-refresh shop when inventory changes (coin balance updates)
+
+### Phase 4: Animal Template System
+- [x] [ANIMAL-1] Create AnimalTemplates.luau with block-based animal definitions
+    - Templates define body blocks, head blocks, tail blocks, decoration blocks, and legs
+    - Support for multi-block animals (FLUFFY, SLIME, BEETLE, etc.)
+    - Configurable leg offsets, pivot points, and animation parameters
+- [x] [ANIMAL-2] Create AnimalBuilder.luau to construct animals from templates
+    - Builds complete animal hierarchy: Root > Visual > Bouncepart > [body parts, legs]
+    - All parts positioned using CFrame-relative math for consistent placement
+    - Body/head/tail/decoration blocks welded to bouncepart
+    - Legs are ANCHORED (animated via client controller)
+- [x] [ANIMAL-3] Fix leg attachment issues during spawn
+    - Added ReadyForFlocking attribute with delay before animation starts
+    - Fixed bind pose capture to use leg NAMES as keys (not Part references)
+    - Animation controller looks up legs by name each frame via FindFirstChild
+    - Validates all 4 legs found and within 10 studs before capturing bind pose
+- [x] [ANIMAL-4] Add admin spawn commands for testing
+    - /spawnanimal <id> [delay] - spawn specific animal by ID
+    - /spawnrandom [count] [delay] - spawn random animals
+    - /listanimals - list all available animal IDs
+    - Configurable ReadyForFlocking delay parameter for testing
+- [x] [ANIMAL-5] Fix cage orientation for captured animals
+    - Animals in cages now face toward arena center (0,0,0)
+    - Uses CFrame.lookAt for proper orientation
+- [x] [ANIMAL-6] Cleanup: removed duplicate AnimalAnimationController.luau
+    - Consolidated all animation logic into controllers/AnimalController.luau
 
 ### Phase 3: Team Abandonment & Forfeit System
 - [x] [FORFEIT-1] Detect when all players leave a team during active game

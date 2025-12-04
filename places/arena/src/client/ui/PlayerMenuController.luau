@@ -12,6 +12,7 @@ local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChi
 local ItemRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("ItemRegistry"))
 local AchievementRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("AchievementRegistry"))
 local ShopRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("ShopRegistry"))
+local AnimalLibraryModule = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("AnimalLibraryModule"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "PlayerMenuController"
@@ -1167,37 +1168,34 @@ local function populateStats(): nil
 		capturedCount += 1
 	end
 	
+	-- Get total animal count from library
+	local totalAnimalCount = AnimalLibraryModule.GetTotalCount()
+	
 	-- Summary row
-	createStatRow("Unique Animals Discovered", capturedCount .. "/3", order).Parent = statsContainer
+	createStatRow("Unique Animals Discovered", capturedCount .. "/" .. totalAnimalCount, order).Parent = statsContainer
 	order += 1
 	
-	-- Animal definitions (matches AnimalLibraryModule)
-	local animalData = {
-		{
-			ID = "RR01",
-			Name = "White Rover",
-			Color = Color3.fromRGB(255, 255, 255),
-			PointValue = 1,
-			Rarity = "Common",
-			Description = "A friendly creature, easy to spot",
-		},
-		{
-			ID = "BB01",
-			Name = "Blue Bouncer",
-			Color = Color3.fromRGB(0, 150, 255),
-			PointValue = 3,
-			Rarity = "Uncommon",
-			Description = "Fast and alert, harder to catch",
-		},
-		{
-			ID = "YC01",
-			Name = "Yellow Crawler",
-			Color = Color3.fromRGB(255, 220, 0),
-			PointValue = 5,
-			Rarity = "Rare",
-			Description = "Very skittish, high value target",
-		},
-	}
+	-- Build animalData from AnimalLibraryModule (dynamically synced)
+	local animalData = {}
+	for _, libraryAnimal in AnimalLibraryModule.List do
+		-- Convert BrickColor to Color3 for UI
+		local color = libraryAnimal.Color
+		if typeof(color) == "BrickColor" then
+			color = color.Color -- BrickColor has a .Color property that returns Color3
+		end
+		
+		-- Determine rarity from spawn chance
+		local rarity = AnimalLibraryModule.GetRarity(libraryAnimal.SpawnChance)
+		
+		table.insert(animalData, {
+			ID = libraryAnimal.ID,
+			Name = libraryAnimal.Name,
+			Color = color,
+			PointValue = libraryAnimal.PointValue,
+			Rarity = rarity,
+			Description = libraryAnimal.Description,
+		})
+	end
 	
 	-- Create animal cards
 	for _, animal in animalData do
@@ -1258,13 +1256,14 @@ local function populateStats(): nil
 			Common = Color3.fromRGB(150, 150, 150),
 			Uncommon = Color3.fromRGB(80, 180, 80),
 			Rare = Color3.fromRGB(255, 180, 50),
+			Legendary = Color3.fromRGB(200, 80, 255), -- Purple for UFO aliens
 		}
 		
 		local rarityBadge = Instance.new("TextLabel")
 		rarityBadge.Name = "Rarity"
-		rarityBadge.Size = UDim2.new(0, 70, 0, 16)
+		rarityBadge.Size = UDim2.new(0, 75, 0, 16)
 		rarityBadge.Position = UDim2.new(0, 70, 0, 28)
-		rarityBadge.BackgroundColor3 = if isCaptured then rarityColors[animal.Rarity] else Color3.fromRGB(60, 60, 60)
+		rarityBadge.BackgroundColor3 = if isCaptured then (rarityColors[animal.Rarity] or Color3.fromRGB(100, 100, 100)) else Color3.fromRGB(60, 60, 60)
 		rarityBadge.Text = if isCaptured then animal.Rarity else "Unknown"
 		rarityBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
 		rarityBadge.TextSize = 10
@@ -1341,22 +1340,18 @@ local function populateStats(): nil
 	-- Add bottom padding
 	local bottomSpacer = Instance.new("Frame")
 	bottomSpacer.Name = "BottomSpacer"
-	bottomSpacer.Size = UDim2.new(1, 0, 0, 20)
+	bottomSpacer.Size = UDim2.new(1, 0, 0, 40)
 	bottomSpacer.BackgroundTransparency = 1
 	bottomSpacer.LayoutOrder = order
 	bottomSpacer.Parent = statsContainer
 	
-	-- Update canvas size for scrolling - calculate actual content height
-	-- Level card: 100, Reward card: 55 (or maxed: 40), spacers: 10 each, headers: 20, rows: 25, animal cards: 70
-	local levelCardHeight = 108 -- 100 + 8 padding
-	local rewardCardHeight = if rewardName then 63 else 48 -- 55/40 + 8 padding
-	local spacerHeight = 18 -- 10 + 8 padding
-	local headerHeight = 28 -- 20 + 8 padding
-	local rowHeight = 33 -- 25 + 8 padding
-	local animalCardHeight = 78 -- 70 + 8 padding
-	
-	-- Count: levelCard + rewardCard + 2 spacers + 2 headers + 5 stat rows + collection header + summary row + 3 animal cards + bottom spacer
-	local totalHeight = levelCardHeight + rewardCardHeight + (spacerHeight * 2) + (headerHeight * 2) + (rowHeight * 6) + (animalCardHeight * 3) + 70
+	-- Update canvas size for scrolling
+	-- Calculate based on content: we need to account for all elements
+	-- Each animal card is 70px + 8px padding = 78px
+	local animalCount = AnimalLibraryModule.GetTotalCount()
+	local baseHeight = 500 -- Level card, reward card, headers, stat rows, spacers
+	local animalCardsHeight = animalCount * 80 -- 70px card + padding each
+	local totalHeight = baseHeight + animalCardsHeight + 100 -- Extra buffer
 	statsContainer.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 end
 

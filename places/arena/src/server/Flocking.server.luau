@@ -131,6 +131,9 @@ RunService.Heartbeat:Connect(function(dt)
 	for _, root in ipairs(Flock:GetChildren()) do
 		if not root:IsA("BasePart") then continue end
 
+		-- Skip animals that aren't ready for flocking yet (still being positioned)
+		if root:GetAttribute("ReadyForFlocking") ~= true then continue end
+
 		-- If captured: freeze and skip flocking completely
 		if root:GetAttribute("Captured") == true then
 			velocities[root] = Vector3.zero

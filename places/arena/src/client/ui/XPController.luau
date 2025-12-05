@@ -1,6 +1,6 @@
 --!strict
 -- XPController.luau
--- Displays the player's XP and level in the HUD
+-- Displays the player's XP and level in the HUD (simple style matching CoinsController)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,32 +16,16 @@ local XPController = {}
 local xpGui: ScreenGui? = nil
 local xpLabel: TextLabel? = nil
 local levelLabel: TextLabel? = nil
-local xpBar: Frame? = nil
-local xpBarFill: Frame? = nil
 
 -- Current state
 local currentXP: number = 0
 local currentLevel: number = 1
-local xpForNextLevel: number = 100
 
 -- Initialization guard
 local initialized: boolean = false
 
--- XP calculation (must match server)
-local XP_PER_LEVEL = 100
-local XP_SCALE_FACTOR = 1.5
-
-local function getXPForLevel(level: number): number
-	return math.floor(XP_PER_LEVEL * (XP_SCALE_FACTOR ^ (level - 1)))
-end
-
-local function getTotalXPForLevel(level: number): number
-	local total = 0
-	for i = 1, level - 1 do
-		total += getXPForLevel(i)
-	end
-	return total
-end
+-- Animation state
+local isAnimating: boolean = false
 
 -- Format number with commas
 local function formatNumber(num: number): string
@@ -60,37 +44,26 @@ local function updateXPDisplay(): nil
 		levelLabel.Text = "Lv." .. tostring(currentLevel)
 	end
 	
-	-- Calculate XP progress within current level
-	local xpForCurrentLevel = getTotalXPForLevel(currentLevel)
-	local xpToNextLevel = getXPForLevel(currentLevel)
-	local xpIntoLevel = currentXP - xpForCurrentLevel
-	local progress = math.clamp(xpIntoLevel / xpToNextLevel, 0, 1)
-	
 	if xpLabel then
-		xpLabel.Text = string.format("%s / %s XP", formatNumber(xpIntoLevel), formatNumber(xpToNextLevel))
-	end
-	
-	if xpBarFill then
-		xpBarFill.Size = UDim2.new(progress, 0, 1, 0)
+		xpLabel.Text = formatNumber(currentXP)
 	end
 end
 
 -- Animate level up
 local function animateLevelUp(): nil
-	if not levelLabel then return end
+	if isAnimating or not levelLabel then return end
+	isAnimating = true
 	
-	local originalSize = levelLabel.TextSize
 	local originalColor = levelLabel.TextColor3
 	
-	-- Flash gold and scale up
+	-- Flash gold
 	levelLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-	levelLabel.TextSize = originalSize * 1.3
 	
 	task.delay(0.3, function()
 		if levelLabel then
-			levelLabel.TextSize = originalSize
 			levelLabel.TextColor3 = originalColor
 		end
+		isAnimating = false
 	end)
 end
 
@@ -113,15 +86,6 @@ local function createXPGui(): nil
 			xpLabel = xp :: TextLabel
 		end
 		
-		local bar = xpGui:FindFirstChild("XPBar", true)
-		if bar and bar:IsA("Frame") then
-			xpBar = bar :: Frame
-			local fill = bar:FindFirstChild("Fill")
-			if fill and fill:IsA("Frame") then
-				xpBarFill = fill :: Frame
-			end
-		end
-		
 		Log.Info(CONTEXT, "Found XPGui from Studio")
 		return
 	end
@@ -132,14 +96,15 @@ local function createXPGui(): nil
 	xpGui = Instance.new("ScreenGui")
 	xpGui.Name = "XPGui"
 	xpGui.ResetOnSpawn = false
+	xpGui.IgnoreGuiInset = true
 	xpGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	xpGui.Parent = playerGui
 	
 	-- Container frame (top-right corner, below coins)
 	local container = Instance.new("Frame")
 	container.Name = "XPContainer"
-	container.Size = UDim2.new(0, 150, 0, 50)
-	container.Position = UDim2.new(1, -160, 0, 0)  -- Below coins
+	container.Size = UDim2.new(0, 150, 0, 40)
+	container.Position = UDim2.new(1, -160, 0, 55)  -- Below coins (coins at 10, this at 55)
 	container.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	container.BackgroundTransparency = 0.3
 	container.BorderSizePixel = 0
@@ -150,72 +115,66 @@ local function createXPGui(): nil
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = container
 	
-	-- Level label
+	-- XP icon (blue circle with star)
+	local xpIcon = Instance.new("Frame")
+	xpIcon.Name = "XPIcon"
+	xpIcon.Size = UDim2.new(0, 28, 0, 28)
+	xpIcon.Position = UDim2.new(0, 8, 0.5, -14)
+	xpIcon.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
+	xpIcon.BorderSizePixel = 0
+	xpIcon.Parent = container
+	
+	-- Make icon circular
+	local iconCorner = Instance.new("UICorner")
+	iconCorner.CornerRadius = UDim.new(1, 0)
+	iconCorner.Parent = xpIcon
+	
+	-- XP symbol on icon
+	local xpSymbol = Instance.new("TextLabel")
+	xpSymbol.Name = "XPSymbol"
+	xpSymbol.Size = UDim2.new(1, 0, 1, 0)
+	xpSymbol.Position = UDim2.new(0, 0, 0, -1)  -- Slight offset to visually center the star
+	xpSymbol.BackgroundTransparency = 1
+	xpSymbol.Text = "★"
+	xpSymbol.TextColor3 = Color3.fromRGB(40, 80, 150)
+	xpSymbol.TextScaled = true
+	xpSymbol.Font = Enum.Font.GothamBold
+	xpSymbol.TextXAlignment = Enum.TextXAlignment.Center
+	xpSymbol.TextYAlignment = Enum.TextYAlignment.Center
+	xpSymbol.Parent = xpIcon
+	
+	-- Level label (small, above XP value)
 	levelLabel = Instance.new("TextLabel")
 	levelLabel.Name = "LevelLabel"
-	levelLabel.Size = UDim2.new(0, 50, 0, 24)
-	levelLabel.Position = UDim2.new(0, 8, 0, 4)
+	levelLabel.Size = UDim2.new(0, 40, 0, 16)
+	levelLabel.Position = UDim2.new(0, 44, 0, 2)
 	levelLabel.BackgroundTransparency = 1
 	levelLabel.Text = "Lv.1"
-	levelLabel.TextColor3 = Color3.fromRGB(150, 220, 255)
-	levelLabel.TextSize = 18
+	levelLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+	levelLabel.TextSize = 12
 	levelLabel.Font = Enum.Font.GothamBold
 	levelLabel.TextXAlignment = Enum.TextXAlignment.Left
 	levelLabel.Parent = container
 	
-	-- Level stroke
-	local levelStroke = Instance.new("UIStroke")
-	levelStroke.Color = Color3.fromRGB(0, 0, 0)
-	levelStroke.Thickness = 1
-	levelStroke.Transparency = 0.5
-	levelStroke.Parent = levelLabel
-	
 	-- XP text label
 	xpLabel = Instance.new("TextLabel")
 	xpLabel.Name = "XPLabel"
-	xpLabel.Size = UDim2.new(0, 85, 0, 24)
-	xpLabel.Position = UDim2.new(0, 58, 0, 4)
+	xpLabel.Size = UDim2.new(0, 100, 0, 20)
+	xpLabel.Position = UDim2.new(0, 44, 0, 17)
 	xpLabel.BackgroundTransparency = 1
-	xpLabel.Text = "0 / 100 XP"
-	xpLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	xpLabel.TextSize = 12
-	xpLabel.Font = Enum.Font.Gotham
-	xpLabel.TextXAlignment = Enum.TextXAlignment.Right
+	xpLabel.Text = "0"
+	xpLabel.TextColor3 = Color3.fromRGB(100, 180, 255)
+	xpLabel.TextSize = 18
+	xpLabel.Font = Enum.Font.GothamBold
+	xpLabel.TextXAlignment = Enum.TextXAlignment.Left
 	xpLabel.Parent = container
 	
-	-- XP bar background
-	xpBar = Instance.new("Frame")
-	xpBar.Name = "XPBar"
-	xpBar.Size = UDim2.new(1, -16, 0, 12)
-	xpBar.Position = UDim2.new(0, 8, 0, 32)
-	xpBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-	xpBar.BorderSizePixel = 0
-	xpBar.Parent = container
-	
-	local barCorner = Instance.new("UICorner")
-	barCorner.CornerRadius = UDim.new(0, 4)
-	barCorner.Parent = xpBar
-	
-	-- XP bar fill
-	xpBarFill = Instance.new("Frame")
-	xpBarFill.Name = "Fill"
-	xpBarFill.Size = UDim2.new(0, 0, 1, 0)
-	xpBarFill.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
-	xpBarFill.BorderSizePixel = 0
-	xpBarFill.Parent = xpBar
-	
-	local fillCorner = Instance.new("UICorner")
-	fillCorner.CornerRadius = UDim.new(0, 4)
-	fillCorner.Parent = xpBarFill
-	
-	-- Gradient on fill
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 200, 255)),
-	})
-	gradient.Rotation = 90
-	gradient.Parent = xpBarFill
+	-- Stroke for better visibility
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(0, 0, 0)
+	stroke.Thickness = 1
+	stroke.Transparency = 0.5
+	stroke.Parent = xpLabel
 	
 	Log.Info(CONTEXT, "XPGui created")
 end

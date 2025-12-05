@@ -13,6 +13,9 @@
         "util": {
           "$path": "../../shared/util"
         },
+        "ui": {
+          "$path": "../../shared/ui"
+        },
         "RemoteEvents": {
           "$path": "../../shared/RemoteEvents.luau"
         },

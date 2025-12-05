@@ -4,7 +4,44 @@ Use this checklist to track and complete improvements one-by-one.
 
 ## 🚧 Active Tasks
 
-_No active tasks - Animal Template System complete!_
+### [SHARED-UI-1] Refactor PlayerMenuController to Shared Module
+**Goal:** Unify PlayerMenuController between arena and lobby places to ensure consistent behavior.
+
+**Background:**
+- Both arena and lobby places have their own `PlayerMenuController.luau` 
+- The lobby version is more up-to-date with a better favorite animal selection system (includes "Remove" button)
+- Both versions already have `canModifyFavorites` flag logic for locking favorites during games
+- The server controls `canModifyFavorites` via `FavoriteAnimalsUpdatedEvent`
+
+**Tasks:**
+- [ ] **Step 1:** Create `shared/ui/` folder structure
+- [ ] **Step 2:** Copy lobby's `PlayerMenuController.luau` to `shared/ui/PlayerMenuController.luau`
+- [ ] **Step 3:** Update `arena/default.project.json` to include shared UI folder:
+  ```json
+  "ui": {
+    "$path": "../../shared/ui"
+  }
+  ```
+  (inside ReplicatedStorage.Shared)
+- [ ] **Step 4:** Verify lobby's `default.project.json` already maps entire shared folder (it does via `"$path": "../../shared"`)
+- [ ] **Step 5:** Update `arena/src/client/MainClient.client.luau` require path:
+  ```lua
+  -- From: require(script.Parent.ui.PlayerMenuController)
+  -- To:   require(ReplicatedStorage.Shared.ui.PlayerMenuController)
+  ```
+- [ ] **Step 6:** Update `lobby/src/client/MainClient.client.luau` require path similarly
+- [ ] **Step 7:** Delete old place-specific controllers:
+  - `places/arena/src/client/ui/PlayerMenuController.luau`
+  - `places/lobby/src/client/ui/PlayerMenuController.luau`
+- [ ] **Step 8:** Test in both places:
+  - Arena: Verify favorites are locked during active game, other tabs work
+  - Lobby: Verify favorites can be changed freely, all features work
+
+**Architecture Notes:**
+- The `canModifyFavorites` boolean is already controlled server-side via `FavoriteAnimalsUpdatedEvent`
+- Arena server should set `canModify = false` when game is running
+- Lobby server should always set `canModify = true`
+- No code changes needed in the shared module for game-state awareness
 
 ---
 

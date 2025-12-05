@@ -10,7 +10,7 @@ local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
 -- UI Controllers
 local LobbyUIController = require(script.Parent:WaitForChild("LobbyUIController"))
-local PlayerMenuController = require(script.Parent:WaitForChild("ui"):WaitForChild("PlayerMenuController"))
+local PlayerMenuController = require(Shared:WaitForChild("ui"):WaitForChild("PlayerMenuController"))
 local PortalController = require(script.Parent:WaitForChild("PortalController"))
 
 -- Visual Controllers

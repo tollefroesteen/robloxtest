@@ -22,9 +22,13 @@ local UI_CONTROLLERS = {
 	"CoinsController",
 	"XPController",
 	"AchievementNotificationController",
-	"PlayerMenuController",
 	"RespawnController",
 	"GameEndController",
+}
+
+-- Controllers loaded from shared/ui (unified across places)
+local SHARED_UI_CONTROLLERS = {
+	"PlayerMenuController",
 }
 
 -- Controllers in the controllers folder
@@ -52,6 +56,22 @@ local function loadControllers()
 					else
 						Log.Warn(CONTEXT, "Failed to load controller: " .. name .. " -> " .. tostring(loaded))
 					end
+				end
+			end
+		end
+	end
+	
+	-- Load shared UI controllers (from ReplicatedStorage.Shared.ui)
+	local sharedUiFolder = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ui")
+	for _, name in ipairs(SHARED_UI_CONTROLLERS) do
+		if controllers[name] == nil then
+			local module = sharedUiFolder:FindFirstChild(name)
+			if module and module:IsA("ModuleScript") then
+				local ok, loaded = pcall(require, module)
+				if ok then
+					controllers[name] = loaded
+				else
+					Log.Warn(CONTEXT, "Failed to load shared controller: " .. name .. " -> " .. tostring(loaded))
 				end
 			end
 		end

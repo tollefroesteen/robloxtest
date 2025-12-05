@@ -21,11 +21,15 @@ local TICK = 1/20
 local BASE_SPEED = 0.5
 local BASE_OBSERVATION_RADIUS = 25
 local SEPARATION_DISTANCE = 6
+local CRITICAL_SEPARATION_DISTANCE = 3  -- Below this, separation force is much stronger
+local SEPARATION_WEIGHT = 2.0           -- Base separation force multiplier
+local CRITICAL_SEPARATION_WEIGHT = 8.0  -- Multiplier when too close (prevents overlap)
 
 -- Player interaction (fallback defaults)
-local BASE_PLAYER_AVOID_RADIUS = 35
-local PLAYER_PANIC_RADIUS = 9
+local BASE_PLAYER_AVOID_RADIUS = 45
+local PLAYER_PANIC_RADIUS = 12
 local BASE_FEAR_FACTOR = 1.0  -- Multiplier for panic/avoid behavior
+local PLAYER_AVOID_WEIGHT = 3.0  -- How strongly players repel vs other forces
 
 -- Food attraction settings
 local FOOD_ATTRACT_RADIUS = 60     -- How far animals can detect food
@@ -34,13 +38,15 @@ local FOOD_EAT_RATE = 15           -- Food consumed per tick when eating
 local FOOD_ATTRACT_WEIGHT = 2.5    -- How strongly food pulls vs other forces
 
 -- Motion shaping
-local TURN_SMOOTH = 0.22
-local MOMENTUM_DECAY = 0.97
+local TURN_SMOOTH = 0.15          -- Lower = smoother turns, less spinning
+local MOMENTUM_DECAY = 0.92       -- Higher decay = less erratic movement
+local MIN_MOVE_SPEED = 0.05       -- Below this, don't rotate (prevents spinning in place)
+local DIRECTION_CHANGE_SMOOTH = 0.3  -- Smoothing for direction changes to prevent oscillation
 
 -- Panic behavior
-local PANIC_TIME = 0.35     -- stay scared this long
-local PANIC_BOOST = 2.2     -- panic speed multiplier
-local AVOID_FORCE = 1.6     -- base avoid power
+local PANIC_TIME = 0.5      -- stay scared this long
+local PANIC_BOOST = 2.5     -- panic speed multiplier
+local AVOID_FORCE = 2.5     -- base avoid power (increased for more fear)
 
 -- Scare action settings
 local SCARE_PANIC_TIME = 1.5   -- how long animals panic from scare action
@@ -48,6 +54,7 @@ local SCARE_BOOST = 3.0        -- speed multiplier when scared by player action
 
 -- State
 local velocities = {}       -- [BasePart] = Vector3
+local smoothedDirections = {} -- [BasePart] = Vector3 (smoothed facing direction)
 local panicUntil = {}       -- [BasePart] = timestamp
 local scareSource = {}      -- [BasePart] = Vector3 (position to flee from)
 local acc = 0
@@ -195,6 +202,20 @@ RunService.Heartbeat:Connect(function(dt)
 				local fleeVel = fleeDir * (maxSpeed * panicBoost)
 				vel = vel:Lerp(fleeVel, 0.5)  -- Faster lerp for more responsive flee
 			end
+			
+			-- Even while panicking, apply critical separation to prevent overlap
+			local neighbors = getNeighbors(root, CRITICAL_SEPARATION_DISTANCE * 2)
+			local emergencySeparation = Vector3.zero
+			for _, n in ipairs(neighbors) do
+				local diff = pos - n.Position
+				local dist = diff.Magnitude
+				if dist < CRITICAL_SEPARATION_DISTANCE and dist > 0 then
+					emergencySeparation += diff.Unit * (CRITICAL_SEPARATION_WEIGHT / dist)
+				end
+			end
+			if emergencySeparation.Magnitude > 0 then
+				vel = vel + emergencySeparation
+			end
 		else
 			-- Clear scare source when no longer panicking
 			scareSource[root] = nil
@@ -209,7 +230,13 @@ RunService.Heartbeat:Connect(function(dt)
 				local dist = diff.Magnitude
 
 				if dist < SEPARATION_DISTANCE and dist > 0 then
-					separation += diff.Unit / dist
+					-- Stronger separation when critically close to prevent overlap
+					local weight = SEPARATION_WEIGHT
+					if dist < CRITICAL_SEPARATION_DISTANCE then
+						-- Exponentially stronger force when very close
+						weight = CRITICAL_SEPARATION_WEIGHT * (CRITICAL_SEPARATION_DISTANCE / dist)
+					end
+					separation += diff.Unit * (weight / dist)
 				end
 
 				alignment += velocities[n] or Vector3.zero
@@ -222,13 +249,17 @@ RunService.Heartbeat:Connect(function(dt)
 				cohesion = ((cohesion / count) - pos).Unit
 			end
 
-			local desired = separation + alignment + cohesion
+			-- Separation takes priority - apply it with higher weight
+			local desired = separation * 1.5 + alignment * 0.5 + cohesion * 0.5
 
 			-- Player avoidance (non-panic) - scaled by FearFactor
+			-- This is applied BEFORE normalization so it has strong influence
 			local avoidRadius = BASE_PLAYER_AVOID_RADIUS * fearFactor
 			if playerDist < avoidRadius and playerDir.Magnitude > 0 then
 				local t = 1 - (playerDist / avoidRadius) -- 0..1
-				local avoidForce = AVOID_FORCE * fearFactor
+				-- Exponential falloff - much stronger when closer
+				local proximityMultiplier = 1 + (t * t * 3)  -- 1x at edge, 4x when very close
+				local avoidForce = AVOID_FORCE * fearFactor * PLAYER_AVOID_WEIGHT * proximityMultiplier
 				desired += playerDir.Unit * (t * avoidForce)
 			end
 			
@@ -283,9 +314,15 @@ RunService.Heartbeat:Connect(function(dt)
 		vel = Vector3.new(vel.X, 0, vel.Z)
 		local newPos = pos + vel * step
 
-		-- Rotate to face motion if moving
-		if vel.Magnitude > 0.001 then
-			root.CFrame = CFrame.lookAt(newPos, newPos + vel, Vector3.yAxis)
+		-- Rotate to face motion if moving fast enough (prevents spinning)
+		if vel.Magnitude > MIN_MOVE_SPEED then
+			-- Smooth the facing direction to prevent rapid spinning
+			local currentDir = smoothedDirections[root] or vel.Unit
+			local targetDir = vel.Unit
+			local smoothedDir = currentDir:Lerp(targetDir, DIRECTION_CHANGE_SMOOTH)
+			smoothedDirections[root] = smoothedDir
+			
+			root.CFrame = CFrame.lookAt(newPos, newPos + smoothedDir, Vector3.yAxis)
 		end
 
 		-- Use physics for motion for better collisions; tune multiplier for feel

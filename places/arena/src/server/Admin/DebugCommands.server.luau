@@ -361,6 +361,116 @@ local function onPlayerChatted(player: Player, message: string): nil
 		return
 	end
 	
+	-- /spawnall [delay] - spawn one of each animal type, spread out in a grid
+	-- Optional delay parameter (in seconds) controls ReadyForFlocking timing (default 0.5)
+	local spawnAllMatch = lowerMessage:match("^/spawnall%s*(%d*%.?%d*)$")
+	if lowerMessage == "/spawnall" or spawnAllMatch then
+		local delayStr = lowerMessage:match("^/spawnall%s*(%d*%.?%d*)$")
+		local readyDelay = tonumber(delayStr) or 0.5
+		
+		local library = getAnimalLibrary()
+		if library then
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if not root then
+				Log.Warn(CONTEXT, "Player has no HumanoidRootPart")
+				return
+			end
+			
+			-- Calculate grid layout for spreading animals
+			local animalCount = #library.List
+			local gridSize = math.ceil(math.sqrt(animalCount))
+			local spacing = 8 -- studs between each animal
+			
+			local spawned = 0
+			local startPos = root.Position + root.CFrame.LookVector * 15
+			
+			for i, animalDef in library.List do
+				-- Calculate grid position (row and column)
+				local row = math.floor((i - 1) / gridSize)
+				local col = (i - 1) % gridSize
+				
+				-- Center the grid around the start position
+				local offsetX = (col - gridSize / 2) * spacing
+				local offsetZ = row * spacing
+				
+				-- Calculate world position using player's facing direction
+				local rightVector = root.CFrame.RightVector
+				local lookVector = root.CFrame.LookVector
+				local spawnPos = startPos + rightVector * offsetX + lookVector * offsetZ
+				
+				local builder = getAnimalBuilder()
+				if not builder then
+					Log.Warn(CONTEXT, "AnimalBuilder not available")
+					return
+				end
+				
+				-- Ensure Flock folder exists
+				local flockFolder = workspace:FindFirstChild("Flock")
+				if not flockFolder then
+					flockFolder = Instance.new("Folder")
+					flockFolder.Name = "Flock"
+					flockFolder.Parent = workspace
+				end
+				
+				local targetPos = Vector3.new(spawnPos.X, spawnPos.Y + 2, spawnPos.Z)
+				
+				-- Build the animal
+				local templateID = animalDef.Template or "DEFAULT"
+				local clone = builder.BuildAnimal(templateID, animalDef.Color, targetPos)
+				
+				-- Set attributes
+				clone:SetAttribute("TemplateID", templateID)
+				clone:SetAttribute("PointValue", animalDef.PointValue)
+				clone:SetAttribute("CurrentPointValue", animalDef.PointValue)
+				clone:SetAttribute("MaxSpeed", animalDef.MaxSpeed)
+				clone:SetAttribute("Hungriness", animalDef.Hungriness)
+				clone:SetAttribute("FearFactor", animalDef.FearFactor)
+				clone:SetAttribute("ObservationRadius", animalDef.ObservationRadius)
+				clone:SetAttribute("ID", animalDef.ID)
+				clone:SetAttribute("Team", "None")
+				clone:SetAttribute("InCage", false)
+				clone:SetAttribute("MovementState", "Idle")
+				
+				-- Set color on body
+				local visual = clone:FindFirstChild("Visual")
+				if visual then
+					local bouncepart = visual:FindFirstChild("Bouncepart")
+					if bouncepart then
+						bouncepart.Color = animalDef.Color.Color
+					end
+				end
+				
+				clone.Parent = flockFolder
+				clone:SetNetworkOwner(nil)
+				
+				-- Mark as ready for flocking after delay
+				task.delay(readyDelay, function()
+					if clone and clone.Parent then
+						clone:SetAttribute("ReadyForFlocking", true)
+					end
+				end)
+				
+				-- Fire spawn events
+				local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+				RemoteEvents.AnimalSpawnedEvent:FireAllClients(clone)
+				ServerEvents.FlockSpawnedEvent:Fire(clone)
+				
+				spawned += 1
+				
+				-- Small delay between spawns to ensure proper initialization
+				if i < animalCount then
+					task.wait(0.05)
+				end
+			end
+			
+			Log.Info(CONTEXT, string.format("%s spawned all %d animal types in grid with delay %.2fs", player.Name, spawned, readyDelay))
+		else
+			Log.Warn(CONTEXT, "AnimalLibraryModule not available")
+		end
+		return
+	end
+	
 	-- /listanimals - list all available animal IDs
 	if lowerMessage == "/listanimals" then
 		local library = getAnimalLibrary()
@@ -586,7 +696,7 @@ local function onPlayerChatted(player: Player, message: string): nil
 		Log.Info(CONTEXT, "Achievements: /grantallbonusachievements, /setlevel <level>")
 		Log.Info(CONTEXT, "Scores: /setredscore <score>, /setbluescore <score>, /setscore <red> <blue>, /resetscores")
 		Log.Info(CONTEXT, "Teams: /switchteam [red|blue], /teamstatus, /setgameactive <true|false>, /simulateforfeit <red|blue>")
-		Log.Info(CONTEXT, "Animals: /spawnanimal <id> [delay], /spawnrandom [count] [delay], /listanimals")
+		Log.Info(CONTEXT, "Animals: /spawnanimal <id> [delay], /spawnrandom [count] [delay], /spawnall [delay], /listanimals")
 		return
 	end
 	

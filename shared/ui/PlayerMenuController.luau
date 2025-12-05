@@ -18,6 +18,7 @@ local InventoryTab = require(script.Parent:WaitForChild("InventoryTab"))
 local AchievementsTab = require(script.Parent:WaitForChild("AchievementsTab"))
 local StatsTab = require(script.Parent:WaitForChild("StatsTab"))
 local ShopTab = require(script.Parent:WaitForChild("ShopTab"))
+local AnimalsTab = require(script.Parent:WaitForChild("AnimalsTab"))
 
 local CONTEXT = "PlayerMenuController"
 local player: Player = Players.LocalPlayer
@@ -43,6 +44,7 @@ local inventoryContainer: ScrollingFrame? = nil
 local achievementsContainer: ScrollingFrame? = nil
 local statsContainer: ScrollingFrame? = nil
 local shopContainer: ScrollingFrame? = nil
+local animalsContainer: ScrollingFrame? = nil
 local tabButtons: { [string]: TextButton } = {}
 local coinBalanceLabel: TextLabel? = nil
 
@@ -108,10 +110,10 @@ local function createMenuGui(): nil
 	tabPadding.Parent = tabBar
 	
 	-- Create tabs
-	local tabs = { "Inventory", "Shop", "Achievements", "Stats" }
+	local tabs = { "Inventory", "Shop", "Animals", "Achievements", "Stats" }
 	for _, tabName in ipairs(tabs) do
 		local isSelected = tabName == currentTab
-		local tabWidth = if tabName == "Achievements" then 105 else 85
+		local tabWidth = if tabName == "Achievements" then 95 elseif tabName == "Animals" then 70 else 75
 		local button = UIHelpers.createTextButton(
 			tabName .. "Tab",
 			tabName,
@@ -120,7 +122,7 @@ local function createMenuGui(): nil
 			if isSelected then UIHelpers.TAB_COLORS.Selected else UIHelpers.TAB_COLORS.Unselected,
 			tabBar
 		)
-		button.TextSize = 13
+		button.TextSize = 12
 		tabButtons[tabName] = button
 		
 		button.MouseButton1Click:Connect(function()
@@ -237,6 +239,36 @@ local function createMenuGui(): nil
 	shopPadding.PaddingBottom = UDim.new(0, 15)
 	shopPadding.Parent = shopContainer
 	
+	-- Animals container (scrolling)
+	animalsContainer = Instance.new("ScrollingFrame")
+	animalsContainer.Name = "AnimalsContainer"
+	animalsContainer.Size = UDim2.new(1, -10, 1, -10)
+	animalsContainer.Position = UDim2.new(0, 5, 0, 5)
+	animalsContainer.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	animalsContainer.BackgroundTransparency = 0
+	animalsContainer.BorderSizePixel = 0
+	animalsContainer.ScrollBarThickness = 6
+	animalsContainer.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+	animalsContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+	animalsContainer.Visible = false
+	animalsContainer.Parent = contentArea
+	
+	local animalsCorner = Instance.new("UICorner")
+	animalsCorner.CornerRadius = UDim.new(0, 8)
+	animalsCorner.Parent = animalsContainer
+	
+	local animalsList = Instance.new("UIListLayout")
+	animalsList.Padding = UDim.new(0, 8)
+	animalsList.SortOrder = Enum.SortOrder.LayoutOrder
+	animalsList.Parent = animalsContainer
+	
+	local animalsPadding = Instance.new("UIPadding")
+	animalsPadding.PaddingLeft = UDim.new(0, 15)
+	animalsPadding.PaddingTop = UDim.new(0, 15)
+	animalsPadding.PaddingRight = UDim.new(0, 15)
+	animalsPadding.PaddingBottom = UDim.new(0, 15)
+	animalsPadding.Parent = animalsContainer
+	
 	-- Open menu button (bottom-left corner)
 	local openButton = UIHelpers.createTextButton("OpenMenuButton", "📦", UDim2.new(0, 50, 0, 50), UDim2.new(0, 10, 1, -60), Color3.fromRGB(60, 60, 60), menuGui :: ScreenGui)
 	openButton.TextSize = 24
@@ -292,6 +324,7 @@ local function populateStats(): nil
 			cachedFavoriteAnimals = cachedFavoriteAnimals,
 			canModifyFavorites = canModifyFavorites,
 			menuGui = menuGui,
+			cachedInventory = cachedInventory,
 		})
 	end
 end
@@ -300,6 +333,17 @@ local function populateShop(): nil
 	if shopContainer then
 		coinBalanceLabel = ShopTab.populate(shopContainer, {
 			cachedInventory = cachedInventory,
+		})
+	end
+end
+
+local function populateAnimals(): nil
+	if animalsContainer then
+		AnimalsTab.populate(animalsContainer, {
+			cachedStats = cachedStats,
+			cachedFavoriteAnimals = cachedFavoriteAnimals,
+			canModifyFavorites = canModifyFavorites,
+			menuGui = menuGui,
 		})
 	end
 end
@@ -326,6 +370,9 @@ function PlayerMenuController.SwitchTab(tabName: string): nil
 	if shopContainer then
 		shopContainer.Visible = tabName == "Shop"
 	end
+	if animalsContainer then
+		animalsContainer.Visible = tabName == "Animals"
+	end
 	
 	-- Populate content
 	if tabName == "Inventory" then
@@ -336,6 +383,8 @@ function PlayerMenuController.SwitchTab(tabName: string): nil
 		populateStats()
 	elseif tabName == "Shop" then
 		populateShop()
+	elseif tabName == "Animals" then
+		populateAnimals()
 	end
 end
 
@@ -430,6 +479,8 @@ function PlayerMenuController.Init(): nil
 				populateInventory()
 			elseif currentTab == "Shop" then
 				populateShop()
+			elseif currentTab == "Stats" then
+				populateStats()
 			end
 		end
 	end)
@@ -448,6 +499,8 @@ function PlayerMenuController.Init(): nil
 				populateAchievements()
 			elseif currentTab == "Stats" then
 				populateStats()
+			elseif currentTab == "Animals" then
+				populateAnimals()
 			end
 		end
 	end)
@@ -487,8 +540,12 @@ function PlayerMenuController.Init(): nil
 		cachedFavoriteAnimals = favorites
 		canModifyFavorites = canModify
 		
-		if isMenuOpen and currentTab == "Stats" then
-			populateStats()
+		if isMenuOpen then
+			if currentTab == "Stats" then
+				populateStats()
+			elseif currentTab == "Animals" then
+				populateAnimals()
+			end
 		end
 		
 		-- Show toast for success/failure on toggle

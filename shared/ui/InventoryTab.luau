@@ -122,6 +122,11 @@ function InventoryTab.populate(container: ScrollingFrame, cachedInventory: { Ite
 	
 	local itemCount = 0
 	for itemID, itemData in cachedInventory.Items do
+		-- Skip coins - they are displayed in Stats tab, not as inventory items
+		if itemID == "COIN" then
+			continue
+		end
+		
 		local definition = ItemRegistry.GetItem(itemID)
 		if definition and itemData.Quantity > 0 then
 			local cell = createInventoryItem(itemData, definition)

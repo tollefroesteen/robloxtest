@@ -1212,7 +1212,7 @@ local function populateStats(): nil
 				-- Name
 				local favNameLabel = Instance.new("TextLabel")
 				favNameLabel.Name = "Name"
-				favNameLabel.Size = UDim2.new(0.6, -50, 0, 20)
+				favNameLabel.Size = UDim2.new(0.5, -50, 0, 20)
 				favNameLabel.Position = UDim2.new(0, 50, 0, 5)
 				favNameLabel.BackgroundTransparency = 1
 				favNameLabel.Text = animalDef.Name
@@ -1226,7 +1226,7 @@ local function populateStats(): nil
 				local rarity = AnimalLibraryModule.GetRarity(animalDef.SpawnChance)
 				local favRarityLabel = Instance.new("TextLabel")
 				favRarityLabel.Name = "Rarity"
-				favRarityLabel.Size = UDim2.new(0.6, -50, 0, 14)
+				favRarityLabel.Size = UDim2.new(0.5, -50, 0, 14)
 				favRarityLabel.Position = UDim2.new(0, 50, 0, 26)
 				favRarityLabel.BackgroundTransparency = 1
 				favRarityLabel.Text = rarity .. " • " .. animalDef.PointValue .. " pts"
@@ -1235,6 +1235,24 @@ local function populateStats(): nil
 				favRarityLabel.Font = Enum.Font.Gotham
 				favRarityLabel.TextXAlignment = Enum.TextXAlignment.Left
 				favRarityLabel.Parent = favCard
+				
+				-- Unfavorite button (quick remove)
+				local unfavButton = createTextButton(
+					"UnfavoriteButton",
+					"✕ Remove",
+					UDim2.new(0, 70, 0, 24),
+					UDim2.new(1, -80, 0.5, -12),
+					Color3.fromRGB(120, 60, 50),
+					favCard
+				)
+				unfavButton.TextSize = 10
+				
+				-- Capture animalID for the closure
+				local capturedAnimalID = animalID
+				unfavButton.MouseButton1Click:Connect(function()
+					Log.Info(CONTEXT, string.format("Quick unfavorite: %s", capturedAnimalID))
+					RemoteEvents.SetFavoriteAnimalEvent:FireServer(capturedAnimalID)
+				end)
 				
 				order += 1
 			end
@@ -2202,6 +2220,10 @@ function PlayerMenuController.Init(): nil
 		-- Also extract achievements if included
 		if stats and stats.Achievements then
 			cachedAchievements = stats.Achievements
+		end
+		-- Also extract favorite animals if included
+		if stats and stats.FavoriteAnimals then
+			cachedFavoriteAnimals = stats.FavoriteAnimals
 		end
 		if isMenuOpen then
 			if currentTab == "Achievements" then

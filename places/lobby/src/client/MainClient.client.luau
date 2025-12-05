@@ -13,6 +13,9 @@ local LobbyUIController = require(script.Parent:WaitForChild("LobbyUIController"
 local PlayerMenuController = require(script.Parent:WaitForChild("ui"):WaitForChild("PlayerMenuController"))
 local PortalController = require(script.Parent:WaitForChild("PortalController"))
 
+-- Visual Controllers
+local PetFollowController = require(script.Parent:WaitForChild("PetFollowController"))
+
 local CONTEXT = "LobbyClient"
 
 local player = Players.LocalPlayer
@@ -27,5 +30,8 @@ PlayerMenuController.Init()
 
 -- Initialize portal controller (countdown teleport to arena)
 PortalController.Init()
+
+-- Initialize pet follow controller (animates pet companions)
+PetFollowController.Init()
 
 Log.Info(CONTEXT, "Lobby client initialized for " .. player.Name)

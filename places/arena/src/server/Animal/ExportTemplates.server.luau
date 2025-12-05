@@ -9,7 +9,10 @@
 -- 3. Copy each template's OBJ content and save as TemplateName.obj
 -- 4. Import into Blender: File > Import > Wavefront (.obj)
 
-local AnimalTemplates = require(script.Parent.AnimalTemplates)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AnimalTemplates = require(Shared:WaitForChild("data"):WaitForChild("AnimalTemplates"))
 
 -- Only run once (disable after first run)
 local hasRun = script:GetAttribute("HasRun")

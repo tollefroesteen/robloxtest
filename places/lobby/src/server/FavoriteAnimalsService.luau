@@ -2,6 +2,7 @@
 -- FavoriteAnimalsService.luau (Lobby)
 -- Handles favorite animal selection in the lobby
 -- In the lobby, favorites can always be modified (no active game)
+-- Also integrates with PetFollowService to spawn pet companions
 
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
@@ -12,6 +13,20 @@ local PlayerDataTypes = require(Shared:WaitForChild("data"):WaitForChild("Player
 local AnimalLibraryModule = require(Shared:WaitForChild("data"):WaitForChild("AnimalLibraryModule"))
 local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
 local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
+
+-- Lazy load PetFollowService to avoid circular dependency
+local PetFollowService: any = nil
+local function getPetFollowService()
+	if not PetFollowService then
+		local success, service = pcall(function()
+			return require(script.Parent.PetFollowService)
+		end)
+		if success then
+			PetFollowService = service
+		end
+	end
+	return PetFollowService
+end
 
 local CONTEXT = "FavoriteAnimalsService"
 local MAX_FAVORITES = 2
@@ -114,6 +129,12 @@ function FavoriteAnimalsService.SyncFavoritesToClient(player: Player, success: b
 	local canModify = true
 	
 	RemoteEvents.FavoriteAnimalsUpdatedEvent:FireClient(player, favorites, canModify, success, errorMsg)
+	
+	-- Update pet companions to match favorites
+	local petService = getPetFollowService()
+	if petService then
+		petService.UpdatePets(player, favorites)
+	end
 end
 
 -- Toggle favorite animal
@@ -130,13 +151,6 @@ local function toggleFavoriteAnimal(player: Player, animalID: string)
 	if not animalInfo then
 		Log.Warn(CONTEXT, string.format("Player %s tried to favorite invalid animal: %s", player.Name, animalID))
 		FavoriteAnimalsService.SyncFavoritesToClient(player, false, "Invalid animal")
-		return
-	end
-	
-	-- Check player has captured this animal
-	if not hasPlayerCapturedAnimal(player, animalID) then
-		Log.Warn(CONTEXT, string.format("Player %s tried to favorite uncaptured animal: %s", player.Name, animalID))
-		FavoriteAnimalsService.SyncFavoritesToClient(player, false, "You haven't captured this animal")
 		return
 	end
 	
@@ -157,10 +171,17 @@ local function toggleFavoriteAnimal(player: Player, animalID: string)
 	end
 	
 	if foundIndex then
-		-- Remove from favorites
+		-- Remove from favorites (no capture check needed - already in favorites)
 		table.remove(favorites, foundIndex)
 		Log.Info(CONTEXT, string.format("Player %s removed %s from favorites", player.Name, animalID))
 	else
+		-- Adding to favorites - check player has captured this animal
+		if not hasPlayerCapturedAnimal(player, animalID) then
+			Log.Warn(CONTEXT, string.format("Player %s tried to favorite uncaptured animal: %s", player.Name, animalID))
+			FavoriteAnimalsService.SyncFavoritesToClient(player, false, "You haven't captured this animal")
+			return
+		end
+		
 		-- Check if at max
 		if #favorites >= MAX_FAVORITES then
 			Log.Info(CONTEXT, string.format("Player %s already has %d favorites, cannot add more", player.Name, MAX_FAVORITES))
@@ -193,6 +214,12 @@ function FavoriteAnimalsService.InitPlayer(player: Player)
 	
 	Log.Info(CONTEXT, string.format("Initialized player %s with %d favorites", player.Name, #data.Stats.FavoriteAnimals))
 	
+	-- Initialize pet companions
+	local petService = getPetFollowService()
+	if petService then
+		petService.InitPlayer(player, data.Stats.FavoriteAnimals)
+	end
+	
 	-- Send initial sync to client
 	task.defer(function()
 		FavoriteAnimalsService.SyncFavoritesToClient(player, nil, nil)
@@ -204,6 +231,13 @@ function FavoriteAnimalsService.CleanupPlayer(player: Player)
 	-- Save any pending changes before cleanup
 	savePlayerData(player)
 	playerDataCache[player] = nil
+	
+	-- Cleanup pet companions
+	local petService = getPetFollowService()
+	if petService then
+		petService.CleanupPlayer(player)
+	end
+	
 	Log.Info(CONTEXT, string.format("Cleaned up player %s", player.Name))
 end
 

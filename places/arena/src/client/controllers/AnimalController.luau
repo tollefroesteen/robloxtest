@@ -1,37 +1,137 @@
 --!strict
+--[[
+	AnimalController.luau (Client-Side)
+	
+	PURPOSE:
+	This controller smoothly interpolates animal visuals to follow server-authoritative
+	positions, and adds procedural animation (body bob, leg movement) for visual polish.
+	
+	HOW IT WORKS:
+	1. Server (Flocking.server.luau) calculates positions at 20 ticks/sec using boids algorithm
+	2. Server sets "TargetPos" attribute on each animal's root part
+	3. This client controller runs every frame (RenderStepped, ~60fps)
+	4. Client lerps the Visual/Bouncepart toward TargetPos for smooth motion
+	5. Client adds procedural animation on top (bob, leg swing)
+	
+	HIERARCHY:
+	AnimalTemplate (root BasePart - moved by server physics)
+	└── Visual (BasePart - client lerps this to follow root)
+	    └── Bouncepart (BasePart - client adds bob animation here)
+	        ├── LegFL, LegFR, LegBL, LegBR (BaseParts - client animates these)
+	        └── Body/Head/Tail blocks (welded, follow Bouncepart)
+]]
+
 local RunService = game:GetService("RunService")
 
 local AnimalController = {}
 
 local Flock = workspace:WaitForChild("Flock") :: Folder
 
--- Debug flag - set to true to see bind pose capture info
+-- Debug flag - set to true to see bind pose capture info in output
 local DEBUG_BIND_POSE = false
 
--- === BODY FOLLOW TUNING ===
-local FOLLOW_LERP    = 0.28
-local ROTATION_LERP  = 0.15
-local HEIGHT_OFFSET  = 2
+-- ============================================================================
+-- BODY FOLLOW TUNING
+-- These control how the visible animal follows the server's root position
+-- ============================================================================
 
--- === BODY BOUNCE ===
-local BOB_AMPLITUDE  = 0.5
-local BOB_FREQUENCY  = 15
+-- FOLLOW_LERP: How quickly the visual catches up to server position (0-1)
+--   Lower (0.1): Floaty, laggy feel - visual trails behind server position
+--   Higher (0.5): Snappy, responsive - visual stays close to server position
+--   Too high: Can look jittery if server updates are infrequent
+local FOLLOW_LERP = 0.6
 
--- === LEG ANIMATION TUNING ===
-local LEG_FREQUENCY       = 9
-local LEG_SWING_DEGREES   = 25
-local LEG_LIFT            = 0.15
-local LEG_PUSH            = 0.10
-local LEG_SWAY            = 0.0
-local LEG_BOUNCE_FACTOR   = 0.2
+-- ROTATION_LERP: How quickly the visual rotates to face movement direction (0-1)
+--   Lower (0.05): Slow, smooth turning - animals bank into turns gracefully
+--   Higher (0.3): Quick snapping - animals instantly face their direction
+--   Note: This reads from root.CFrame.LookVector which server controls
+local ROTATION_LERP = 0.15
+
+-- HEIGHT_OFFSET: Vertical offset for the Visual above the root part (studs)
+--   The root part is at ground level for collision; Visual floats above it
+--   Increase for taller animals or if animals appear sunken into ground
+local HEIGHT_OFFSET = 2
+
+-- ============================================================================
+-- BODY BOUNCE (BOB) ANIMATION
+-- Adds a subtle up/down bounce to make animals feel alive when moving
+-- ============================================================================
+
+-- BOB_AMPLITUDE: How far up/down the body bounces (studs)
+--   Lower (0.2): Subtle, gentle bounce
+--   Higher (1.0): Exaggerated cartoon bounce
+--   0 = No bounce at all
+local BOB_AMPLITUDE = 0.5
+
+-- BOB_FREQUENCY: How fast the body bounces (cycles per second, roughly)
+--   Lower (5): Slow, lumbering bounce - good for large animals
+--   Higher (20): Fast, energetic bounce - good for small animals
+--   Should roughly match perceived movement speed
+local BOB_FREQUENCY = 15
+
+-- ============================================================================
+-- LEG ANIMATION TUNING
+-- Procedural walk cycle - legs swing forward/back with lift
+-- ============================================================================
+
+-- LEG_FREQUENCY: How fast legs cycle through walk animation
+--   Lower (5): Slow walk cycle - legs move slowly
+--   Higher (15): Fast walk cycle - running/scurrying
+--   Should feel synchronized with BOB_FREQUENCY for natural motion
+local LEG_FREQUENCY = 9
+
+-- LEG_SWING_DEGREES: How far legs rotate forward/backward (degrees)
+--   Lower (10): Small steps - shuffling motion
+--   Higher (45): Large steps - exaggerated cartoon walk
+--   This is the rotation around the leg's pivot point (hip)
+local LEG_SWING_DEGREES = 25
+
+-- LEG_LIFT: How high legs lift off ground at peak of step (studs)
+--   Lower (0.05): Feet barely leave ground - shuffling
+--   Higher (0.3): High stepping - marching or prancing
+--   0 = Legs slide without lifting
+local LEG_LIFT = 0.15
+
+-- LEG_PUSH: How far legs move forward/backward (studs)
+--   Adds translational movement in addition to rotation
+--   Creates "reaching" motion - leg extends forward then pushes back
+--   0 = Pure rotation only, no forward reach
+local LEG_PUSH = 0.10
+
+-- LEG_SWAY: Side-to-side leg movement (studs)
+--   Adds lateral wobble to walk cycle
+--   Higher values = waddle-like motion
+--   0 = No side sway (current setting)
+local LEG_SWAY = 0.0
+
+-- LEG_BOUNCE_FACTOR: How much legs bounce with body bob (multiplier)
+--   Connects leg motion to body bounce for cohesive feel
+--   0 = Legs ignore body bounce
+--   1 = Legs bounce same amount as body
+local LEG_BOUNCE_FACTOR = 0.2
+
+-- LEG_BOUNCE_PHASE_OFFSET: Timing offset for leg bounce vs body bounce
+--   Creates slight delay between body and leg bounce
+--   Higher = More separation, can look like "follow-through"
 local LEG_BOUNCE_PHASE_OFFSET = 0.15
 
--- Gait phase
+-- ============================================================================
+-- GAIT PATTERN
+-- Phase offsets create the diagonal gait (opposite legs move together)
+-- ============================================================================
+
+-- LegOffsets: Phase offset for each leg in the walk cycle (radians)
+--   0 and π are opposite phases (when one is forward, other is back)
+--   Current pattern: FL+BR together, FR+BL together (diagonal/trot gait)
+--   
+--   Alternative patterns:
+--   - Pace gait (same-side legs): FL=0, BL=0, FR=π, BR=π
+--   - Walk (sequential): FL=0, FR=π/2, BL=π, BR=3π/2
 local LegOffsets: {[string]: number} = {
-	LegFL = 0,
-	LegFR = math.pi,
-	LegBL = math.pi,
-	LegBR = 0
+	LegFL = 0,        -- Front-left: phase 0
+	LegFR = math.pi,  -- Front-right: opposite phase
+	LegBL = math.pi,  -- Back-left: opposite phase (pairs with FR)
+	LegBR = 0         -- Back-right: same phase as FL (diagonal pair)
 }
 
 local function ensurePhase(root)

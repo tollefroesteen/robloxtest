@@ -33,10 +33,10 @@ local PLAY_AREA_ONLY = false      -- Set to true for faster generation
 local HILLS_CONFIG = {
 	Enabled = true,
 	Density = 0.8,           -- Hills per 10k sq units (0.3=sparse, 1.5=dense, 3.0=very hilly)
-	MinRadius = 10,          -- Smallest hill radius (studs)
-	MaxRadius = 45,          -- Largest hill radius (studs)
-	MinHeight = 4,           -- Shortest hill peak (studs)
-	MaxHeight = 18,          -- Tallest hill peak (studs)
+	MinRadius = 40,          -- Smallest hill radius (studs)
+	MaxRadius = 80,          -- Largest hill radius (studs)
+	MinHeight = 5,           -- Shortest hill peak (studs)
+	MaxHeight = 20,          -- Tallest hill peak (studs)
 	Steepness = 1.0,         -- Slope gradient (0.5=gentle, 1.0=normal, 2.0=steep)
 	FalloffPower = 2.0,      -- Shape (1=cone, 2=dome/natural, 3=plateau-top)
 }

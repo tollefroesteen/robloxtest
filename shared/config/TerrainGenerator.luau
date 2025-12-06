@@ -23,6 +23,14 @@ type Hill = {
 	height: number,
 }
 
+-- Mountain peak data structure
+type Peak = {
+	x: number,
+	z: number,
+	radius: number,
+	height: number,
+}
+
 local TerrainGenerator = {}
 
 -- Cache terrain reference
@@ -30,6 +38,9 @@ local terrain: Terrain = workspace.Terrain
 
 -- Generated hills cache (persists between height queries)
 local generatedHills: {Hill} = {}
+
+-- Generated mountain peaks cache
+local generatedPeaks: {Peak} = {}
 
 -- Material enum shortcuts
 local Materials = {
@@ -163,6 +174,148 @@ local function getHillHeightAt(x: number, z: number): number
 end
 
 --[=[
+	Generate mountain peak positions in the mountain zone.
+	@param rng -- Seeded random generator
+	@return {Peak} -- Array of peak data
+]=]
+local function generateMountainPeaks(rng: SeededRandom): {Peak}
+	local peaks: {Peak} = {}
+	local mtConfig = ProceduralConfig.Mountains
+	local world = ProceduralConfig.World
+	local playArea = ProceduralConfig.PlayArea
+	local transition = ProceduralConfig.Transition
+	
+	if not mtConfig.Enabled then
+		return peaks
+	end
+	
+	-- Mountain zone starts after transition
+	local mountainStartX = playArea.MaxX + transition.Width
+	local mountainStartZ = playArea.MaxZ + transition.Width
+	
+	-- Calculate mountain area (rough approximation - ring around play area)
+	local mountainArea = (world.SizeX * world.SizeZ) - ((playArea.SizeX + transition.Width * 2) * (playArea.SizeZ + transition.Width * 2))
+	local targetPeakCount = math.floor(mountainArea / 10000 * mtConfig.PeakDensity)
+	
+	local peakRng = rng:SubSeed("peaks")
+	local avgRadius = (mtConfig.PeakMinRadius + mtConfig.PeakMaxRadius) / 2
+	local minSpacing = avgRadius * 0.6  -- Allow closer peaks for mountain ranges
+	
+	local maxAttempts = targetPeakCount * 15
+	local attempts = 0
+	
+	while #peaks < targetPeakCount and attempts < maxAttempts do
+		attempts += 1
+		
+		-- Random position in the mountain zone (outside play area + transition)
+		local x = peakRng:NextNumber(world.MinX, world.MaxX)
+		local z = peakRng:NextNumber(world.MinZ, world.MaxZ)
+		
+		-- Check if in mountain zone
+		local zone = ProceduralConfig.GetZone(x, z)
+		if zone ~= "Mountain" then
+			continue
+		end
+		
+		-- Check distance to existing peaks
+		local tooClose = false
+		for _, existingPeak in peaks do
+			local dist = math.sqrt((x - existingPeak.x)^2 + (z - existingPeak.z)^2)
+			if dist < minSpacing then
+				tooClose = true
+				break
+			end
+		end
+		
+		if not tooClose then
+			local radius = peakRng:NextNumber(mtConfig.PeakMinRadius, mtConfig.PeakMaxRadius)
+			local height = peakRng:NextNumber(mtConfig.PeakMinHeight, mtConfig.PeakMaxHeight)
+			
+			-- Larger peaks tend to be taller
+			local sizeRatio = (radius - mtConfig.PeakMinRadius) / math.max(1, mtConfig.PeakMaxRadius - mtConfig.PeakMinRadius)
+			height = height + sizeRatio * (mtConfig.PeakMaxHeight - mtConfig.PeakMinHeight) * 0.4
+			
+			table.insert(peaks, {
+				x = x,
+				z = z,
+				radius = radius,
+				height = height,
+			})
+		end
+	end
+	
+	Log.Info(CONTEXT, string.format("Generated %d mountain peaks (target: %d)", #peaks, targetPeakCount))
+	return peaks
+end
+
+--[=[
+	Calculate mountain peak contribution at a position.
+	@param x -- World X coordinate
+	@param z -- World Z coordinate
+	@return number -- Height contribution from nearby peaks
+]=]
+local function getPeakHeightAt(x: number, z: number): number
+	local mtConfig = ProceduralConfig.Mountains
+	if not mtConfig.Enabled or #generatedPeaks == 0 then
+		return 0
+	end
+	
+	local maxHeight = 0
+	
+	for _, peak in generatedPeaks do
+		local dx = x - peak.x
+		local dz = z - peak.z
+		local distance = math.sqrt(dx * dx + dz * dz)
+		
+		-- Skip if too far
+		if distance > peak.radius * 1.5 then
+			continue
+		end
+		
+		local normalizedDist = distance / peak.radius
+		
+		if normalizedDist < 1.0 then
+			-- Sharp peak falloff for alpine look
+			local adjustedDist = normalizedDist ^ (1 / mtConfig.PeakSteepness)
+			
+			-- Exponential falloff for sharp peaks
+			local falloff = math.exp(-adjustedDist * 3) * (1 - adjustedDist)
+			falloff = math.max(0, falloff)
+			
+			local peakContribution = peak.height * falloff
+			maxHeight = math.max(maxHeight, peakContribution)
+		end
+	end
+	
+	return maxHeight
+end
+
+--[=[
+	Calculate ridge contribution using noise.
+	@param x -- World X coordinate
+	@param z -- World Z coordinate
+	@param rng -- Seeded random generator
+	@return number -- Ridge height contribution
+]=]
+local function getRidgeHeightAt(x: number, z: number, rng: SeededRandom): number
+	local mtConfig = ProceduralConfig.Mountains
+	if not mtConfig.Enabled or not mtConfig.RidgeEnabled then
+		return 0
+	end
+	
+	-- Ridge noise using absolute value for sharp ridges
+	local ridgeNoise = rng:Noise2D(x, z, mtConfig.RidgeNoiseScale, 3, 0.5)
+	
+	-- Create ridge effect: 1.0 at ridge line, 0.0 in valleys
+	local ridgeValue = 1.0 - math.abs(ridgeNoise)
+	
+	-- Sharpen the ridges
+	ridgeValue = ridgeValue ^ mtConfig.RidgeSharpness
+	
+	return ridgeValue * mtConfig.RidgeHeight
+end
+
+--[=[
 	Calculate the height at a given world position based on zone.
 	@param x -- World X coordinate
 	@param z -- World Z coordinate
@@ -192,31 +345,45 @@ local function getHeightAt(x: number, z: number, rng: SeededRandom): number
 		local playHeight = config.PlayAreaBaseHeight + ((playNoise + 1) / 2) * config.PlayAreaMaxVariation
 		playHeight = playHeight + getHillHeightAt(x, z) * (1 - blend)  -- Fade out hills in transition
 		
-		-- Get mountain-style height
-		local mountainNoise = rng:Noise2D(x, z, config.MountainNoiseScale, config.MountainOctaves, config.MountainPersistence)
+		-- Get mountain-style height with peaks starting to appear
 		local distancePast = ProceduralConfig.GetDistancePastPlayArea(x, z)
 		
 		-- Steeper rise based on distance
 		local riseAmount = (distancePast / ProceduralConfig.Transition.Width) * (config.TransitionHeightEnd - config.TransitionHeightStart)
-		local transitionHeight = config.TransitionHeightStart + riseAmount + ((mountainNoise + 1) / 2) * 8
+		
+		-- Blend in peaks and ridges near the end of transition
+		local peakBlend = math.max(0, (blend - 0.5) * 2)  -- Only starts blending peaks at 50% into transition
+		local peakContribution = getPeakHeightAt(x, z) * peakBlend * 0.5  -- Partial peak influence
+		local ridgeContribution = getRidgeHeightAt(x, z, rng) * peakBlend * 0.3
+		
+		local transitionHeight = config.TransitionHeightStart + riseAmount + peakContribution + ridgeContribution
 		
 		-- Smooth blend using smoothstep
 		local t = blend * blend * (3 - 2 * blend)  -- Smoothstep
 		return playHeight * (1 - t) + transitionHeight * t
 		
 	else -- Mountain
-		-- Steep rocky mountains
-		local mountainNoise = rng:Noise2D(x, z, config.MountainNoiseScale, config.MountainOctaves, config.MountainPersistence)
+		local mtConfig = ProceduralConfig.Mountains
 		local distancePast = ProceduralConfig.GetDistancePastPlayArea(x, z)
 		
-		-- Exponential rise with distance
+		-- Base elevation rises with distance into mountain zone
 		local normalizedDist = distancePast / 60  -- Normalize to reasonable range
-		local baseRise = config.MountainBaseHeight + (normalizedDist ^ config.MountainSteepness) * 20
+		local baseRise = config.MountainBaseHeight + (normalizedDist ^ config.MountainSteepness) * 15
 		
-		-- Add noise variation
-		local noiseVariation = ((mountainNoise + 1) / 2) * (config.MountainMaxHeight - config.MountainBaseHeight) * 0.5
+		-- Add mountain peaks
+		local peakHeight = getPeakHeightAt(x, z)
 		
-		return math.min(baseRise + noiseVariation, config.MountainMaxHeight)
+		-- Add ridge lines for alpine effect
+		local ridgeHeight = getRidgeHeightAt(x, z, rng)
+		
+		-- Add alpine roughness/texture noise
+		local roughnessNoise = rng:Noise2D(x, z, 8, 4, 0.6)  -- High frequency detail
+		local roughnessContribution = ((roughnessNoise + 1) / 2) * mtConfig.Roughness * 6
+		
+		-- Combine all contributions
+		local totalHeight = baseRise + peakHeight + ridgeHeight + roughnessContribution
+		
+		return math.min(totalHeight, config.MountainMaxHeight)
 	end
 end
 
@@ -254,10 +421,22 @@ end
 ]=]
 local function getMaterialAt(x: number, z: number, height: number, slope: number, rng: SeededRandom): Enum.Material
 	local config = ProceduralConfig.Terrain
+	local mtConfig = ProceduralConfig.Mountains
 	local zone = ProceduralConfig.GetZone(x, z)
 	
-	-- Snow on high peaks
-	if height > config.SnowHeight then
+	-- Snow on high peaks (use mountain config for more control)
+	if zone == "Mountain" or zone == "Transition" then
+		if height > mtConfig.SnowHeight + mtConfig.SnowBlend then
+			return Materials.Snow
+		elseif height > mtConfig.SnowHeight then
+			-- Blend zone - randomly choose snow or rock
+			local snowChance = (height - mtConfig.SnowHeight) / mtConfig.SnowBlend
+			local variation = rng:Noise2D(x * 3, z * 3, 5, 1)
+			if variation + snowChance > 0.5 then
+				return Materials.Snow
+			end
+		end
+	elseif height > config.SnowHeight then
 		return Materials.Snow
 	end
 	
@@ -288,7 +467,7 @@ local function getMaterialAt(x: number, z: number, height: number, slope: number
 		return Materials.Grass
 		
 	else -- Mountain
-		-- Mostly rock with some ground
+		-- Mostly rock with some ground pockets
 		local variation = rng:Noise2D(x, z, 25, 1)
 		if variation > 0.3 then
 			return Materials.Rock
@@ -383,6 +562,9 @@ function TerrainGenerator.Generate(seed: number): ()
 	-- Generate hill positions first (these persist for height queries)
 	generatedHills = generateHillPositions(rng)
 	
+	-- Generate mountain peak positions
+	generatedPeaks = generateMountainPeaks(rng)
+	
 	-- Calculate chunk grid
 	local chunkSize = config.ChunkSize
 	local chunksX = math.ceil(world.SizeX / chunkSize)
@@ -466,6 +648,8 @@ end
 ]=]
 function TerrainGenerator.Clear(): ()
 	terrain:Clear()
+	generatedHills = {}
+	generatedPeaks = {}
 	Log.Info(CONTEXT, "Terrain cleared")
 end
 

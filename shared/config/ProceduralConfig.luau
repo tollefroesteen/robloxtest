@@ -66,6 +66,44 @@ export type IrishHillsConfig = {
 }
 
 --[=[
+	@interface MountainConfig
+	Alpine-style mountain configuration for barriers around play area
+	Creates varied peaks, ridges, and rugged terrain
+]=]
+export type MountainConfig = {
+	Enabled: boolean,        -- Whether to use enhanced mountain system
+	
+	-- Base mountain shape
+	BaseHeight: number,      -- Starting height at transition edge (e.g., 25)
+	MaxHeight: number,       -- Maximum peak height (e.g., 90)
+	RiseRate: number,        -- How fast mountains rise with distance (1.0 = linear, 2.0 = steep)
+	
+	-- Peak generation (alpine peaks scattered on the mountain range)
+	PeakDensity: number,     -- Peaks per 10000 sq units (0.5 = few, 2.0 = many peaks)
+	PeakMinRadius: number,   -- Smallest peak radius
+	PeakMaxRadius: number,   -- Largest peak radius
+	PeakMinHeight: number,   -- Additional height for smallest peaks
+	PeakMaxHeight: number,   -- Additional height for tallest peaks
+	PeakSteepness: number,   -- How steep the peaks are (1.0 = normal, 2.0 = sharp)
+	
+	-- Ridge generation (connecting ridges between peaks)
+	RidgeEnabled: boolean,   -- Whether to add ridges
+	RidgeNoiseScale: number, -- Scale of ridge noise (smaller = more frequent ridges)
+	RidgeHeight: number,     -- Additional height for ridges
+	RidgeSharpness: number,  -- How sharp ridges are (1.0 = rounded, 2.0 = sharp)
+	
+	-- Variation and roughness
+	NoiseScale: number,      -- Base noise scale (smaller = more detail)
+	NoiseOctaves: number,    -- Noise layers (more = more detail)
+	NoisePersistence: number, -- How much detail layers contribute
+	Roughness: number,       -- Overall surface roughness (0.5 = smooth, 2.0 = very rough)
+	
+	-- Snow line
+	SnowHeight: number,      -- Height where snow starts
+	SnowBlend: number,       -- How gradual the snow transition is
+}
+
+--[=[
 	@interface TerrainConfig
 	Height and material settings for terrain generation
 ]=]
@@ -205,6 +243,40 @@ ProceduralConfig.IrishHills = {
 	-- Falloff: how hills blend to ground
 	-- 1.0 = linear (cone), 2.0 = smooth (natural), 3.0 = plateau-top
 	FalloffPower = 2.0,
+}
+
+-- Alpine Mountain configuration (rugged peaks and ridges around play area)
+ProceduralConfig.Mountains = {
+	Enabled = true,
+	
+	-- Base mountain shape
+	BaseHeight = 25,         -- Starting height at transition edge
+	MaxHeight = 100,         -- Maximum possible height
+	RiseRate = 1.8,          -- How fast mountains rise (1.0 = linear, 2.0 = steep curve)
+	
+	-- Peak generation (alpine peaks)
+	PeakDensity = 1.2,       -- Peaks per 10k sq units (0.5 = few, 2.0 = many)
+	PeakMinRadius = 15,      -- Smallest peak base radius
+	PeakMaxRadius = 40,      -- Largest peak base radius
+	PeakMinHeight = 10,      -- Extra height for small peaks
+	PeakMaxHeight = 35,      -- Extra height for large peaks
+	PeakSteepness = 1.5,     -- Peak slope (1.0 = gradual, 2.0 = sharp)
+	
+	-- Ridge generation
+	RidgeEnabled = true,
+	RidgeNoiseScale = 25,    -- Smaller = more ridges
+	RidgeHeight = 12,        -- Additional height for ridges
+	RidgeSharpness = 1.5,    -- Ridge sharpness (1.0 = rounded, 2.0 = sharp)
+	
+	-- Surface variation
+	NoiseScale = 20,         -- Base detail scale
+	NoiseOctaves = 5,        -- Detail layers
+	NoisePersistence = 0.55, -- Detail contribution
+	Roughness = 1.2,         -- Surface roughness multiplier
+	
+	-- Snow
+	SnowHeight = 60,         -- Height where snow starts
+	SnowBlend = 10,          -- Transition width
 }
 
 -- Foliage settings

@@ -368,7 +368,8 @@ local function getHeightAt(x: number, z: number, rng: SeededRandom): number
 		
 		-- Base elevation rises with distance into mountain zone
 		local normalizedDist = distancePast / 60  -- Normalize to reasonable range
-		local baseRise = config.MountainBaseHeight + (normalizedDist ^ config.MountainSteepness) * 15
+		local riseMultiplier = mtConfig.BaseRiseMultiplier or 1.0
+		local baseRise = mtConfig.BaseHeight + (normalizedDist ^ config.MountainSteepness) * 15 * riseMultiplier
 		
 		-- Add mountain peaks
 		local peakHeight = getPeakHeightAt(x, z)

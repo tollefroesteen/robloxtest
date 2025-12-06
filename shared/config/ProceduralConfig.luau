@@ -163,15 +163,16 @@ export type FoliageConfig = {
 -- ============================================================================
 
 -- Total world size (includes mountains)
+-- Must be large enough for: play area + transition (40) + mountain zone on each side
 ProceduralConfig.World = {
-	SizeX = 500,
+	SizeX = 560,    -- PlayArea(280) + Transition(40*2) + Mountains(100*2)
 	SizeY = 200,
-	SizeZ = 450,
+	SizeZ = 630,    -- PlayArea(350) + Transition(40*2) + Mountains(100*2)
 	-- Derived
-	MinX = -250,
-	MaxX = 250,
-	MinZ = -225,
-	MaxZ = 225,
+	MinX = -280,
+	MaxX = 280,
+	MinZ = -315,
+	MaxZ = 315,
 }
 
 -- Play area (centered on origin)
@@ -251,8 +252,9 @@ ProceduralConfig.Mountains = {
 	
 	-- Base mountain shape
 	BaseHeight = 25,         -- Starting height at transition edge
-	MaxHeight = 100,         -- Maximum possible height
+	MaxHeight = 200,         -- Maximum possible height (cap)
 	RiseRate = 1.8,          -- How fast mountains rise (1.0 = linear, 2.0 = steep curve)
+	BaseRiseMultiplier = 1.0, -- Overall mountain height multiplier (0.5 = half height, 2.0 = double)
 	
 	-- Peak generation (alpine peaks)
 	PeakDensity = 1.2,       -- Peaks per 10k sq units (0.5 = few, 2.0 = many)

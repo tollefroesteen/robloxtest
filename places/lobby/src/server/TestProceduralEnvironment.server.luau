@@ -44,18 +44,20 @@ local HILLS_CONFIG = {
 -- Mountain configuration (alpine peaks with ridges)
 local MOUNTAIN_CONFIG = {
 	Enabled = true,
+	-- Base mountain height
+	BaseRiseMultiplier = 0.2, -- Overall mountain height (0.5=low, 1.0=normal, 2.0=tall)
 	-- Peak generation
-	PeakDensity = 1.2,       -- Peaks per 10k sq units (0.5=few, 2.0=many)
-	PeakMinRadius = 50,      -- Smallest peak base radius
-	PeakMaxRadius = 120,      -- Largest peak base radius
-	PeakMinHeight = 50,      -- Min extra height for peaks
-	PeakMaxHeight = 300,      -- Max extra height for peaks
+	PeakDensity = 5.0,       -- Peaks per 10k sq units (0.5=few, 2.0=many)
+	PeakMinRadius = 55,      -- Smallest peak base radius
+	PeakMaxRadius = 100,      -- Largest peak base radius
+	PeakMinHeight = 20,      -- Min extra height for peaks
+	PeakMaxHeight = 200,      -- Max extra height for peaks
 	PeakSteepness = 1.5,     -- Peak slope (1.0=gradual, 2.0=sharp)
 	-- Ridge generation
 	RidgeEnabled = true,
 	RidgeNoiseScale = 25,    -- Smaller = more ridges
-	RidgeHeight = 12,        -- Additional height for ridges
-	RidgeSharpness = 1.5,    -- Ridge sharpness (1.0=rounded, 2.0=sharp)
+	RidgeHeight = 0,        -- Additional height for ridges
+	RidgeSharpness = 0,    -- Ridge sharpness (1.0=rounded, 2.0=sharp)
 	-- Surface detail
 	Roughness = 1.2,         -- Surface roughness multiplier
 	-- Snow
@@ -110,6 +112,7 @@ local function showHelp(player: Player)
 	sendMessage(player, "/hills falloff <1-3> - Shape (1=cone, 2=dome, 3=plateau)")
 	sendMessage(player, "=== Mountain Configuration ===")
 	sendMessage(player, "/mountain - Show current mountain settings")
+	sendMessage(player, "/mountain height <0.5-3.0> - Overall mountain height multiplier")
 	sendMessage(player, "/mountain peaks <0.5-3.0> - Peak density (0.5=few, 2.0=many)")
 	sendMessage(player, "/mountain pheight <min> <max> - Peak heights (e.g., 10 35)")
 	sendMessage(player, "/mountain pradius <min> <max> - Peak base sizes (e.g., 15 40)")
@@ -301,6 +304,7 @@ local function handleCommand(player: Player, message: string)
 			-- Show current mountain settings
 			sendMessage(player, "=== Alpine Mountain Configuration ===")
 			sendMessage(player, string.format("Enabled: %s", tostring(mtConfig.Enabled)))
+			sendMessage(player, string.format("Base Height Multiplier: %.2f (0.5=low, 1.0=normal, 2.0=tall)", mtConfig.BaseRiseMultiplier or 1.0))
 			sendMessage(player, string.format("Peak Density: %.2f (peaks per 10k sq units)", mtConfig.PeakDensity))
 			sendMessage(player, string.format("Peak Radius: %d - %d studs", mtConfig.PeakMinRadius, mtConfig.PeakMaxRadius))
 			sendMessage(player, string.format("Peak Height: %d - %d studs", mtConfig.PeakMinHeight, mtConfig.PeakMaxHeight))
@@ -311,13 +315,22 @@ local function handleCommand(player: Player, message: string)
 			sendMessage(player, string.format("Roughness: %.2f", mtConfig.Roughness))
 			sendMessage(player, "Use /regen to apply changes")
 			
+		elseif subCommand == "height" or subCommand == "base" or subCommand == "h" then
+			local value = tonumber(args[3])
+			if not value then
+				sendMessage(player, "Usage: /mountain height <0-5.0>")
+				return
+			end
+			mtConfig.BaseRiseMultiplier = math.clamp(value, 0, 5.0)
+			sendMessage(player, string.format("Mountain height multiplier set to %.2f - use /regen to apply", mtConfig.BaseRiseMultiplier))
+			
 		elseif subCommand == "peaks" or subCommand == "density" or subCommand == "d" then
 			local value = tonumber(args[3])
 			if not value then
-				sendMessage(player, "Usage: /mountain peaks <0.5-3.0>")
+				sendMessage(player, "Usage: /mountain peaks <0-5.0>")
 				return
 			end
-			mtConfig.PeakDensity = math.clamp(value, 0.2, 5.0)
+			mtConfig.PeakDensity = math.clamp(value, 0, 5.0)
 			sendMessage(player, string.format("Peak density set to %.2f - use /regen to apply", mtConfig.PeakDensity))
 			
 		elseif subCommand == "pheight" or subCommand == "ph" then
@@ -327,8 +340,8 @@ local function handleCommand(player: Player, message: string)
 				sendMessage(player, "Usage: /mountain pheight <min> <max>")
 				return
 			end
-			mtConfig.PeakMinHeight = math.max(1, minVal)
-			mtConfig.PeakMaxHeight = math.max(mtConfig.PeakMinHeight + 5, maxVal)
+			mtConfig.PeakMinHeight = math.max(0, minVal)
+			mtConfig.PeakMaxHeight = math.max(mtConfig.PeakMinHeight, maxVal)
 			sendMessage(player, string.format("Peak height set to %d-%d - use /regen to apply", mtConfig.PeakMinHeight, mtConfig.PeakMaxHeight))
 			
 		elseif subCommand == "pradius" or subCommand == "pr" or subCommand == "psize" then
@@ -345,10 +358,10 @@ local function handleCommand(player: Player, message: string)
 		elseif subCommand == "steep" or subCommand == "steepness" or subCommand == "s" then
 			local value = tonumber(args[3])
 			if not value then
-				sendMessage(player, "Usage: /mountain steep <1.0-2.5>")
+				sendMessage(player, "Usage: /mountain steep <0-3.0>")
 				return
 			end
-			mtConfig.PeakSteepness = math.clamp(value, 0.5, 3.0)
+			mtConfig.PeakSteepness = math.clamp(value, 0, 3.0)
 			sendMessage(player, string.format("Peak steepness set to %.2f - use /regen to apply", mtConfig.PeakSteepness))
 			
 		elseif subCommand == "ridges" or subCommand == "ridge" or subCommand == "r" then
@@ -364,10 +377,10 @@ local function handleCommand(player: Player, message: string)
 				local height = tonumber(args[3])
 				local sharpness = tonumber(args[4])
 				if height then
-					mtConfig.RidgeHeight = math.clamp(height, 1, 30)
+					mtConfig.RidgeHeight = math.clamp(height, 0, 500)
 				end
 				if sharpness then
-					mtConfig.RidgeSharpness = math.clamp(sharpness, 0.5, 3.0)
+					mtConfig.RidgeSharpness = math.clamp(sharpness, 0, 3.0)
 				end
 				sendMessage(player, string.format("Ridge height=%d, sharpness=%.1f - use /regen to apply", mtConfig.RidgeHeight, mtConfig.RidgeSharpness))
 			end
@@ -388,10 +401,10 @@ local function handleCommand(player: Player, message: string)
 		elseif subCommand == "rough" or subCommand == "roughness" then
 			local value = tonumber(args[3])
 			if not value then
-				sendMessage(player, "Usage: /mountain rough <0.5-2.0>")
+				sendMessage(player, "Usage: /mountain rough <0-3.0>")
 				return
 			end
-			mtConfig.Roughness = math.clamp(value, 0.2, 3.0)
+			mtConfig.Roughness = math.clamp(value, 0, 3.0)
 			sendMessage(player, string.format("Roughness set to %.2f - use /regen to apply", mtConfig.Roughness))
 			
 		elseif subCommand == "on" or subCommand == "enable" then
@@ -432,6 +445,7 @@ Log.Info(CONTEXT, string.format("Hills config: Density=%.2f, Radius=%d-%d, Heigh
 -- Apply mountain configuration from this file
 local mtConfig = ProceduralConfig.Mountains
 mtConfig.Enabled = MOUNTAIN_CONFIG.Enabled
+mtConfig.BaseRiseMultiplier = MOUNTAIN_CONFIG.BaseRiseMultiplier
 mtConfig.PeakDensity = MOUNTAIN_CONFIG.PeakDensity
 mtConfig.PeakMinRadius = MOUNTAIN_CONFIG.PeakMinRadius
 mtConfig.PeakMaxRadius = MOUNTAIN_CONFIG.PeakMaxRadius
@@ -557,6 +571,7 @@ _G.Mountain = function()
 	local m = ProceduralConfig.Mountains
 	print("=== Alpine Mountain Config ===")
 	print(string.format("Enabled: %s", tostring(m.Enabled)))
+	print(string.format("Height Multiplier: %.2f", m.BaseRiseMultiplier or 1.0))
 	print(string.format("Peak Density: %.2f", m.PeakDensity))
 	print(string.format("Peak Radius: %d-%d", m.PeakMinRadius, m.PeakMaxRadius))
 	print(string.format("Peak Height: %d-%d", m.PeakMinHeight, m.PeakMaxHeight))
@@ -567,14 +582,19 @@ _G.Mountain = function()
 	return m
 end
 
+_G.SetMountainHeight = function(multiplier: number)
+	ProceduralConfig.Mountains.BaseRiseMultiplier = math.clamp(multiplier, 0, 5.0)
+	print(string.format("Mountain Height: %.2f - use _G.Terrain(seed) to regenerate", ProceduralConfig.Mountains.BaseRiseMultiplier))
+end
+
 _G.SetPeakDensity = function(density: number)
-	ProceduralConfig.Mountains.PeakDensity = math.clamp(density, 0.2, 5.0)
+	ProceduralConfig.Mountains.PeakDensity = math.clamp(density, 0, 5.0)
 	print(string.format("Peak Density: %.2f - use _G.Terrain(seed) to regenerate", ProceduralConfig.Mountains.PeakDensity))
 end
 
 _G.SetPeakHeight = function(min: number, max: number)
-	ProceduralConfig.Mountains.PeakMinHeight = math.max(1, min)
-	ProceduralConfig.Mountains.PeakMaxHeight = math.max(min + 5, max)
+	ProceduralConfig.Mountains.PeakMinHeight = math.max(0, min)
+	ProceduralConfig.Mountains.PeakMaxHeight = math.max(min, max)
 	print(string.format("Peak Height: %d-%d - use _G.Terrain(seed) to regenerate", min, max))
 end
 
@@ -585,14 +605,14 @@ _G.SetPeakRadius = function(min: number, max: number)
 end
 
 _G.SetPeakSteepness = function(steepness: number)
-	ProceduralConfig.Mountains.PeakSteepness = math.clamp(steepness, 0.5, 3.0)
+	ProceduralConfig.Mountains.PeakSteepness = math.clamp(steepness, 0, 3.0)
 	print(string.format("Peak Steepness: %.2f - use _G.Terrain(seed) to regenerate", ProceduralConfig.Mountains.PeakSteepness))
 end
 
 _G.SetRidges = function(enabled: boolean, height: number?, sharpness: number?)
 	ProceduralConfig.Mountains.RidgeEnabled = enabled
-	if height then ProceduralConfig.Mountains.RidgeHeight = math.clamp(height, 1, 30) end
-	if sharpness then ProceduralConfig.Mountains.RidgeSharpness = math.clamp(sharpness, 0.5, 3.0) end
+	if height then ProceduralConfig.Mountains.RidgeHeight = math.clamp(height, 0, 500) end
+	if sharpness then ProceduralConfig.Mountains.RidgeSharpness = math.clamp(sharpness, 0, 3.0) end
 	print(string.format("Ridges: %s (height=%d, sharp=%.1f) - use _G.Terrain(seed) to regenerate",
 		tostring(enabled), ProceduralConfig.Mountains.RidgeHeight, ProceduralConfig.Mountains.RidgeSharpness))
 end
@@ -605,7 +625,7 @@ _G.SetSnowLine = function(height: number, blend: number?)
 end
 
 _G.SetMountainRoughness = function(roughness: number)
-	ProceduralConfig.Mountains.Roughness = math.clamp(roughness, 0.2, 3.0)
+	ProceduralConfig.Mountains.Roughness = math.clamp(roughness, 0, 3.0)
 	print(string.format("Roughness: %.2f - use _G.Terrain(seed) to regenerate", ProceduralConfig.Mountains.Roughness))
 end
 

@@ -116,6 +116,39 @@ Players.PlayerRemoving:Connect(function(player)
 	PlayerDataService.OnPlayerRemoving(player)
 end)
 
+-- Handle client requesting player data refresh (e.g., when opening player menu)
+RemoteEvents.RequestPlayerDataEvent.OnServerEvent:Connect(function(player: Player)
+	Log.Info(CONTEXT, string.format("Player data requested by %s", player.Name))
+	
+	-- Send inventory
+	local inventory = InventoryService.GetInventory(player)
+	if inventory then
+		RemoteEvents.InventoryUpdatedEvent:FireClient(player, inventory)
+	end
+	
+	-- Send stats with achievements
+	local currentStats = AchievementsService.GetStats(player)
+	local achievements = AchievementsService.GetAchievements(player)
+	local favorites = FavoriteAnimalsService.GetFavorites(player)
+	if currentStats then
+		local payload = {
+			Level = currentStats.Level,
+			ExperiencePoints = currentStats.ExperiencePoints,
+			TotalCaptures = currentStats.TotalCaptures,
+			TotalWins = currentStats.TotalWins,
+			TotalLosses = currentStats.TotalLosses,
+			TotalGamesPlayed = currentStats.TotalGamesPlayed,
+			TotalKills = currentStats.TotalKills,
+			TotalDeaths = currentStats.TotalDeaths,
+			CapturedAnimalIndex = currentStats.CapturedAnimalIndex,
+			AnimalCaptureCount = currentStats.AnimalCaptureCount,
+			FavoriteAnimals = favorites,
+			Achievements = achievements or {},
+		}
+		RemoteEvents.StatsUpdatedEvent:FireClient(player, payload)
+	end
+end)
+
 -- Handle game shutdown
 game:BindToClose(function()
 	PlayerDataService.OnGameClose()

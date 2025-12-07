@@ -83,6 +83,12 @@ end
 Players.PlayerAdded:Connect(onPlayerAdded)
 Players.PlayerRemoving:Connect(onPlayerRemoving)
 
+-- Handle client requesting player data refresh (e.g., when opening player menu)
+RemoteEvents.RequestPlayerDataEvent.OnServerEvent:Connect(function(player: Player)
+	Log.Info(CONTEXT, string.format("Player data requested by %s", player.Name))
+	sendPlayerDataToClient(player)
+end)
+
 -- Handle players already in game
 for _, player in Players:GetPlayers() do
 	task.spawn(onPlayerAdded, player)

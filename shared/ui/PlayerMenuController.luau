@@ -426,6 +426,12 @@ function PlayerMenuController.OpenMenu(): nil
 	isMenuOpen = true
 	
 	Log.Info(CONTEXT, "Opening player menu")
+	
+	-- Always request fresh data from server when opening menu
+	-- This ensures we have the latest data, especially in Arena place
+	Log.Info(CONTEXT, "Requesting player data from server")
+	RemoteEvents.RequestPlayerDataEvent:FireServer()
+	
 	animateOpen()
 	PlayerMenuController.SwitchTab(currentTab)
 end

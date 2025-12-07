@@ -37,6 +37,7 @@ RemoteEvents.AchievementUnlockedEvent = getOrCreate("AchievementUnlockedEvent")
 RemoteEvents.InventoryUpdatedEvent = getOrCreate("InventoryUpdatedEvent")
 RemoteEvents.StatsUpdatedEvent = getOrCreate("StatsUpdatedEvent")
 RemoteEvents.LevelUpEvent = getOrCreate("LevelUpEvent")
+RemoteEvents.RequestPlayerDataEvent = getOrCreate("RequestPlayerDataEvent")         -- Client -> Server: request inventory/stats refresh
 
 -- Game end events
 RemoteEvents.GameFreezeEvent = getOrCreate("GameFreezeEvent")

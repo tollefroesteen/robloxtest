@@ -7,7 +7,7 @@ local GameEndConfig = {}
 -- Coin reward multipliers
 GameEndConfig.WINNER_COIN_MULTIPLIER = 1.0    -- Winners get 100% of team score as coins
 GameEndConfig.LOSER_COIN_MULTIPLIER = 0.25    -- Losers get 25% of team score as coins
-GameEndConfig.MINIMUM_LOSER_COINS = 5         -- Minimum coins losers receive (consolation)
+GameEndConfig.MINIMUM_LOSER_COINS = 0         -- Minimum coins losers receive (consolation)
 
 -- Bonus multipliers (applied to coin rewards)
 -- Achievement bonuses are now defined in AchievementRegistry (CoinBonus field)

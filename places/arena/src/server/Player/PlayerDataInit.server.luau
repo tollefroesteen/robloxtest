@@ -7,11 +7,13 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayerDataService = require(ServerScriptService.Server.Player.PlayerDataService)
-local InventoryService = require(ServerScriptService.Server.Player.InventoryService)
 local AchievementsService = require(ServerScriptService.Server.Player.AchievementsService)
 local FavoriteAnimalsService = require(ServerScriptService.Server.Player.FavoriteAnimalsService)
 local TeamService = require(ServerScriptService.Server.Game.TeamService)
-local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local InventoryService = require(Shared:WaitForChild("services"):WaitForChild("InventoryService"))
+local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "PlayerDataInit"

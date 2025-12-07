@@ -7,12 +7,12 @@ local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChi
 local ShootEvent = RemoteEvents.ShootEvent
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
--- Lazy load InventoryService to consume ammo
+-- Lazy load InventoryService from shared
 local InventoryService: any = nil
 local function getInventoryService()
 	if not InventoryService then
 		local success, service = pcall(function()
-			return require(ServerScriptService.Server.Player.InventoryService)
+			return require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("services"):WaitForChild("InventoryService"))
 		end)
 		if success then
 			InventoryService = service

@@ -29,7 +29,7 @@ local function loadPlayerServices()
 	end
 	
 	local success2, result2 = pcall(function()
-		return require(ServerScriptService.Server.Player.InventoryService)
+		return require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("services"):WaitForChild("InventoryService"))
 	end)
 	if success2 then
 		InventoryService = result2

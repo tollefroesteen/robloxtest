@@ -18,12 +18,12 @@ local ShieldService = {}
 -- Track active shields: [Player] = { expireTime: number, visual: Part }
 local activeShields: { [Player]: { expireTime: number, visual: Part? } } = {}
 
--- Lazy load InventoryService
+-- Lazy load InventoryService from shared
 local InventoryService: any = nil
 local function getInventoryService()
 	if not InventoryService then
 		local success, service = pcall(function()
-			return require(ServerScriptService.Server.Player.InventoryService)
+			return require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("services"):WaitForChild("InventoryService"))
 		end)
 		if success then
 			InventoryService = service

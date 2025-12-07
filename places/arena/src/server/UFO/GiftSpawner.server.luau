@@ -12,7 +12,7 @@ local ServerEvents = require(ServerScriptService.Server.ServerEvents)
 local TimerEndedEvent = ServerEvents.TimerEndedEvent
 local StartGameEvent = ServerEvents.StartGameEvent
 
-local GiftConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("config"):WaitForChild("GiftConfig"))
+local GiftConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ArenaConfig"):WaitForChild("GiftConfig"))
 local ItemRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("ItemRegistry"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 

@@ -12,6 +12,7 @@ local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 local LobbyUIController = require(script.Parent:WaitForChild("LobbyUIController"))
 local PlayerMenuController = require(Shared:WaitForChild("ui"):WaitForChild("PlayerMenuController"))
 local PortalController = require(script.Parent:WaitForChild("PortalController"))
+local LeaderboardController = require(script.Parent:WaitForChild("LeaderboardController"))
 
 -- Visual Controllers
 local PetFollowController = require(script.Parent:WaitForChild("PetFollowController"))
@@ -33,5 +34,8 @@ PortalController.Init()
 
 -- Initialize pet follow controller (animates pet companions)
 PetFollowController.Init()
+
+-- Initialize leaderboard display (3D billboard)
+LeaderboardController.Init()
 
 Log.Info(CONTEXT, "Lobby client initialized for " .. player.Name)

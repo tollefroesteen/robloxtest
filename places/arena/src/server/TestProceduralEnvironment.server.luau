@@ -32,11 +32,11 @@ local PLAY_AREA_ONLY = false      -- Set to true for faster generation
 -- Irish Hills configuration (applied on script load)
 local HILLS_CONFIG = {
 	Enabled = true,
-	Density = 0.8,           -- Hills per 10k sq units (0.3=sparse, 1.5=dense, 3.0=very hilly)
-	MinRadius = 40,          -- Smallest hill radius (studs)
-	MaxRadius = 80,          -- Largest hill radius (studs)
+	Density = 1.3,           -- Hills per 10k sq units (0.3=sparse, 1.5=dense, 3.0=very hilly)
+	MinRadius = 20,          -- Smallest hill radius (studs)
+	MaxRadius = 60,          -- Largest hill radius (studs)
 	MinHeight = 5,           -- Shortest hill peak (studs)
-	MaxHeight = 10,          -- Tallest hill peak (studs)
+	MaxHeight = 12,          -- Tallest hill peak (studs)
 	Steepness = .5,         -- Slope gradient (0.5=gentle, 1.0=normal, 2.0=steep)
 	FalloffPower = 2.0,      -- Shape (1=cone, 2=dome/natural, 3=plateau-top)
 }

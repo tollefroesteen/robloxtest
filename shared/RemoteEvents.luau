@@ -68,4 +68,9 @@ RemoteEvents.PortalTeleportRequestEvent = getOrCreate("PortalTeleportRequestEven
 RemoteEvents.SetFavoriteAnimalEvent = getOrCreate("SetFavoriteAnimalEvent")         -- Client -> Server: request to set/unset favorite
 RemoteEvents.FavoriteAnimalsUpdatedEvent = getOrCreate("FavoriteAnimalsUpdatedEvent") -- Server -> Client: sync current favorites
 
+-- Leaderboard events
+RemoteEvents.LeaderboardUpdatedEvent = getOrCreate("LeaderboardUpdatedEvent")       -- Server -> Client: global leaderboard data update
+RemoteEvents.ServerLeaderboardUpdatedEvent = getOrCreate("ServerLeaderboardUpdatedEvent") -- Server -> Client: server-specific leaderboard
+RemoteEvents.RequestLeaderboardEvent = getOrCreate("RequestLeaderboardEvent")       -- Client -> Server: request leaderboard refresh
+
 return RemoteEvents

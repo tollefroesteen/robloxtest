@@ -4,10 +4,28 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlayerDataTypes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("PlayerDataTypes"))
-local AchievementRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("AchievementRegistry"))
-local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
-local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local PlayerDataTypes = require(Shared:WaitForChild("data"):WaitForChild("PlayerDataTypes"))
+local AchievementRegistry = require(Shared:WaitForChild("data"):WaitForChild("AchievementRegistry"))
+local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
+local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
+
+-- Leaderboard integration (optional - may not be available in all contexts)
+local LeaderboardService: any = nil
+local function getLeaderboardService()
+	if LeaderboardService == nil then
+		local success, service = pcall(function()
+			return require(Shared:WaitForChild("services"):WaitForChild("LeaderboardService"))
+		end)
+		if success then
+			LeaderboardService = service
+			LeaderboardService.Init()
+		else
+			LeaderboardService = false  -- Mark as unavailable
+		end
+	end
+	return LeaderboardService
+end
 
 local CONTEXT = "AchievementsService"
 
@@ -128,6 +146,12 @@ function AchievementsService.AddXP(player: Player, amount: number): (number, boo
 	
 	-- Broadcast updated stats to client
 	broadcastStatsUpdate(player)
+	
+	-- Update leaderboard (queued for batch processing)
+	local leaderboard = getLeaderboardService()
+	if leaderboard then
+		leaderboard.UpdatePlayerXP(player.UserId, stats.ExperiencePoints)
+	end
 	
 	return stats.Level, didLevelUp
 end

@@ -19,6 +19,9 @@
         "config": {
           "$path": "../../shared/config"
         },
+        "services": {
+          "$path": "../../shared/services"
+        },
         "ArenaConfig": {
           "$path": "src/shared/config"
         },

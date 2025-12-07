@@ -453,11 +453,11 @@ local function createAnimalCollection(container: ScrollingFrame, cachedStats: an
 					return
 				end
 				
-				-- Check if trying to add a 3rd favorite
-				if not capturedIsFavorite and #capturedFavoriteAnimals >= 2 then
-					Log.Info(CONTEXT, "Maximum 2 favorites allowed")
+				-- Check if trying to add a 4th favorite
+				if not capturedIsFavorite and #capturedFavoriteAnimals >= 3 then
+					Log.Info(CONTEXT, "Maximum 3 favorites allowed")
 					if menuGui then
-						UIHelpers.showToast(menuGui, "⚠️ You can only have 2 favorites. Remove one first.", Color3.fromRGB(150, 80, 50), 2.5)
+						UIHelpers.showToast(menuGui, "⚠️ You can only have 3 favorites. Remove one first.", Color3.fromRGB(150, 80, 50), 2.5)
 					end
 					return
 				end

@@ -13,7 +13,7 @@ local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"
 local ServerEvents = require(ServerScriptService.Server.ServerEvents)
 
 local CONTEXT = "FavoriteAnimalsService"
-local MAX_FAVORITES = 2
+local MAX_FAVORITES = 3
 
 local FavoriteAnimalsService = {}
 

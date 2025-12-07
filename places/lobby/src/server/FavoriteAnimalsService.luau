@@ -29,7 +29,7 @@ local function getPetFollowService()
 end
 
 local CONTEXT = "FavoriteAnimalsService"
-local MAX_FAVORITES = 2
+local MAX_FAVORITES = 3
 
 -- Must match the arena's DataStore name
 local DATA_STORE_NAME = "PlayerData_v1"

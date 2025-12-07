@@ -74,4 +74,15 @@ RemoteEvents.LeaderboardUpdatedEvent = getOrCreate("LeaderboardUpdatedEvent")   
 RemoteEvents.ServerLeaderboardUpdatedEvent = getOrCreate("ServerLeaderboardUpdatedEvent") -- Server -> Client: server-specific leaderboard
 RemoteEvents.RequestLeaderboardEvent = getOrCreate("RequestLeaderboardEvent")       -- Client -> Server: request leaderboard refresh
 
+-- Matchmaking events (1v1 and 2v2)
+RemoteEvents.MatchmakingZoneEnteredEvent = getOrCreate("MatchmakingZoneEnteredEvent")       -- Server -> Client: player entered zone
+RemoteEvents.MatchmakingZoneExitedEvent = getOrCreate("MatchmakingZoneExitedEvent")         -- Server -> Client: player exited zone
+RemoteEvents.MatchmakingZoneFullEvent = getOrCreate("MatchmakingZoneFullEvent")             -- Server -> Client: zone is full (2v2)
+RemoteEvents.MatchmakingQueueJoinedEvent = getOrCreate("MatchmakingQueueJoinedEvent")       -- Server -> Client: player added to queue
+RemoteEvents.MatchmakingTeamFormedEvent = getOrCreate("MatchmakingTeamFormedEvent")         -- Server -> Client: 2v2 team formed
+RemoteEvents.MatchmakingMatchFoundEvent = getOrCreate("MatchmakingMatchFoundEvent")         -- Server -> Client: match found, teleporting
+RemoteEvents.MatchmakingCountdownCompleteEvent = getOrCreate("MatchmakingCountdownCompleteEvent") -- Client -> Server: countdown finished
+RemoteEvents.MatchmakingCancelQueueEvent = getOrCreate("MatchmakingCancelQueueEvent")       -- Client -> Server: cancel queue request
+RemoteEvents.MatchmakingQueueCancelledEvent = getOrCreate("MatchmakingQueueCancelledEvent") -- Server -> Client: queue cancelled confirmation
+
 return RemoteEvents

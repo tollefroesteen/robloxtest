@@ -27,7 +27,7 @@ local STOP_DISTANCE = 4
 -- How far before pet teleports to catch up
 local TELEPORT_DISTANCE = 40
 -- Pet movement speed (studs per second)
-local PET_SPEED = 8
+local PET_SPEED = 12
 -- How quickly pets turn to face movement direction
 local TURN_SPEED = 0.15
 -- Offset angle between multiple pets (radians)

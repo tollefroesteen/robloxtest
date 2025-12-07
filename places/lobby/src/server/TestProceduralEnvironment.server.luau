@@ -73,8 +73,8 @@ local FLAT_ZONES: {ProceduralConfig.FlatZoneDefinition} = {
 		Enabled = true,
 		OriginX = 0,             -- Center X position
 		OriginZ = 0,             -- Center Z position
-		SizeX = 80,              -- Width (studs)
-		SizeZ = 100,             -- Length (studs)
+		SizeX = 120,              -- Width (studs)
+		SizeZ = 150,             -- Length (studs)
 		Height = 1,              -- Height above water level
 		BlendDistance = 10,      -- Edge transition distance
 	},

@@ -13,6 +13,7 @@ local LobbyUIController = require(script.Parent:WaitForChild("LobbyUIController"
 local PlayerMenuController = require(Shared:WaitForChild("ui"):WaitForChild("PlayerMenuController"))
 local PortalController = require(script.Parent:WaitForChild("PortalController"))
 local LeaderboardController = require(script.Parent:WaitForChild("LeaderboardController"))
+local MatchmakingController = require(script.Parent:WaitForChild("MatchmakingController"))
 
 -- Visual Controllers
 local PetFollowController = require(script.Parent:WaitForChild("PetFollowController"))
@@ -37,5 +38,8 @@ PetFollowController.Init()
 
 -- Initialize leaderboard display (3D billboard)
 LeaderboardController.Init()
+
+-- Initialize matchmaking controller (1v1 and 2v2 queue UI)
+MatchmakingController.Init()
 
 Log.Info(CONTEXT, "Lobby client initialized for " .. player.Name)

@@ -8,9 +8,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Server = ServerScriptService:WaitForChild("Server")
 local FavoriteAnimalsService = require(Server:WaitForChild("FavoriteAnimalsService"))
-local InventoryService = require(Server:WaitForChild("InventoryService"))
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local InventoryService = require(Shared:WaitForChild("services"):WaitForChild("InventoryService"))
 local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
 local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 

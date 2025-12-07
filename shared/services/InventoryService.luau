@@ -1,13 +1,15 @@
 --!strict
 -- InventoryService.luau
--- Server-side inventory management
+-- Shared server-side inventory management
+-- Used by both Arena and Lobby places
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlayerDataTypes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("PlayerDataTypes"))
-local ItemRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("ItemRegistry"))
-local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
-local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local PlayerDataTypes = require(Shared:WaitForChild("data"):WaitForChild("PlayerDataTypes"))
+local ItemRegistry = require(Shared:WaitForChild("data"):WaitForChild("ItemRegistry"))
+local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
+local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "InventoryService"
 
@@ -148,15 +150,6 @@ function InventoryService.GetItemsByCategory(player: Player, category: string): 
 		end
 	end
 	return result
-end
-
--- Clear player's inventory (for testing/admin)
-function InventoryService.ClearInventory(player: Player): nil
-	local inventory = playerInventories[player]
-	if inventory then
-		table.clear(inventory.Items)
-		Log.Info(CONTEXT, string.format("Cleared inventory for %s", player.Name))
-	end
 end
 
 return InventoryService

@@ -1,16 +1,17 @@
 --!strict
 -- ShopService.luau
--- Server-side shop purchase handling
+-- Shared server-side shop purchase handling
+-- Used by both Arena and Lobby places
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
 
-local ShopRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("ShopRegistry"))
-local ItemRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("ItemRegistry"))
-local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
-local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local ShopRegistry = require(Shared:WaitForChild("data"):WaitForChild("ShopRegistry"))
+local ItemRegistry = require(Shared:WaitForChild("data"):WaitForChild("ItemRegistry"))
+local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
+local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "ShopService"
 

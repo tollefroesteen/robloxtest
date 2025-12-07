@@ -4,14 +4,14 @@
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
-local ServerScriptService = game:GetService("ServerScriptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ShopService = require(ServerScriptService.Server.ShopService)
-local InventoryService = require(ServerScriptService.Server.InventoryService)
-local ShopRegistry = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("ShopRegistry"))
-local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RemoteEvents"))
-local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local ShopService = require(Shared:WaitForChild("services"):WaitForChild("ShopService"))
+local InventoryService = require(Shared:WaitForChild("services"):WaitForChild("InventoryService"))
+local ShopRegistry = require(Shared:WaitForChild("data"):WaitForChild("ShopRegistry"))
+local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
+local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "ShopServiceInit"
 

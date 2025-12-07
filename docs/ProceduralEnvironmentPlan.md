@@ -42,17 +42,39 @@ A seeded procedural generation system for creating animal herding landscapes in 
 
 ## Architecture
 
+All procedural generation modules are in the `shared/` folder so they can be used by both Arena and Lobby places.
+
 ```
-places/arena/src/
-  server/
-    ProceduralEnvironment/
-      SeedManager.luau              -- Core seeding & RNG
-      TerrainGenerator.luau         -- Terrain heightmap & materials
-      FoliageGenerator.luau         -- Grass, trees, bushes, rocks
-      EnvironmentOrchestrator.luau  -- Coordinates all generators
-  shared/
-    config/
-      ProceduralConfig.luau         -- Generation parameters & zone definitions
+shared/
+  util/
+    SeedManager.luau              -- Core seeding & RNG (deterministic integer seeds)
+    Log.luau                      -- Logging utility
+  config/
+    ProceduralConfig.luau         -- Generation parameters & zone definitions
+    TerrainGenerator.luau         -- Terrain heightmap & materials
+    FoliageGenerator.luau         -- Grass, trees, bushes, rocks
+    EnvironmentOrchestrator.luau  -- Coordinates all generators (single entry point)
+
+places/arena/src/server/
+  -- Uses shared modules via: require(ReplicatedStorage.shared.config.EnvironmentOrchestrator)
+  
+places/lobby/src/server/
+  -- Uses same shared modules for consistent environment generation
+```
+
+### Usage Example (Server Script)
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Environment = require(ReplicatedStorage:WaitForChild("shared"):WaitForChild("config"):WaitForChild("EnvironmentOrchestrator"))
+
+-- Generate world with seed 1 (always produces the same world)
+Environment.Generate(1)
+
+-- Generate world with seed 2 (different world, reproducible)
+Environment.Generate(2)
+
+-- Generate with options
+Environment.Generate(42, { playAreaOnly = true })
 ```
 
 ---

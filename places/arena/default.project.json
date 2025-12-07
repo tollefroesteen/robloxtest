@@ -16,14 +16,17 @@
         "ui": {
           "$path": "../../shared/ui"
         },
+        "config": {
+          "$path": "../../shared/config"
+        },
+        "ArenaConfig": {
+          "$path": "src/shared/config"
+        },
         "RemoteEvents": {
           "$path": "../../shared/RemoteEvents.luau"
         },
         "PlacesConfig": {
           "$path": "../../shared/PlacesConfig.luau"
-        },
-        "config": {
-          "$path": "src/shared/config"
         }
       }
     },

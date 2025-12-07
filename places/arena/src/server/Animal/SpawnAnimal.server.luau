@@ -24,7 +24,7 @@ local ufo = UFOModel.PrimaryPart
 
 local gameEnded = true
 
-local SpawnConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("config"):WaitForChild("SpawnConfig"))
+local SpawnConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ArenaConfig"):WaitForChild("SpawnConfig"))
 local spawnInterval = SpawnConfig.INTERVAL
 local burstSize = SpawnConfig.BURST_SIZE
 local maxConcurrent = SpawnConfig.MAX_CONCURRENT

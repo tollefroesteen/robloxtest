@@ -91,3 +91,10 @@ tool-based pipelines.
 -   Create modular gameplay systems such as inventory or combat.
 -   Set up a project using Roblox-TS, Wally, or Knit.
 -   Explain client/server patterns within a Rojo workflow.
+
+## Learning Resources
+
+- **[Roblox Creator Hub](https://create.roblox.com/docs)** – Official documentation
+- **[Rojo Docs](https://rojo.space/docs/)** – Rojo workflow and project structure
+- **[DevForum](https://devforum.roblox.com/)** – Community support and tutorials
+- **[Roblox OSS](https://github.com/Roblox)** – Official open-source libraries

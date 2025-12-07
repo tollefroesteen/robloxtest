@@ -18,13 +18,14 @@ end
 local ServerEvents = require(ServerScriptService.Server.ServerEvents)
 local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
 
-local configFolder = Shared:WaitForChild("config", 5)
-if not configFolder then
-	warn("[GameTimerService] Failed to find config folder")
+-- ArenaConfig is the arena-specific config folder (mapped from src/shared/config)
+local arenaConfigFolder = Shared:WaitForChild("ArenaConfig", 5)
+if not arenaConfigFolder then
+	warn("[GameTimerService] Failed to find ArenaConfig folder")
 	return
 end
 
-local GameTimerConfig = require(configFolder:WaitForChild("GameTimerConfig"))
+local GameTimerConfig = require(arenaConfigFolder:WaitForChild("GameTimerConfig"))
 local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "GameTimerService"

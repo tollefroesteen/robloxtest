@@ -33,11 +33,98 @@ local function updateScoreUI(): nil
 	end
 end
 
--- Finds the team score GUI from Studio's StarterGui
+-- Creates the team score GUI programmatically as a fallback
+local function createTeamScoreGui(): nil
+	local playerGui = player:WaitForChild("PlayerGui")
+	
+	-- Check if we already created one
+	local existing = playerGui:FindFirstChild("TeamScoreGui")
+	if existing then
+		existing:Destroy()
+	end
+	
+	-- Create ScreenGui
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "TeamScoreGui"
+	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.Parent = playerGui
+	
+	-- Create a frame to hold scores (top area, below timer)
+	local frame = Instance.new("Frame")
+	frame.Name = "ScoreFrame"
+	frame.Size = UDim2.new(0, 200, 0, 40)
+	frame.Position = UDim2.new(0.5, -100, 0, 70)
+	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame.BackgroundTransparency = 0.3
+	frame.BorderSizePixel = 0
+	frame.Parent = gui
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = frame
+	
+	-- Red team score (left side)
+	local redLabel = Instance.new("TextLabel")
+	redLabel.Name = "RedScoreLabel"
+	redLabel.Size = UDim2.new(0.4, 0, 1, 0)
+	redLabel.Position = UDim2.new(0.05, 0, 0, 0)
+	redLabel.BackgroundTransparency = 1
+	redLabel.Text = "0"
+	redLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+	redLabel.TextScaled = true
+	redLabel.Font = Enum.Font.GothamBold
+	redLabel.TextXAlignment = Enum.TextXAlignment.Center
+	redLabel.Parent = frame
+	
+	-- VS separator
+	local vsLabel = Instance.new("TextLabel")
+	vsLabel.Name = "VSLabel"
+	vsLabel.Size = UDim2.new(0.1, 0, 1, 0)
+	vsLabel.Position = UDim2.new(0.45, 0, 0, 0)
+	vsLabel.BackgroundTransparency = 1
+	vsLabel.Text = "-"
+	vsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	vsLabel.TextScaled = true
+	vsLabel.Font = Enum.Font.GothamBold
+	vsLabel.Parent = frame
+	
+	-- Blue team score (right side)
+	local blueLabel = Instance.new("TextLabel")
+	blueLabel.Name = "BlueScoreLabel"
+	blueLabel.Size = UDim2.new(0.4, 0, 1, 0)
+	blueLabel.Position = UDim2.new(0.55, 0, 0, 0)
+	blueLabel.BackgroundTransparency = 1
+	blueLabel.Text = "0"
+	blueLabel.TextColor3 = Color3.fromRGB(100, 150, 255)
+	blueLabel.TextScaled = true
+	blueLabel.Font = Enum.Font.GothamBold
+	blueLabel.TextXAlignment = Enum.TextXAlignment.Center
+	blueLabel.Parent = frame
+	
+	teamScoreGui = gui
+	redScoreLabel = redLabel
+	blueScoreLabel = blueLabel
+	
+	Log.Info(CONTEXT, "Created TeamScoreGui programmatically")
+end
+
+-- Finds the team score GUI from Studio's StarterGui or creates one
 local function findTeamScoreGui(): nil
 	local playerGui = player:WaitForChild("PlayerGui")
 	
-	local existing = playerGui:WaitForChild("TeamScoreGui", 5)
+	-- If we already have valid references, just verify they exist
+	if teamScoreGui and teamScoreGui.Parent == playerGui and redScoreLabel and blueScoreLabel then
+		Log.Info(CONTEXT, "Using existing TeamScoreGui references")
+		return
+	end
+	
+	-- Try to find existing TeamScoreGui from Studio's StarterGui
+	local existing = playerGui:FindFirstChild("TeamScoreGui")
+	if not existing then
+		existing = playerGui:WaitForChild("TeamScoreGui", 1)
+	end
+	
 	if existing and existing:IsA("ScreenGui") then
 		teamScoreGui = existing :: ScreenGui
 		
@@ -53,12 +140,15 @@ local function findTeamScoreGui(): nil
 		
 		if redScoreLabel and blueScoreLabel then
 			Log.Info(CONTEXT, "Found TeamScoreGui from Studio")
+			return
 		else
 			Log.Warn(CONTEXT, "TeamScoreGui found but score labels missing")
 		end
-	else
-		Log.Warn(CONTEXT, "TeamScoreGui not found - create it in StarterGui with RedScoreLabel and BlueScoreLabel")
 	end
+	
+	-- Fallback: Create GUI programmatically
+	Log.Info(CONTEXT, "TeamScoreGui not found in PlayerGui, creating programmatically")
+	createTeamScoreGui()
 end
 
 -- Listen for team score updates

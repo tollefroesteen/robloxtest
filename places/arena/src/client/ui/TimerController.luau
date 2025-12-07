@@ -53,12 +53,71 @@ local function updateTimerUI(): nil
 		math.floor(newColor.B * 255)))
 end
 
--- Finds the timer GUI from Studio's StarterGui
+-- Creates the timer GUI programmatically as a fallback
+local function createTimerGui(): nil
+	local playerGui = player:WaitForChild("PlayerGui")
+	
+	-- Check if we already created one
+	local existing = playerGui:FindFirstChild("TimerGui")
+	if existing then
+		existing:Destroy()
+	end
+	
+	-- Create ScreenGui
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "TimerGui"
+	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.Parent = playerGui
+	
+	-- Create a frame to hold the timer (top center)
+	local frame = Instance.new("Frame")
+	frame.Name = "TimerFrame"
+	frame.Size = UDim2.new(0, 120, 0, 50)
+	frame.Position = UDim2.new(0.5, -60, 0, 10)
+	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame.BackgroundTransparency = 0.3
+	frame.BorderSizePixel = 0
+	frame.Parent = gui
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = frame
+	
+	-- Create timer label
+	local label = Instance.new("TextLabel")
+	label.Name = "TimerLabel"
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.Text = "00:00"
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBold
+	label.Parent = frame
+	
+	timerGui = gui
+	timerLabel = label
+	
+	Log.Info(CONTEXT, "Created TimerGui programmatically")
+end
+
+-- Finds the timer GUI from Studio's StarterGui or creates one
 local function findTimerGui(): nil
 	local playerGui = player:WaitForChild("PlayerGui")
 	
-	-- Find TimerGui from Studio's StarterGui
-	local existing = playerGui:WaitForChild("TimerGui", 5)
+	-- If we already have valid references, just verify they exist
+	if timerGui and timerGui.Parent == playerGui and timerLabel then
+		Log.Info(CONTEXT, "Using existing TimerGui references")
+		return
+	end
+	
+	-- Try to find existing TimerGui from Studio's StarterGui
+	local existing = playerGui:FindFirstChild("TimerGui")
+	if not existing then
+		-- Wait a short time in case it's still loading
+		existing = playerGui:WaitForChild("TimerGui", 1)
+	end
+	
 	if existing and existing:IsA("ScreenGui") then
 		timerGui = existing :: ScreenGui
 		-- Search descendants in case TimerLabel is nested inside a Frame
@@ -66,12 +125,15 @@ local function findTimerGui(): nil
 		if label and label:IsA("TextLabel") then
 			timerLabel = label :: TextLabel
 			Log.Info(CONTEXT, "Found TimerGui and TimerLabel from Studio")
+			return
 		else
 			Log.Warn(CONTEXT, "TimerGui found but TimerLabel not found inside it")
 		end
-	else
-		Log.Warn(CONTEXT, "TimerGui not found in PlayerGui - make sure it exists in StarterGui")
 	end
+	
+	-- Fallback: Create GUI programmatically
+	Log.Info(CONTEXT, "TimerGui not found in PlayerGui, creating programmatically")
+	createTimerGui()
 end
 
 -- Listen for timer updates from server

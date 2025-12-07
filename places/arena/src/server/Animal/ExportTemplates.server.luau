@@ -9,6 +9,10 @@
 -- 3. Copy each template's OBJ content and save as TemplateName.obj
 -- 4. Import into Blender: File > Import > Wavefront (.obj)
 
+-- DISABLED: Set to false to enable this script
+local DISABLED = true
+if DISABLED then return end
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")

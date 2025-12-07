@@ -65,6 +65,32 @@ local MOUNTAIN_CONFIG = {
 	SnowBlend = 10,          -- Transition width
 }
 
+-- Flat Zone configuration (flat areas for lobby setup)
+-- You can define multiple zones, each with their own position and size
+local FLAT_ZONES: {ProceduralConfig.FlatZoneDefinition} = {
+	{
+		Name = "lobby",
+		Enabled = true,
+		OriginX = 0,             -- Center X position
+		OriginZ = 0,             -- Center Z position
+		SizeX = 80,              -- Width (studs)
+		SizeZ = 100,             -- Length (studs)
+		Height = 1,              -- Height above water level
+		BlendDistance = 10,      -- Edge transition distance
+	},
+	-- Add more flat zones as needed:
+	-- {
+	-- 	Name = "spawn_north",
+	-- 	Enabled = true,
+	-- 	OriginX = 0,
+	-- 	OriginZ = -120,
+	-- 	SizeX = 40,
+	-- 	SizeZ = 40,
+	-- 	Height = 2,
+	-- 	BlendDistance = 8,
+	-- },
+}
+
 -- Admin user IDs (add your Roblox user IDs here, or leave empty to allow everyone in Studio)
 local ADMIN_IDS: {number} = {
 	-- 12345678,  -- Example: Add your user ID
@@ -121,6 +147,16 @@ local function showHelp(player: Player)
 	sendMessage(player, "/mountain ridge <height> <sharpness> - Ridge settings")
 	sendMessage(player, "/mountain snow <height> <blend> - Snow line settings")
 	sendMessage(player, "/mountain rough <0.5-2.0> - Surface roughness")
+	sendMessage(player, "=== Flat Zone Configuration ===")
+	sendMessage(player, "/flat - List all flat zones")
+	sendMessage(player, "/flat add <name> <x> <z> <sizeX> <sizeZ> <height> [blend] - Add a flat zone")
+	sendMessage(player, "/flat remove <name> - Remove a flat zone")
+	sendMessage(player, "/flat move <name> <x> <z> - Move a flat zone")
+	sendMessage(player, "/flat resize <name> <sizeX> <sizeZ> - Resize a flat zone")
+	sendMessage(player, "/flat height <name> <value> - Set flat zone height")
+	sendMessage(player, "/flat blend <name> <distance> - Set edge blend distance")
+	sendMessage(player, "/flat enable <name> / /flat disable <name> - Toggle a zone")
+	sendMessage(player, "/flat clear - Remove all flat zones")
 	sendMessage(player, "/help - Show this help")
 end
 
@@ -418,6 +454,172 @@ local function handleCommand(player: Player, message: string)
 		else
 			sendMessage(player, "Unknown mountain command. Use /mountain for settings or /help for commands")
 		end
+		
+	elseif command == "flat" or command == "flatzone" or command == "flatzones" then
+		local flatZones = ProceduralConfig.FlatZones
+		local subCommand = args[2]
+		
+		if not subCommand then
+			-- List all flat zones
+			sendMessage(player, "=== Flat Zones ===")
+			sendMessage(player, string.format("Master Enabled: %s", tostring(flatZones.Enabled)))
+			if #flatZones.Zones == 0 then
+				sendMessage(player, "No flat zones defined. Use /flat add <name> <x> <z> <sizeX> <sizeZ> <height>")
+			else
+				for i, zone in flatZones.Zones do
+					sendMessage(player, string.format("[%d] %s: %s at (%d,%d) size %dx%d h=%d blend=%d",
+						i, zone.Name, zone.Enabled and "ON" or "OFF",
+						zone.OriginX, zone.OriginZ, zone.SizeX, zone.SizeZ, zone.Height, zone.BlendDistance))
+				end
+			end
+			sendMessage(player, "Use /regen to apply changes")
+			
+		elseif subCommand == "on" or subCommand == "enable" then
+			local zoneName = args[3]
+			if zoneName then
+				local zone = ProceduralConfig.GetFlatZone(zoneName)
+				if zone then
+					zone.Enabled = true
+					sendMessage(player, string.format("Flat zone '%s' enabled - use /regen to apply", zoneName))
+				else
+					sendMessage(player, string.format("Flat zone '%s' not found", zoneName))
+				end
+			else
+				flatZones.Enabled = true
+				sendMessage(player, "All flat zones enabled - use /regen to apply")
+			end
+			
+		elseif subCommand == "off" or subCommand == "disable" then
+			local zoneName = args[3]
+			if zoneName then
+				local zone = ProceduralConfig.GetFlatZone(zoneName)
+				if zone then
+					zone.Enabled = false
+					sendMessage(player, string.format("Flat zone '%s' disabled - use /regen to apply", zoneName))
+				else
+					sendMessage(player, string.format("Flat zone '%s' not found", zoneName))
+				end
+			else
+				flatZones.Enabled = false
+				sendMessage(player, "All flat zones disabled - use /regen to apply")
+			end
+			
+		elseif subCommand == "add" or subCommand == "new" or subCommand == "create" then
+			local name = args[3]
+			local originX = tonumber(args[4])
+			local originZ = tonumber(args[5])
+			local sizeX = tonumber(args[6])
+			local sizeZ = tonumber(args[7])
+			local height = tonumber(args[8])
+			local blend = tonumber(args[9]) or 10
+			
+			if not name or not originX or not originZ or not sizeX or not sizeZ or not height then
+				sendMessage(player, "Usage: /flat add <name> <x> <z> <sizeX> <sizeZ> <height> [blend]")
+				return
+			end
+			
+			-- Check if name already exists
+			if ProceduralConfig.GetFlatZone(name) then
+				sendMessage(player, string.format("Flat zone '%s' already exists. Use /flat remove %s first.", name, name))
+				return
+			end
+			
+			ProceduralConfig.AddFlatZone({
+				Name = name,
+				Enabled = true,
+				OriginX = originX,
+				OriginZ = originZ,
+				SizeX = math.clamp(sizeX, 10, 500),
+				SizeZ = math.clamp(sizeZ, 10, 500),
+				Height = math.clamp(height, -10, 100),
+				BlendDistance = math.clamp(blend, 0, 100),
+			})
+			sendMessage(player, string.format("Added flat zone '%s' at (%d,%d) size %dx%d h=%d - use /regen to apply",
+				name, originX, originZ, sizeX, sizeZ, height))
+			
+		elseif subCommand == "remove" or subCommand == "delete" or subCommand == "rm" then
+			local name = args[3]
+			if not name then
+				sendMessage(player, "Usage: /flat remove <name>")
+				return
+			end
+			if ProceduralConfig.RemoveFlatZone(name) then
+				sendMessage(player, string.format("Removed flat zone '%s' - use /regen to apply", name))
+			else
+				sendMessage(player, string.format("Flat zone '%s' not found", name))
+			end
+			
+		elseif subCommand == "move" or subCommand == "pos" or subCommand == "position" then
+			local name = args[3]
+			local newX = tonumber(args[4])
+			local newZ = tonumber(args[5])
+			if not name or not newX or not newZ then
+				sendMessage(player, "Usage: /flat move <name> <x> <z>")
+				return
+			end
+			local zone = ProceduralConfig.GetFlatZone(name)
+			if zone then
+				zone.OriginX = newX
+				zone.OriginZ = newZ
+				sendMessage(player, string.format("Moved '%s' to (%d,%d) - use /regen to apply", name, newX, newZ))
+			else
+				sendMessage(player, string.format("Flat zone '%s' not found", name))
+			end
+			
+		elseif subCommand == "resize" or subCommand == "size" then
+			local name = args[3]
+			local sizeX = tonumber(args[4])
+			local sizeZ = tonumber(args[5])
+			if not name or not sizeX then
+				sendMessage(player, "Usage: /flat resize <name> <sizeX> [sizeZ]")
+				return
+			end
+			local zone = ProceduralConfig.GetFlatZone(name)
+			if zone then
+				zone.SizeX = math.clamp(sizeX, 10, 500)
+				zone.SizeZ = math.clamp(sizeZ or sizeX, 10, 500)
+				sendMessage(player, string.format("Resized '%s' to %dx%d - use /regen to apply", name, zone.SizeX, zone.SizeZ))
+			else
+				sendMessage(player, string.format("Flat zone '%s' not found", name))
+			end
+			
+		elseif subCommand == "height" or subCommand == "h" then
+			local name = args[3]
+			local height = tonumber(args[4])
+			if not name or not height then
+				sendMessage(player, "Usage: /flat height <name> <value>")
+				return
+			end
+			local zone = ProceduralConfig.GetFlatZone(name)
+			if zone then
+				zone.Height = math.clamp(height, -10, 100)
+				sendMessage(player, string.format("Set '%s' height to %d - use /regen to apply", name, zone.Height))
+			else
+				sendMessage(player, string.format("Flat zone '%s' not found", name))
+			end
+			
+		elseif subCommand == "blend" then
+			local name = args[3]
+			local blend = tonumber(args[4])
+			if not name or not blend then
+				sendMessage(player, "Usage: /flat blend <name> <distance>")
+				return
+			end
+			local zone = ProceduralConfig.GetFlatZone(name)
+			if zone then
+				zone.BlendDistance = math.clamp(blend, 0, 100)
+				sendMessage(player, string.format("Set '%s' blend to %d - use /regen to apply", name, zone.BlendDistance))
+			else
+				sendMessage(player, string.format("Flat zone '%s' not found", name))
+			end
+			
+		elseif subCommand == "clear" then
+			ProceduralConfig.ClearFlatZones()
+			sendMessage(player, "Cleared all flat zones - use /regen to apply")
+			
+		else
+			sendMessage(player, "Unknown flat zone command. Use /flat for list or /help for commands")
+		end
 	end
 end
 
@@ -465,6 +667,20 @@ Log.Info(CONTEXT, string.format("Mountain config: Peaks=%.2f, Radius=%d-%d, Heig
 	mtConfig.PeakMinHeight, mtConfig.PeakMaxHeight, mtConfig.PeakSteepness))
 Log.Info(CONTEXT, string.format("Mountain ridges: %s (height=%d, sharp=%.1f), Snow=%d, Rough=%.1f",
 	tostring(mtConfig.RidgeEnabled), mtConfig.RidgeHeight, mtConfig.RidgeSharpness, mtConfig.SnowHeight, mtConfig.Roughness))
+
+-- Apply flat zones configuration from this file
+ProceduralConfig.ClearFlatZones()
+ProceduralConfig.FlatZones.Enabled = true
+for _, zone in FLAT_ZONES do
+	ProceduralConfig.AddFlatZone(zone)
+end
+
+Log.Info(CONTEXT, string.format("Flat zones: %d zones defined", #ProceduralConfig.FlatZones.Zones))
+for _, zone in ProceduralConfig.FlatZones.Zones do
+	Log.Info(CONTEXT, string.format("  - %s: %s at (%d,%d) size %dx%d h=%d blend=%d",
+		zone.Name, zone.Enabled and "ON" or "OFF",
+		zone.OriginX, zone.OriginZ, zone.SizeX, zone.SizeZ, zone.Height, zone.BlendDistance))
+end
 
 -- Connect chat listener for each player
 Players.PlayerAdded:Connect(function(player)
@@ -629,11 +845,105 @@ _G.SetMountainRoughness = function(roughness: number)
 	print(string.format("Roughness: %.2f - use _G.Terrain(seed) to regenerate", ProceduralConfig.Mountains.Roughness))
 end
 
+-- Flat Zone configuration functions (multiple zones support)
+_G.FlatZones = function()
+	local fz = ProceduralConfig.FlatZones
+	print("=== Flat Zones Config ===")
+	print(string.format("Master Enabled: %s", tostring(fz.Enabled)))
+	print(string.format("Zone Count: %d", #fz.Zones))
+	for i, zone in fz.Zones do
+		print(string.format("[%d] %s: %s at (%d,%d) size %dx%d h=%d blend=%d",
+			i, zone.Name, zone.Enabled and "ON" or "OFF",
+			zone.OriginX, zone.OriginZ, zone.SizeX, zone.SizeZ, zone.Height, zone.BlendDistance))
+	end
+	return fz
+end
+
+_G.AddFlatZone = function(name: string, x: number, z: number, sizeX: number, sizeZ: number, height: number, blend: number?)
+	ProceduralConfig.AddFlatZone({
+		Name = name,
+		Enabled = true,
+		OriginX = x,
+		OriginZ = z,
+		SizeX = math.clamp(sizeX, 10, 500),
+		SizeZ = math.clamp(sizeZ, 10, 500),
+		Height = math.clamp(height, -10, 100),
+		BlendDistance = math.clamp(blend or 10, 0, 100),
+	})
+	print(string.format("Added flat zone '%s' at (%d,%d) - use _G.Terrain(seed) to regenerate", name, x, z))
+end
+
+_G.RemoveFlatZone = function(name: string)
+	if ProceduralConfig.RemoveFlatZone(name) then
+		print(string.format("Removed flat zone '%s' - use _G.Terrain(seed) to regenerate", name))
+	else
+		print(string.format("Flat zone '%s' not found", name))
+	end
+end
+
+_G.MoveFlatZone = function(name: string, x: number, z: number)
+	local zone = ProceduralConfig.GetFlatZone(name)
+	if zone then
+		zone.OriginX = x
+		zone.OriginZ = z
+		print(string.format("Moved '%s' to (%d,%d) - use _G.Terrain(seed) to regenerate", name, x, z))
+	else
+		print(string.format("Flat zone '%s' not found", name))
+	end
+end
+
+_G.ResizeFlatZone = function(name: string, sizeX: number, sizeZ: number?)
+	local zone = ProceduralConfig.GetFlatZone(name)
+	if zone then
+		zone.SizeX = math.clamp(sizeX, 10, 500)
+		zone.SizeZ = math.clamp(sizeZ or sizeX, 10, 500)
+		print(string.format("Resized '%s' to %dx%d - use _G.Terrain(seed) to regenerate", name, zone.SizeX, zone.SizeZ))
+	else
+		print(string.format("Flat zone '%s' not found", name))
+	end
+end
+
+_G.SetFlatZoneHeight = function(name: string, height: number)
+	local zone = ProceduralConfig.GetFlatZone(name)
+	if zone then
+		zone.Height = math.clamp(height, -10, 100)
+		print(string.format("Set '%s' height to %d - use _G.Terrain(seed) to regenerate", name, zone.Height))
+	else
+		print(string.format("Flat zone '%s' not found", name))
+	end
+end
+
+_G.SetFlatZoneBlend = function(name: string, blend: number)
+	local zone = ProceduralConfig.GetFlatZone(name)
+	if zone then
+		zone.BlendDistance = math.clamp(blend, 0, 100)
+		print(string.format("Set '%s' blend to %d - use _G.Terrain(seed) to regenerate", name, zone.BlendDistance))
+	else
+		print(string.format("Flat zone '%s' not found", name))
+	end
+end
+
+_G.EnableFlatZone = function(name: string, enabled: boolean)
+	local zone = ProceduralConfig.GetFlatZone(name)
+	if zone then
+		zone.Enabled = enabled
+		print(string.format("Flat zone '%s': %s - use _G.Terrain(seed) to regenerate", name, enabled and "enabled" or "disabled"))
+	else
+		print(string.format("Flat zone '%s' not found", name))
+	end
+end
+
+_G.ClearFlatZones = function()
+	ProceduralConfig.ClearFlatZones()
+	print("Cleared all flat zones - use _G.Terrain(seed) to regenerate")
+end
+
 Log.Info(CONTEXT, "=== Chat Commands ===")
 Log.Info(CONTEXT, "/world <t> <f> | /terrain <seed> | /foliage <seed>")
 Log.Info(CONTEXT, "/seeds | /clear | /regen | /help")
 Log.Info(CONTEXT, "/hills | /hills density/height/radius/steep/falloff <values>")
 Log.Info(CONTEXT, "/mountain | /mountain peaks/pheight/pradius/steep/ridges/snow/rough <values>")
+Log.Info(CONTEXT, "/flat | /flat on/off/size/height/blend <values>")
 Log.Info(CONTEXT, "=== Command Bar ===")
 Log.Info(CONTEXT, "_G.World(t,f) | _G.Terrain(s) | _G.Foliage(s) | _G.Seeds()")
 Log.Info(CONTEXT, "_G.Hills() | _G.SetHillDensity(d) | _G.SetHillHeight(min,max)")
@@ -641,3 +951,8 @@ Log.Info(CONTEXT, "_G.SetHillRadius(min,max) | _G.SetHillSteepness(s) | _G.SetHi
 Log.Info(CONTEXT, "_G.Mountain() | _G.SetPeakDensity(d) | _G.SetPeakHeight(min,max)")
 Log.Info(CONTEXT, "_G.SetPeakRadius(min,max) | _G.SetPeakSteepness(s) | _G.SetRidges(on,h,s)")
 Log.Info(CONTEXT, "_G.SetSnowLine(h,blend) | _G.SetMountainRoughness(r)")
+Log.Info(CONTEXT, "_G.FlatZones() | _G.AddFlatZone(name,x,z,sizeX,sizeZ,h,blend)")
+Log.Info(CONTEXT, "_G.RemoveFlatZone(name) | _G.MoveFlatZone(name,x,z)")
+Log.Info(CONTEXT, "_G.ResizeFlatZone(name,sizeX,sizeZ) | _G.SetFlatZoneHeight(name,h)")
+Log.Info(CONTEXT, "_G.SetFlatZoneBlend(name,d) | _G.EnableFlatZone(name,on)")
+Log.Info(CONTEXT, "_G.ClearFlatZones()")

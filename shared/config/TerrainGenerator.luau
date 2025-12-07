@@ -316,13 +316,14 @@ local function getRidgeHeightAt(x: number, z: number, rng: SeededRandom): number
 end
 
 --[=[
-	Calculate the height at a given world position based on zone.
+	Calculate terrain height based on zone, ignoring flat zone.
+	Used internally for blending at flat zone edges.
 	@param x -- World X coordinate
 	@param z -- World Z coordinate
 	@param rng -- Seeded random generator
 	@return number -- Height at this position
 ]=]
-local function getHeightAt(x: number, z: number, rng: SeededRandom): number
+local function getTerrainHeightByZone(x: number, z: number, rng: SeededRandom): number
 	local config = ProceduralConfig.Terrain
 	local zone = ProceduralConfig.GetZone(x, z)
 	
@@ -386,6 +387,94 @@ local function getHeightAt(x: number, z: number, rng: SeededRandom): number
 		
 		return math.min(totalHeight, config.MountainMaxHeight)
 	end
+end
+
+--[=[
+	Calculate the height at a given world position based on zone.
+	Includes flat zone check if enabled.
+	@param x -- World X coordinate
+	@param z -- World Z coordinate
+	@param rng -- Seeded random generator
+	@return number -- Height at this position
+]=]
+local function getHeightAt(x: number, z: number, rng: SeededRandom): number
+	local flatZones = ProceduralConfig.FlatZones
+	
+	-- Check multiple flat zones (new system)
+	if flatZones.Enabled and #flatZones.Zones > 0 then
+		-- Track the closest flat zone influence for blending
+		local closestZoneHeight: number? = nil
+		local closestBlendFactor: number = 1.0  -- 1 = fully terrain, 0 = fully flat
+		
+		for _, zone in flatZones.Zones do
+			if zone.Enabled then
+				local halfX = zone.SizeX / 2
+				local halfZ = zone.SizeZ / 2
+				local relX = x - zone.OriginX
+				local relZ = z - zone.OriginZ
+				
+				-- Check if inside flat zone bounds
+				if math.abs(relX) <= halfX and math.abs(relZ) <= halfZ then
+					return zone.Height
+				end
+				
+				-- Check if in blend zone
+				local blendDist = zone.BlendDistance
+				if blendDist > 0 then
+					local distX = math.max(0, math.abs(relX) - halfX)
+					local distZ = math.max(0, math.abs(relZ) - halfZ)
+					local distToEdge = math.sqrt(distX * distX + distZ * distZ)
+					
+					if distToEdge < blendDist then
+						local blend = distToEdge / blendDist
+						blend = blend * blend * (3 - 2 * blend)  -- Smoothstep
+						
+						-- Keep track of the strongest influence (closest blend)
+						if blend < closestBlendFactor then
+							closestBlendFactor = blend
+							closestZoneHeight = zone.Height
+						end
+					end
+				end
+			end
+		end
+		
+		-- If we found a blend zone influence, apply it
+		if closestZoneHeight then
+			local terrainHeight = getTerrainHeightByZone(x, z, rng)
+			return closestZoneHeight * (1 - closestBlendFactor) + terrainHeight * closestBlendFactor
+		end
+	end
+	
+	-- Legacy single flat zone support (backwards compatibility)
+	local flatZone = ProceduralConfig.FlatZone
+	if flatZone.Enabled then
+		local halfX = flatZone.SizeX / 2
+		local halfZ = flatZone.SizeZ / 2
+		
+		-- Check if inside flat zone bounds (centered at origin)
+		if math.abs(x) <= halfX and math.abs(z) <= halfZ then
+			return flatZone.Height
+		end
+		
+		-- Check if in blend zone
+		local blendDist = flatZone.BlendDistance
+		if blendDist > 0 then
+			local distX = math.max(0, math.abs(x) - halfX)
+			local distZ = math.max(0, math.abs(z) - halfZ)
+			local distToEdge = math.sqrt(distX * distX + distZ * distZ)
+			
+			if distToEdge < blendDist then
+				local blend = distToEdge / blendDist
+				blend = blend * blend * (3 - 2 * blend)
+				local terrainHeight = getTerrainHeightByZone(x, z, rng)
+				return flatZone.Height * (1 - blend) + terrainHeight * blend
+			end
+		end
+	end
+	
+	-- No flat zone influence - use normal terrain
+	return getTerrainHeightByZone(x, z, rng)
 end
 
 --[=[

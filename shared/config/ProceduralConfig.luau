@@ -186,6 +186,68 @@ ProceduralConfig.PlayArea = {
 	MaxZ = 175,
 }
 
+-- Flat Zone type definition for multiple zones
+export type FlatZoneDefinition = {
+	Name: string,             -- Identifier for this flat zone
+	Enabled: boolean,         -- Whether this zone is active
+	OriginX: number,          -- Center X position (world coordinates)
+	OriginZ: number,          -- Center Z position (world coordinates)
+	SizeX: number,            -- Width (studs) - total width, extends ±SizeX/2 from origin
+	SizeZ: number,            -- Length (studs) - total length, extends ±SizeZ/2 from origin
+	Height: number,           -- Flat zone height (studs above water level)
+	BlendDistance: number,    -- Studs to blend from flat to surrounding terrain
+}
+
+-- Flat Zones: multiple rectangular areas that stay flat (for lobby setup, spawn points, etc.)
+ProceduralConfig.FlatZones = {
+	-- Master enable/disable for all flat zones
+	Enabled = true,
+	
+	-- Array of flat zone definitions
+	Zones = {} :: {FlatZoneDefinition},
+}
+
+-- Helper function to add a flat zone
+function ProceduralConfig.AddFlatZone(zone: FlatZoneDefinition)
+	table.insert(ProceduralConfig.FlatZones.Zones, zone)
+end
+
+-- Helper function to remove a flat zone by name
+function ProceduralConfig.RemoveFlatZone(name: string): boolean
+	local zones = ProceduralConfig.FlatZones.Zones
+	for i, zone in zones do
+		if zone.Name == name then
+			table.remove(zones, i)
+			return true
+		end
+	end
+	return false
+end
+
+-- Helper function to get a flat zone by name
+function ProceduralConfig.GetFlatZone(name: string): FlatZoneDefinition?
+	for _, zone in ProceduralConfig.FlatZones.Zones do
+		if zone.Name == name then
+			return zone
+		end
+	end
+	return nil
+end
+
+-- Helper function to clear all flat zones
+function ProceduralConfig.ClearFlatZones()
+	ProceduralConfig.FlatZones.Zones = {}
+end
+
+-- Legacy single flat zone for backwards compatibility (deprecated)
+ProceduralConfig.FlatZone = {
+	Enabled = false,          -- Set to true to enable flat zone
+	SizeX = 80,               -- Width (studs) - total width, extends ±SizeX/2 from center
+	SizeZ = 100,              -- Length (studs) - total length, extends ±SizeZ/2 from center
+	Height = 1,               -- Flat zone height
+	BlendDistance = 10,       -- Studs to blend from flat to surrounding terrain
+}
+
 -- Transition zone
 ProceduralConfig.Transition = {
 	Width = 40,

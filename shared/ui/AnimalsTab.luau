@@ -8,19 +8,20 @@ local RemoteEvents = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChi
 local AnimalLibraryModule = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("data"):WaitForChild("AnimalLibraryModule"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 local UIHelpers = require(script.Parent:WaitForChild("UIHelpers"))
+local AnimalPreviewBuilder = require(script.Parent:WaitForChild("AnimalPreviewBuilder"))
 
 local CONTEXT = "AnimalsTab"
 
 local AnimalsTab = {}
 
 -- Create Favorite Animals section
-local function createFavoritesSection(container: ScrollingFrame, cachedFavoriteAnimals: { string }, canModifyFavorites: boolean, order: number): number
+local function createFavoritesSection(container: ScrollingFrame, cachedFavoriteAnimals: { string }, canModifyFavorites: boolean, menuGui: ScreenGui?, order: number): number
 	-- Header
 	local favoritesHeader = Instance.new("TextLabel")
 	favoritesHeader.Name = "FavoritesHeader"
 	favoritesHeader.Size = UDim2.new(1, -30, 0, 24)
 	favoritesHeader.BackgroundTransparency = 1
-	favoritesHeader.Text = "⭐ Favorite Animals (" .. #cachedFavoriteAnimals .. "/2)"
+	favoritesHeader.Text = "⭐ Favorite Animals (" .. #cachedFavoriteAnimals .. "/3)"
 	favoritesHeader.TextColor3 = Color3.fromRGB(255, 200, 100)
 	favoritesHeader.TextSize = 16
 	favoritesHeader.Font = Enum.Font.GothamBold
@@ -58,7 +59,7 @@ local function createFavoritesSection(container: ScrollingFrame, cachedFavoriteA
 			if animalDef then
 				local favCard = Instance.new("Frame")
 				favCard.Name = animalID .. "FavCard"
-				favCard.Size = UDim2.new(1, -30, 0, 50)
+				favCard.Size = UDim2.new(1, -30, 0, 70)
 				favCard.BackgroundColor3 = Color3.fromRGB(60, 55, 35)
 				favCard.BorderSizePixel = 0
 				favCard.LayoutOrder = order
@@ -68,40 +69,47 @@ local function createFavoritesSection(container: ScrollingFrame, cachedFavoriteA
 				favCardCorner.CornerRadius = UDim.new(0, 8)
 				favCardCorner.Parent = favCard
 				
-				-- Color badge
-				local color = animalDef.Color
-				if typeof(color) == "BrickColor" then
-					color = color.Color
+				-- ViewportFrame for 3D preview
+				local previewContainer = Instance.new("Frame")
+				previewContainer.Name = "PreviewContainer"
+				previewContainer.Size = UDim2.new(0, 60, 0, 60)
+				previewContainer.Position = UDim2.new(0, 5, 0.5, -30)
+				previewContainer.BackgroundColor3 = Color3.fromRGB(40, 35, 25)
+				previewContainer.BorderSizePixel = 0
+				previewContainer.Parent = favCard
+				
+				local previewCorner = Instance.new("UICorner")
+				previewCorner.CornerRadius = UDim.new(0, 8)
+				previewCorner.Parent = previewContainer
+				
+				-- Create viewport preview
+				local viewport = AnimalPreviewBuilder.CreateViewportPreview(
+					animalID,
+					UDim2.new(1, 0, 1, 0),
+					previewContainer
+				)
+				if viewport then
+					viewport.Position = UDim2.new(0, 0, 0, 0)
 				end
 				
-				local favColorBadge = Instance.new("Frame")
-				favColorBadge.Name = "ColorBadge"
-				favColorBadge.Size = UDim2.new(0, 40, 0, 40)
-				favColorBadge.Position = UDim2.new(0, 8, 0.5, -20)
-				favColorBadge.BackgroundColor3 = color
-				favColorBadge.BorderSizePixel = 0
-				favColorBadge.Parent = favCard
-				
-				local favBadgeCorner = Instance.new("UICorner")
-				favBadgeCorner.CornerRadius = UDim.new(0, 8)
-				favBadgeCorner.Parent = favColorBadge
-				
-				-- Star icon inside badge
-				local starIcon = Instance.new("TextLabel")
-				starIcon.Name = "Star"
-				starIcon.Size = UDim2.new(1, 0, 1, 0)
-				starIcon.BackgroundTransparency = 1
-				starIcon.Text = "★"
-				starIcon.TextColor3 = Color3.fromRGB(50, 40, 20)
-				starIcon.TextSize = 20
-				starIcon.Font = Enum.Font.GothamBold
-				starIcon.Parent = favColorBadge
+				-- Star overlay on preview
+				local starOverlay = Instance.new("TextLabel")
+				starOverlay.Name = "StarOverlay"
+				starOverlay.Size = UDim2.new(0, 20, 0, 20)
+				starOverlay.Position = UDim2.new(1, -22, 0, 2)
+				starOverlay.BackgroundTransparency = 1
+				starOverlay.Text = "★"
+				starOverlay.TextColor3 = Color3.fromRGB(255, 200, 50)
+				starOverlay.TextSize = 16
+				starOverlay.Font = Enum.Font.GothamBold
+				starOverlay.ZIndex = 2
+				starOverlay.Parent = previewContainer
 				
 				-- Name
 				local favNameLabel = Instance.new("TextLabel")
 				favNameLabel.Name = "Name"
-				favNameLabel.Size = UDim2.new(0.5, -60, 0, 22)
-				favNameLabel.Position = UDim2.new(0, 55, 0, 5)
+				favNameLabel.Size = UDim2.new(0.5, -80, 0, 22)
+				favNameLabel.Position = UDim2.new(0, 72, 0, 8)
 				favNameLabel.BackgroundTransparency = 1
 				favNameLabel.Text = animalDef.Name
 				favNameLabel.TextColor3 = Color3.fromRGB(255, 230, 150)
@@ -114,8 +122,8 @@ local function createFavoritesSection(container: ScrollingFrame, cachedFavoriteA
 				local rarity = AnimalLibraryModule.GetRarity(animalDef.SpawnChance)
 				local favRarityLabel = Instance.new("TextLabel")
 				favRarityLabel.Name = "Rarity"
-				favRarityLabel.Size = UDim2.new(0.5, -60, 0, 14)
-				favRarityLabel.Position = UDim2.new(0, 55, 0, 28)
+				favRarityLabel.Size = UDim2.new(0.5, -80, 0, 14)
+				favRarityLabel.Position = UDim2.new(0, 72, 0, 30)
 				favRarityLabel.BackgroundTransparency = 1
 				favRarityLabel.Text = rarity .. " • " .. animalDef.PointValue .. " pts"
 				favRarityLabel.TextColor3 = Color3.fromRGB(180, 160, 120)
@@ -123,6 +131,34 @@ local function createFavoritesSection(container: ScrollingFrame, cachedFavoriteA
 				favRarityLabel.Font = Enum.Font.Gotham
 				favRarityLabel.TextXAlignment = Enum.TextXAlignment.Left
 				favRarityLabel.Parent = favCard
+				
+				-- Info button
+				local infoButton = UIHelpers.createInfoButton(
+					UDim2.new(0, 24, 0, 24),
+					UDim2.new(0, 72, 0, 46),
+					favCard
+				)
+				
+				-- Capture for closure
+				local capturedAnimalDef = animalDef
+				local capturedRarity = rarity
+				local capturedAnimalID = animalID
+				infoButton.MouseButton1Click:Connect(function()
+					if menuGui then
+						local stats = {
+							{ name = "Point Value", value = tostring(capturedAnimalDef.PointValue) .. " pts" },
+							{ name = "Rarity", value = capturedRarity },
+							{ name = "Max Speed", value = string.format("%.0f%%", (capturedAnimalDef.MaxSpeed or 0.5) * 100) },
+							{ name = "Fear Factor", value = string.format("%.0f%%", (capturedAnimalDef.FearFactor or 0.5) * 100) },
+							{ name = "Hunger", value = string.format("%.0f%%", (capturedAnimalDef.Hungriness or 0.5) * 100) },
+						}
+						local color = capturedAnimalDef.Color
+						if typeof(color) == "BrickColor" then
+							color = color.Color
+						end
+						UIHelpers.showInfoPopup(menuGui, capturedAnimalDef.Name, capturedAnimalDef.Description, stats, color, capturedAnimalID)
+					end
+				end)
 				
 				-- Unfavorite button
 				local unfavButton = UIHelpers.createTextButton(
@@ -271,6 +307,8 @@ local function createAnimalCollection(container: ScrollingFrame, cachedStats: an
 			PointValue = libraryAnimal.PointValue,
 			Rarity = rarity,
 			Description = libraryAnimal.Description,
+			-- Include full animal def for info popup
+			FullDef = libraryAnimal,
 		})
 	end
 	
@@ -282,7 +320,7 @@ local function createAnimalCollection(container: ScrollingFrame, cachedStats: an
 		
 		local animalCard = Instance.new("Frame")
 		animalCard.Name = animal.ID .. "Card"
-		animalCard.Size = UDim2.new(1, -30, 0, 70)
+		animalCard.Size = UDim2.new(1, -30, 0, 80)
 		local cardBgColor = if not isCaptured then Color3.fromRGB(35, 35, 40)
 			elseif isFavorite then Color3.fromRGB(55, 50, 35)
 			else Color3.fromRGB(40, 50, 45)
@@ -295,48 +333,45 @@ local function createAnimalCollection(container: ScrollingFrame, cachedStats: an
 		cardCorner.CornerRadius = UDim.new(0, 8)
 		cardCorner.Parent = animalCard
 		
-		-- Favorite star indicator
-		if isFavorite then
-			local favStar = Instance.new("TextLabel")
-			favStar.Name = "FavoriteStar"
-			favStar.Size = UDim2.new(0, 24, 0, 24)
-			favStar.Position = UDim2.new(1, -28, 0, 4)
-			favStar.BackgroundTransparency = 1
-			favStar.Text = "⭐"
-			favStar.TextSize = 16
-			favStar.Font = Enum.Font.GothamBold
-			favStar.Parent = animalCard
+		-- Favorite star indicator (bottom-right of preview, bigger and more visible)
+		-- Will be added after preview container is created
+		
+		-- Preview container (holds ViewportFrame or locked preview)
+		local previewContainer = Instance.new("Frame")
+		previewContainer.Name = "PreviewContainer"
+		previewContainer.Size = UDim2.new(0, 65, 0, 65)
+		previewContainer.Position = UDim2.new(0, 8, 0.5, -32.5)
+		previewContainer.BackgroundColor3 = if isCaptured then Color3.fromRGB(30, 35, 30) else Color3.fromRGB(40, 40, 45)
+		previewContainer.BorderSizePixel = 0
+		previewContainer.Parent = animalCard
+		
+		local previewCorner = Instance.new("UICorner")
+		previewCorner.CornerRadius = UDim.new(0, 8)
+		previewCorner.Parent = previewContainer
+		
+		if isCaptured then
+			-- Create 3D viewport preview for discovered animals
+			local viewport = AnimalPreviewBuilder.CreateViewportPreview(
+				animal.ID,
+				UDim2.new(1, 0, 1, 0),
+				previewContainer
+			)
+			if viewport then
+				viewport.Position = UDim2.new(0, 0, 0, 0)
+			end
+		else
+			-- Show locked preview with question mark
+			AnimalPreviewBuilder.CreateLockedPreview(
+				UDim2.new(1, 0, 1, 0),
+				previewContainer
+			)
 		end
-		
-		-- Left color indicator
-		local colorBadge = Instance.new("Frame")
-		colorBadge.Name = "ColorBadge"
-		colorBadge.Size = UDim2.new(0, 50, 0, 50)
-		colorBadge.Position = UDim2.new(0, 10, 0.5, -25)
-		colorBadge.BackgroundColor3 = if isCaptured then animal.Color else Color3.fromRGB(60, 60, 60)
-		colorBadge.BorderSizePixel = 0
-		colorBadge.Parent = animalCard
-		
-		local badgeCorner = Instance.new("UICorner")
-		badgeCorner.CornerRadius = UDim.new(0, 8)
-		badgeCorner.Parent = colorBadge
-		
-		-- Question mark or check
-		local statusLabel = Instance.new("TextLabel")
-		statusLabel.Name = "Status"
-		statusLabel.Size = UDim2.new(1, 0, 1, 0)
-		statusLabel.BackgroundTransparency = 1
-		statusLabel.Text = if isCaptured then "✓" else "?"
-		statusLabel.TextColor3 = if isCaptured then Color3.fromRGB(50, 50, 50) else Color3.fromRGB(100, 100, 100)
-		statusLabel.TextSize = 28
-		statusLabel.Font = Enum.Font.GothamBold
-		statusLabel.Parent = colorBadge
 		
 		-- Animal name
 		local nameLabel = Instance.new("TextLabel")
 		nameLabel.Name = "Name"
-		nameLabel.Size = UDim2.new(0.5, -70, 0, 20)
-		nameLabel.Position = UDim2.new(0, 70, 0, 8)
+		nameLabel.Size = UDim2.new(0.4, -80, 0, 20)
+		nameLabel.Position = UDim2.new(0, 82, 0, 8)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.Text = if isCaptured then animal.Name else "???"
 		nameLabel.TextColor3 = if isCaptured then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(120, 120, 120)
@@ -349,7 +384,7 @@ local function createAnimalCollection(container: ScrollingFrame, cachedStats: an
 		local rarityBadge = Instance.new("TextLabel")
 		rarityBadge.Name = "Rarity"
 		rarityBadge.Size = UDim2.new(0, 75, 0, 16)
-		rarityBadge.Position = UDim2.new(0, 70, 0, 28)
+		rarityBadge.Position = UDim2.new(0, 82, 0, 28)
 		rarityBadge.BackgroundColor3 = if isCaptured then (UIHelpers.RARITY_COLORS[animal.Rarity] or Color3.fromRGB(100, 100, 100)) else Color3.fromRGB(60, 60, 60)
 		rarityBadge.Text = if isCaptured then animal.Rarity else "Unknown"
 		rarityBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -361,24 +396,36 @@ local function createAnimalCollection(container: ScrollingFrame, cachedStats: an
 		rarityCorner.CornerRadius = UDim.new(0, 4)
 		rarityCorner.Parent = rarityBadge
 		
-		-- Description
-		local descLabel = Instance.new("TextLabel")
-		descLabel.Name = "Description"
-		descLabel.Size = UDim2.new(0.5, -70, 0, 14)
-		descLabel.Position = UDim2.new(0, 70, 0, 48)
-		descLabel.BackgroundTransparency = 1
-		descLabel.Text = if isCaptured then animal.Description else "Capture to discover"
-		descLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
-		descLabel.TextSize = 11
-		descLabel.Font = Enum.Font.Gotham
-		descLabel.TextXAlignment = Enum.TextXAlignment.Left
-		descLabel.Parent = animalCard
+		-- Info button (only for discovered animals)
+		if isCaptured then
+			local infoButton = UIHelpers.createInfoButton(
+				UDim2.new(0, 22, 0, 22),
+				UDim2.new(0, 160, 0, 26),
+				animalCard
+			)
+			
+			-- Capture for closure
+			local capturedAnimal = animal
+			infoButton.MouseButton1Click:Connect(function()
+				if menuGui then
+					local fullDef = capturedAnimal.FullDef
+					local stats = {
+						{ name = "Point Value", value = tostring(capturedAnimal.PointValue) .. " pts" },
+						{ name = "Rarity", value = capturedAnimal.Rarity },
+						{ name = "Max Speed", value = string.format("%.0f%%", (fullDef.MaxSpeed or 0.5) * 100) },
+						{ name = "Fear Factor", value = string.format("%.0f%%", (fullDef.FearFactor or 0.5) * 100) },
+						{ name = "Hunger", value = string.format("%.0f%%", (fullDef.Hungriness or 0.5) * 100) },
+					}
+					UIHelpers.showInfoPopup(menuGui, capturedAnimal.Name, capturedAnimal.Description, stats, capturedAnimal.Color, capturedAnimal.ID)
+				end
+			end)
+		end
 		
 		-- Right side stats
 		local statsFrame = Instance.new("Frame")
 		statsFrame.Name = "StatsFrame"
-		statsFrame.Size = UDim2.new(0.4, 0, 1, -10)
-		statsFrame.Position = UDim2.new(0.6, 0, 0, 5)
+		statsFrame.Size = UDim2.new(0.4, -10, 1, -10)
+		statsFrame.Position = UDim2.new(0.6, 5, 0, 5)
 		statsFrame.BackgroundTransparency = 1
 		statsFrame.Parent = animalCard
 		
@@ -408,26 +455,34 @@ local function createAnimalCollection(container: ScrollingFrame, cachedStats: an
 		capturedLabel.TextXAlignment = Enum.TextXAlignment.Right
 		capturedLabel.Parent = statsFrame
 		
-		-- Discovery status icon
-		local discoveryIcon = Instance.new("TextLabel")
-		discoveryIcon.Name = "DiscoveryIcon"
-		discoveryIcon.Size = UDim2.new(1, 0, 0, 18)
-		discoveryIcon.Position = UDim2.new(0, 0, 0, 44)
-		discoveryIcon.BackgroundTransparency = 1
-		discoveryIcon.Text = if isCaptured then "✅ Discovered" else "🔒 Locked"
-		discoveryIcon.TextColor3 = if isCaptured then Color3.fromRGB(100, 200, 100) else Color3.fromRGB(100, 100, 100)
-		discoveryIcon.TextSize = 11
-		discoveryIcon.Font = Enum.Font.GothamBold
-		discoveryIcon.TextXAlignment = Enum.TextXAlignment.Right
-		discoveryIcon.Parent = statsFrame
-		
-		-- Favorite button (only for captured animals)
+		-- Favorite button (only for captured animals, on same line as rarity/info)
 		if isCaptured then
+			-- Favorite star indicator (shown before favorite button if favorited)
+			if isFavorite then
+				local favStarIndicator = Instance.new("TextLabel")
+				favStarIndicator.Name = "FavoriteStarIndicator"
+				favStarIndicator.Size = UDim2.new(0, 22, 0, 22)
+				favStarIndicator.Position = UDim2.new(0, 186, 0, 26)
+				favStarIndicator.BackgroundColor3 = Color3.fromRGB(200, 150, 50)
+				favStarIndicator.BorderSizePixel = 0
+				favStarIndicator.Text = "★"
+				favStarIndicator.TextColor3 = Color3.fromRGB(255, 255, 255)
+				favStarIndicator.TextSize = 14
+				favStarIndicator.Font = Enum.Font.GothamBold
+				favStarIndicator.Parent = animalCard
+				
+				local starCorner = Instance.new("UICorner")
+				starCorner.CornerRadius = UDim.new(0.5, 0)
+				starCorner.Parent = favStarIndicator
+			end
+			
+			-- Position favorite button after the star indicator
+			local favButtonX = if isFavorite then 212 else 186
 			local favoriteButton = UIHelpers.createTextButton(
 				"FavoriteButton",
-				if isFavorite then "★ Unfavorite" else "☆ Favorite",
-				UDim2.new(0, 80, 0, 22),
-				UDim2.new(0, 70, 0, 46),
+				if isFavorite then "Unfavorite" else "☆ Favorite",
+				UDim2.new(0, 70, 0, 22),
+				UDim2.new(0, favButtonX, 0, 26),
 				if isFavorite then Color3.fromRGB(180, 140, 50) else Color3.fromRGB(70, 70, 80),
 				animalCard
 			)
@@ -453,7 +508,7 @@ local function createAnimalCollection(container: ScrollingFrame, cachedStats: an
 					return
 				end
 				
-				-- Check if trying to add a 4th favorite
+				-- Check if trying to add when at max
 				if not capturedIsFavorite and #capturedFavoriteAnimals >= 3 then
 					Log.Info(CONTEXT, "Maximum 3 favorites allowed")
 					if menuGui then
@@ -510,7 +565,7 @@ function AnimalsTab.populate(container: ScrollingFrame, data: AnimalsTabData)
 	local order = 0
 	
 	-- Favorite Animals section
-	order = createFavoritesSection(container, data.cachedFavoriteAnimals, data.canModifyFavorites, order)
+	order = createFavoritesSection(container, data.cachedFavoriteAnimals, data.canModifyFavorites, data.menuGui, order)
 	
 	-- Animal Collection
 	order = createAnimalCollection(container, data.cachedStats, data.cachedFavoriteAnimals, data.canModifyFavorites, data.menuGui, order)
@@ -518,8 +573,8 @@ function AnimalsTab.populate(container: ScrollingFrame, data: AnimalsTabData)
 	-- Update canvas size
 	local animalCount = AnimalLibraryModule.GetTotalCount()
 	local baseHeight = 200
-	local animalCardsHeight = animalCount * 80
-	local favoritesHeight = #data.cachedFavoriteAnimals * 60 + 80
+	local animalCardsHeight = animalCount * 90  -- Increased from 80 to 90 for larger cards
+	local favoritesHeight = #data.cachedFavoriteAnimals * 80 + 100
 	local totalHeight = baseHeight + animalCardsHeight + favoritesHeight
 	container.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 end

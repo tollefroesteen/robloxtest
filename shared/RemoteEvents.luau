@@ -85,4 +85,13 @@ RemoteEvents.MatchmakingCountdownCompleteEvent = getOrCreate("MatchmakingCountdo
 RemoteEvents.MatchmakingCancelQueueEvent = getOrCreate("MatchmakingCancelQueueEvent")       -- Client -> Server: cancel queue request
 RemoteEvents.MatchmakingQueueCancelledEvent = getOrCreate("MatchmakingQueueCancelledEvent") -- Server -> Client: queue cancelled confirmation
 
+-- Lucky Block events
+RemoteEvents.LuckyBlockSpawnedEvent = getOrCreate("LuckyBlockSpawnedEvent")                 -- Server -> Client: lucky block spawned
+RemoteEvents.LuckyBlockDespawnedEvent = getOrCreate("LuckyBlockDespawnedEvent")             -- Server -> Client: lucky block removed
+RemoteEvents.LuckyBlockPurchaseRequestEvent = getOrCreate("LuckyBlockPurchaseRequestEvent") -- Client -> Server: request to buy lucky block
+RemoteEvents.LuckyBlockRevealRequestEvent = getOrCreate("LuckyBlockRevealRequestEvent")     -- Client -> Server: request to reveal block
+RemoteEvents.LuckyBlockRevealStartEvent = getOrCreate("LuckyBlockRevealStartEvent")         -- Server -> Client: reveal animation start
+RemoteEvents.LuckyBlockRevealCompleteEvent = getOrCreate("LuckyBlockRevealCompleteEvent")   -- Server -> Client: reveal complete with reward
+RemoteEvents.LuckyBlockPickupEvent = getOrCreate("LuckyBlockPickupEvent")                   -- Server -> Client: arena block picked up
+
 return RemoteEvents

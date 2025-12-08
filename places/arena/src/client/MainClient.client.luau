@@ -38,6 +38,11 @@ local OTHER_CONTROLLERS = {
 	"GameStateController",
 }
 
+-- Shared controllers (unified across places)
+local SHARED_CONTROLLERS = {
+	"LuckyBlockController",
+}
+
 local controllers: { [string]: any } = {}
 
 local function loadControllers()
@@ -94,12 +99,30 @@ local function loadControllers()
 			end
 		end
 	end
+	
+	-- Load shared controllers (from ReplicatedStorage.Shared.controllers)
+	local sharedControllersFolder = ReplicatedStorage:WaitForChild("Shared"):FindFirstChild("controllers")
+	if sharedControllersFolder then
+		for _, name in ipairs(SHARED_CONTROLLERS) do
+			if controllers[name] == nil then
+				local module = sharedControllersFolder:FindFirstChild(name)
+				if module and module:IsA("ModuleScript") then
+					local ok, loaded = pcall(require, module)
+					if ok then
+						controllers[name] = loaded
+					else
+						Log.Warn(CONTEXT, "Failed to load shared controller: " .. name .. " -> " .. tostring(loaded))
+					end
+				end
+			end
+		end
+	end
 end
 
 local function initControllers()
 	loadControllers()
 	for name, controller in pairs(controllers) do
-		local initFunc = controller and controller.Init
+		local initFunc = controller and (controller.Init or controller.Initialize)
 		if type(initFunc) == "function" then
 			local success, err = pcall(initFunc)
 			if not success then

@@ -28,6 +28,7 @@ UIHelpers.ITEM_COLORS = {
 	Tools = Color3.fromRGB(100, 100, 200),
 	Materials = Color3.fromRGB(200, 180, 100),
 	Special = Color3.fromRGB(200, 150, 255),
+	LuckyBlocks = Color3.fromRGB(255, 180, 50),
 }
 
 UIHelpers.ACHIEVEMENT_COLORS = {

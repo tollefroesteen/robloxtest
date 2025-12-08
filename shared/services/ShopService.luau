@@ -19,11 +19,18 @@ local ShopService = {}
 
 -- References to other services (set during init)
 local InventoryService: any = nil
+local LuckyBlockCallback: ((player: Player, shopItemID: string) -> boolean)? = nil
 
 -- Initialize with dependencies
 function ShopService.Init(inventoryServiceRef: any): nil
 	InventoryService = inventoryServiceRef
 	Log.Info(CONTEXT, "ShopService initialized")
+end
+
+-- Set callback for Lucky Block purchases (lobby only)
+function ShopService.SetLuckyBlockCallback(callback: (player: Player, shopItemID: string) -> boolean): nil
+	LuckyBlockCallback = callback
+	Log.Info(CONTEXT, "Lucky Block callback registered")
 end
 
 -- Purchase item with coins
@@ -42,6 +49,40 @@ function ShopService.PurchaseItem(player: Player, shopItemID: string): (boolean,
 		return false, "Invalid item definition"
 	end
 	
+	-- Check if this is a Lucky Block - handle specially
+	if shopItem.Category == "LuckyBlocks" then
+		if not LuckyBlockCallback then
+			return false, "Lucky Blocks not available in this place"
+		end
+		
+		-- Check if player has enough coins
+		local currentCoins = InventoryService.GetItemQuantity(player, "COIN")
+		if currentCoins < shopItem.CoinPrice then
+			return false, string.format("Not enough coins (have %d, need %d)", currentCoins, shopItem.CoinPrice)
+		end
+		
+		-- Deduct coins
+		local coinSuccess, coinMsg = InventoryService.RemoveItem(player, "COIN", shopItem.CoinPrice)
+		if not coinSuccess then
+			return false, "Failed to deduct coins: " .. coinMsg
+		end
+		
+		-- Call the lucky block callback to spawn and handle it
+		local spawnSuccess = LuckyBlockCallback(player, shopItemID)
+		if not spawnSuccess then
+			-- Refund coins if spawn fails
+			InventoryService.AddItem(player, "COIN", shopItem.CoinPrice)
+			return false, "Failed to spawn Lucky Block"
+		end
+		
+		Log.Info(CONTEXT, string.format("%s purchased %s for %d coins", 
+			player.Name, itemDef.Name, shopItem.CoinPrice))
+		
+		-- Success handled by lucky block callback
+		return true, "Lucky Block purchased"
+	end
+	
+	-- Normal item purchase flow
 	-- Check if player has enough coins
 	local currentCoins = InventoryService.GetItemQuantity(player, "COIN")
 	if currentCoins < shopItem.CoinPrice then

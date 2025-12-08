@@ -21,3 +21,13 @@ improve looks for animals
 
 
 The AnimalTemplate.rbxmx is the currently used representation of an animal. It has hirearchy/construction that is tied to an animation system. We would like to have every animal defined in the AnimationLibraryModule to have a a unique look. Can you provide different looks and feel by consturction body parts based on primitives or other ways that would look like animal bodypart that make the amimal qute or intersting but still fitt the same structure as the AnimalTemplate.rbxmx. Then the animals in the AnimalLibraryModule could have a property that points to what template they should be using. 
+
+
+Shield should be damageable 
+Lucky blocks - blocks of different types that contain different chance of spawning animals
+Buy lucky blocks
+Shots along ground
+Shots that scare animals on impact
+Scare and shots should damange shield
+Unshielded gets player shocked using scare
+XP counter more dynamically and allways happening

@@ -148,10 +148,7 @@ function LobbyLuckyBlockService.OnRevealRequest(player: Player, blockID: string)
 	
 	print("[LobbyLuckyBlockService] Player", player.Name, "revealing", blockData.Rarity, "block - got", selectedAnimal.Name)
 	
-	-- Start reveal animation (notify client)
-	RemoteEvents.LuckyBlockRevealStartEvent:FireClient(player, blockID, blockData.Rarity)
-	
-	-- Create a preview of the animal above the block using PetBuilder
+	-- Create a preview model of the animal for the client reveal effect
 	local PetBuilder = require(script.Parent.PetBuilder)
 	local animalBody = PetBuilder.BuildPet(selectedAnimal.Template, selectedAnimal.Color, blockData.Position + Vector3.new(0, 6, 0))
 	
@@ -180,41 +177,24 @@ function LobbyLuckyBlockService.OnRevealRequest(player: Player, blockID: string)
 		nameLabel.Parent = billboardGui
 	end
 	
-	animalPreview.Parent = Workspace
+	-- Parent the animal preview to ReplicatedStorage temporarily so client can access it
+	-- We'll send a reference along with the reveal event
+	animalPreview.Parent = ReplicatedStorage
 	
-	if animalPreview and animalPreview.PrimaryPart then
-		
-		-- Make it glow and spin
-		for _, part in ipairs(animalPreview:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.Anchored = true
-				part.CanCollide = false
-				
-				-- Add glow
-				local highlight = Instance.new("Highlight")
-				highlight.FillTransparency = 0.5
-				highlight.OutlineTransparency = 0
-				highlight.Parent = part
-			end
-		end
-		
-		-- Spin animation
-		task.spawn(function()
-			local startTime = os.clock()
-			while os.clock() - startTime < LuckyBlockConfig.RevealDuration + 3 do
-				if animalPreview and animalPreview.Parent and animalPreview.PrimaryPart then
-					animalPreview:SetPrimaryPartCFrame(animalPreview.PrimaryPart.CFrame * CFrame.Angles(0, math.rad(2), 0))
-				end
-				task.wait(0.03)
-			end
-			if animalPreview then
-				animalPreview:Destroy()
-			end
-		end)
+	-- Start reveal animation (notify ALL clients so everyone sees the reveal)
+	-- The client's LuckyBlockController will use the cinematic reveal effect
+	RemoteEvents.LuckyBlockRevealStartEvent:FireAllClients(blockID, blockData.Rarity, animalPreview)
+	
+	-- The cinematic reveal effect duration (4 seconds buildup + 3 seconds animal reveal)
+	local CINEMATIC_REVEAL_DURATION = 7
+	
+	-- Wait for reveal animation to complete
+	task.wait(CINEMATIC_REVEAL_DURATION)
+	
+	-- Clean up the animal preview model from ReplicatedStorage
+	if animalPreview and animalPreview.Parent then
+		animalPreview:Destroy()
 	end
-	
-	-- Wait for reveal duration
-	task.wait(LuckyBlockConfig.RevealDuration)
 	
 	-- Award the animal to player (add to captured index)
 	local dataService = getFavoriteAnimalsService()
@@ -222,8 +202,9 @@ function LobbyLuckyBlockService.OnRevealRequest(player: Player, blockID: string)
 		dataService.AddAnimalToIndex(player, selectedAnimal.ID)
 	end
 	
-	-- Notify client of completion
-	RemoteEvents.LuckyBlockRevealCompleteEvent:FireClient(player, blockID, selectedAnimal.ID, selectedAnimal.Name)
+	-- Notify all clients of completion (everyone sees who got what)
+	RemoteEvents.LuckyBlockRevealCompleteEvent:FireAllClients(blockID, selectedAnimal.ID, selectedAnimal.Name)
+	-- Only the owner gets the new animal discovered notification
 	RemoteEvents.NewAnimalDiscoveredEvent:FireClient(player, selectedAnimal.ID)
 	
 	-- Clean up

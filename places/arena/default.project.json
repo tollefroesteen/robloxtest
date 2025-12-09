@@ -22,6 +22,12 @@
         "services": {
           "$path": "../../shared/services"
         },
+        "effects": {
+          "$path": "../../shared/effects"
+        },
+        "controllers": {
+          "$path": "../../shared/controllers"
+        },
         "ArenaConfig": {
           "$path": "src/shared/config"
         },

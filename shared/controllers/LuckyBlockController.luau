@@ -9,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
 local LuckyBlockConfig = require(Shared:WaitForChild("config"):WaitForChild("LuckyBlockConfig"))
+local LuckyBlockRevealEffect = require(Shared:WaitForChild("effects"):WaitForChild("LuckyBlockRevealEffect"))
 
 local LuckyBlockController = {}
 
@@ -59,65 +60,50 @@ local function addParticleEffects(block: Model, rarity: string)
 	particles.Parent = primaryPart
 end
 
--- Play reveal animation
-local function playRevealAnimation(blockID: string, rarity: string)
+-- Play reveal animation using the cinematic reveal effect
+local function playRevealAnimation(blockID: string, rarity: string, animalModel: Model?, positionOverride: Vector3?)
 	local blockData = activeLuckyBlocks[blockID]
-	if not blockData then return end
+	local position: Vector3
 	
-	local block = blockData.Model
-	if not block or not block.PrimaryPart then return end
-	
-	local primaryPart = block.PrimaryPart
-	
-	-- Shake animation
-	local originalCFrame = primaryPart.CFrame
-	task.spawn(function()
-		for i = 1, 10 do
-			primaryPart.CFrame = originalCFrame * CFrame.Angles(
-				math.rad(math.random(-5, 5)),
-				math.rad(math.random(-5, 5)),
-				math.rad(math.random(-5, 5))
-			)
-			task.wait(0.1)
-		end
-	end)
-	
-	-- Glow pulse
-	local light = primaryPart:FindFirstChildOfClass("PointLight")
-	if light then
-		local originalBrightness = light.Brightness
-		task.spawn(function()
-			for i = 1, 5 do
-				light.Brightness = originalBrightness * 2
-				task.wait(0.2)
-				light.Brightness = originalBrightness
-				task.wait(0.2)
+	if blockData and blockData.Model and blockData.Model.PrimaryPart then
+		local block = blockData.Model
+		position = block.PrimaryPart.Position
+		
+		-- Hide the lucky block model
+		for _, part in ipairs(block:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Transparency = 1
 			end
-		end)
+			if part:IsA("BillboardGui") then
+				part.Enabled = false
+			end
+			if part:IsA("ParticleEmitter") then
+				part.Enabled = false
+			end
+			if part:IsA("PointLight") then
+				part.Enabled = false
+			end
+		end
+	elseif positionOverride then
+		-- Use provided position if no block data (e.g., client joined mid-reveal)
+		position = positionOverride
+	elseif blockData and blockData.Position then
+		-- Use stored position if model not found
+		position = blockData.Position
+	else
+		warn("[LuckyBlockController] Cannot play reveal - no position available for", blockID)
+		return
 	end
 	
-	-- Burst particles
-	local particles = primaryPart:FindFirstChild("RarityParticles")
-	if particles and particles:IsA("ParticleEmitter") then
-		particles.Rate = 100
-		task.wait(1)
-		particles.Rate = 20
-	end
-	
-	-- Scale up animation
-	task.wait(1)
-	local scaleTween = TweenService:Create(primaryPart, TweenInfo.new(1, Enum.EasingStyle.Elastic), {
-		Size = primaryPart.Size * 1.2
+	-- Play the cinematic reveal effect
+	LuckyBlockRevealEffect.PlayReveal({
+		Position = position,
+		Rarity = rarity,
+		AnimalModel = animalModel,
+		OnComplete = function()
+			print("[LuckyBlockController] Reveal animation complete for", blockID)
+		end,
 	})
-	scaleTween:Play()
-	
-	-- After reveal duration, scale back down
-	task.wait(LuckyBlockConfig.RevealDuration - 2)
-	
-	local scaleDownTween = TweenService:Create(primaryPart, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {
-		Size = primaryPart.Size / 1.2
-	})
-	scaleDownTween:Play()
 end
 
 -- Handle Lucky Block spawned
@@ -169,10 +155,23 @@ function LuckyBlockController.OnBlockDespawned(blockID: string)
 	end
 end
 
--- Handle reveal start
-function LuckyBlockController.OnRevealStart(blockID: string, rarity: string)
+-- Store pending animal models for reveals
+local pendingAnimalModels: {[string]: Model} = {}
+
+-- Handle reveal start (server sends animal model along with rarity)
+function LuckyBlockController.OnRevealStart(blockID: string, rarity: string, animalModel: Model?)
 	print("[LuckyBlockController] Starting reveal for", blockID, rarity)
-	playRevealAnimation(blockID, rarity)
+	
+	-- Use any pending animal model if one was sent separately
+	local modelToUse = animalModel or pendingAnimalModels[blockID]
+	pendingAnimalModels[blockID] = nil
+	
+	playRevealAnimation(blockID, rarity, modelToUse)
+end
+
+-- Set a pending animal model (can be called before reveal starts)
+function LuckyBlockController.SetPendingAnimalModel(blockID: string, animalModel: Model)
+	pendingAnimalModels[blockID] = animalModel
 end
 
 -- Handle reveal complete
@@ -204,8 +203,9 @@ function LuckyBlockController.Initialize()
 		LuckyBlockController.OnBlockDespawned(blockID)
 	end)
 	
-	RemoteEvents.LuckyBlockRevealStartEvent.OnClientEvent:Connect(function(blockID, rarity)
-		LuckyBlockController.OnRevealStart(blockID, rarity)
+	-- Reveal start now receives optional animal model
+	RemoteEvents.LuckyBlockRevealStartEvent.OnClientEvent:Connect(function(blockID, rarity, animalModel)
+		LuckyBlockController.OnRevealStart(blockID, rarity, animalModel)
 	end)
 	
 	RemoteEvents.LuckyBlockRevealCompleteEvent.OnClientEvent:Connect(function(blockID, animalID, animalName)

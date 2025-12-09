@@ -17,6 +17,10 @@ local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
 local CONTEXT = "LuckyBlockSpawner"
 
+-- Cinematic reveal duration (must match client LuckyBlockRevealEffect)
+local REVEAL_EFFECT_DURATION = 4 -- Vortex buildup time
+local ANIMAL_REVEAL_DURATION = 3 -- Time showing the animal
+
 local LuckyBlockSpawner = {}
 
 local activeLuckyBlocks: {[string]: LuckyBlockTypes.LuckyBlockData} = {}
@@ -96,7 +100,76 @@ function LuckyBlockSpawner.OnBlockPickup(blockID: string, player: Player, arenaF
 		return
 	end
 	
-	Log.Info(CONTEXT, string.format("Player %s picked up %s block, spawning %s", player.Name, blockData.Rarity, selectedAnimal.Name))
+	Log.Info(CONTEXT, string.format("Player %s picked up %s block, revealing %s", player.Name, blockData.Rarity, selectedAnimal.Name))
+	
+	-- Build a preview of the animal to send to clients for the reveal effect
+	-- Note: AnimalBuilder.BuildAnimal returns a Part (the root "AnimalTemplate" part), not a Model
+	local previewRoot = AnimalBuilder.BuildAnimal(selectedAnimal.Template or "BASIC_QUADRUPED", selectedAnimal.Color, blockData.Position)
+	
+	-- Wrap in a Model for easier handling by the client reveal effect
+	local previewModel: Model? = nil
+	if previewRoot then
+		previewModel = Instance.new("Model")
+		previewModel.Name = "AnimalPreview_" .. blockID
+		previewRoot.Parent = previewModel
+		previewModel.PrimaryPart = previewRoot
+		
+		-- Add name label to the root part
+		local billboardGui = Instance.new("BillboardGui")
+		billboardGui.Size = UDim2.new(0, 200, 0, 50)
+		billboardGui.StudsOffset = Vector3.new(0, 5, 0)
+		billboardGui.AlwaysOnTop = true
+		billboardGui.Parent = previewRoot
+		
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Size = UDim2.new(1, 0, 1, 0)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = "🎉 " .. selectedAnimal.Name .. " 🎉"
+		nameLabel.TextColor3 = Color3.new(1, 1, 1)
+		nameLabel.TextScaled = true
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.TextStrokeTransparency = 0.5
+		nameLabel.Parent = billboardGui
+		
+		-- Parent to ReplicatedStorage so clients can access it
+		previewModel.Parent = ReplicatedStorage
+	end
+	
+	-- Fire reveal start event to ALL clients (everyone sees the reveal in arena)
+	RemoteEvents.LuckyBlockRevealStartEvent:FireAllClients(blockID, blockData.Rarity, previewModel)
+	
+	-- Hide the lucky block model immediately (clients will show the reveal effect)
+	for _, child in ipairs(arenaFolder:GetChildren()) do
+		if child:IsA("Model") and child.Name:match("^LuckyBlock_") then
+			local primaryPart = child.PrimaryPart
+			if primaryPart and (primaryPart.Position - blockData.Position).Magnitude < 1 then
+				-- Hide but don't destroy yet (will be cleaned up after reveal)
+				for _, part in ipairs(child:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.Transparency = 1
+					end
+					if part:IsA("BillboardGui") then
+						part.Enabled = false
+					end
+					if part:IsA("ParticleEmitter") then
+						part.Enabled = false
+					end
+					if part:IsA("PointLight") then
+						part.Enabled = false
+					end
+				end
+				break
+			end
+		end
+	end
+	
+	-- Wait for the reveal effect to complete
+	task.wait(REVEAL_EFFECT_DURATION + ANIMAL_REVEAL_DURATION)
+	
+	-- Clean up the preview model
+	if previewModel and previewModel.Parent then
+		previewModel:Destroy()
+	end
 	
 	-- Ensure Flock folder exists (same as UFO spawner)
 	local flockFolder = Workspace:FindFirstChild("Flock")
@@ -106,7 +179,7 @@ function LuckyBlockSpawner.OnBlockPickup(blockID: string, player: Player, arenaF
 		flockFolder.Parent = Workspace
 	end
 	
-	-- Spawn the animal at the block's location (slightly above)
+	-- Spawn the actual animal at the block's location (slightly above)
 	local spawnPos = blockData.Position + Vector3.new(0, 2, 0)
 	local templateID = selectedAnimal.Template or "BASIC_QUADRUPED"
 	local clone = AnimalBuilder.BuildAnimal(templateID, selectedAnimal.Color, spawnPos)
@@ -151,10 +224,13 @@ function LuckyBlockSpawner.OnBlockPickup(blockID: string, player: Player, arenaF
 		RemoteEvents.AnimalSpawnedEvent:FireAllClients(clone)
 		ServerEvents.FlockSpawnedEvent:Fire(clone)
 		
-		-- Also notify about the lucky block pickup
+		-- Notify about reveal completion
+		RemoteEvents.LuckyBlockRevealCompleteEvent:FireAllClients(blockID, selectedAnimal.ID, selectedAnimal.Name)
+		
+		-- Also notify about the lucky block pickup (for any other systems tracking this)
 		RemoteEvents.LuckyBlockPickupEvent:FireAllClients(blockID, player.UserId, selectedAnimal.ID)
 		
-		Log.Info(CONTEXT, string.format("Spawned %s from lucky block (Points: %d, Template: %s)", 
+		Log.Info(CONTEXT, string.format("Spawned %s from lucky block after reveal (Points: %d, Template: %s)", 
 			selectedAnimal.Name, selectedAnimal.PointValue, templateID))
 	else
 		warn("[LuckyBlockSpawner] Failed to build animal model for:", selectedAnimal.Name)

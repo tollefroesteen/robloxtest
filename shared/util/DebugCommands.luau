@@ -69,6 +69,20 @@ end
 -- Place-specific services (set by initializer)
 local placeServices: { [string]: any } = {}
 
+-- Lazy load AchievementsService (now in shared)
+local AchievementsService: any = nil
+local function getAchievementsService()
+	if not AchievementsService then
+		local success, service = pcall(function()
+			return require(Shared:WaitForChild("services"):WaitForChild("AchievementsService"))
+		end)
+		if success then
+			AchievementsService = service
+		end
+	end
+	return AchievementsService
+end
+
 -- Check if player is admin (or in Studio)
 local function isAdmin(player: Player): boolean
 	-- Always allow in Studio for testing
@@ -229,12 +243,18 @@ local function onPlayerChatted(player: Player, message: string)
 	
 	local lowerMessage = message:lower()
 	
+	-- Only process messages that start with /
+	if not lowerMessage:match("^/") then return end
+	
 	-- /grantcoins <amount>
 	local coinsMatch = lowerMessage:match("^/grantcoins%s+(%d+)$")
 	if coinsMatch then
 		local amount = tonumber(coinsMatch)
 		if amount and amount > 0 then
+			Log.Info(CONTEXT, string.format("%s is granting %d coins to all players...", player.Name, amount))
 			grantCoinsToAll(amount, player)
+		else
+			Log.Warn(CONTEXT, "Invalid amount for /grantcoins")
 		end
 		return
 	end
@@ -359,13 +379,78 @@ local function onPlayerChatted(player: Player, message: string)
 		return
 	end
 	
-	-- /debughelp - show available commands
+	-- /resetachievements - reset all achievements for all players
+	if lowerMessage == "/resetachievements" then
+		local achievementsSvc = getAchievementsService()
+		if achievementsSvc then
+			for _, p in Players:GetPlayers() do
+				achievementsSvc.ResetAchievements(p)
+			end
+			Log.Info(CONTEXT, string.format("%s reset achievements for all players", player.Name))
+		else
+			Log.Warn(CONTEXT, "AchievementsService not available in this place")
+		end
+		return
+	end
+	
+	-- /resetxp - reset XP for all players
+	if lowerMessage == "/resetxp" then
+		local achievementsSvc = getAchievementsService()
+		if achievementsSvc then
+			for _, p in Players:GetPlayers() do
+				achievementsSvc.ResetXP(p)
+			end
+			Log.Info(CONTEXT, string.format("%s reset XP for all players", player.Name))
+		else
+			Log.Warn(CONTEXT, "AchievementsService not available in this place")
+		end
+		return
+	end
+	
+	-- /resetall - reset all stats for all players
+	if lowerMessage == "/resetall" then
+		local achievementsSvc = getAchievementsService()
+		if achievementsSvc then
+			for _, p in Players:GetPlayers() do
+				achievementsSvc.ResetAllStats(p)
+			end
+			Log.Info(CONTEXT, string.format("%s reset all stats for all players", player.Name))
+		else
+			Log.Warn(CONTEXT, "AchievementsService not available in this place")
+		end
+		return
+	end
+	
+	-- /debughelp - show all available commands
 	if lowerMessage == "/debughelp" then
-		Log.Info(CONTEXT, "=== Debug Commands (Shared) ===")
-		Log.Info(CONTEXT, "Items: /grantcoins <amt>, /grantammo <amt>, /grantbait <amt>, /grantitem <id> <amt>")
-		Log.Info(CONTEXT, "Player: /die")
-		Log.Info(CONTEXT, "Lucky Blocks: /spawnlball (preview), /testlbroll [rare|vr|ur] [count]")
-		Log.Info(CONTEXT, "Use /debughelparena or /debughelplobby for place-specific commands (incl. /spawnluckyblock)")
+		Log.Info(CONTEXT, "=== Debug Commands ===")
+		Log.Info(CONTEXT, "")
+		Log.Info(CONTEXT, "-- ITEMS & INVENTORY --")
+		Log.Info(CONTEXT, "/grantcoins <amt> - Give coins to all players")
+		Log.Info(CONTEXT, "/grantammo <amt> - Give basic ammo to all players")
+		Log.Info(CONTEXT, "/grantbait <amt> - Give food bait to all players")
+		Log.Info(CONTEXT, "/grantitem <id> <amt> - Give any item to all players")
+		Log.Info(CONTEXT, "")
+		Log.Info(CONTEXT, "-- PLAYER --")
+		Log.Info(CONTEXT, "/die - Kill yourself to test respawn")
+		Log.Info(CONTEXT, "")
+		Log.Info(CONTEXT, "-- ACHIEVEMENTS & PROGRESSION --")
+		Log.Info(CONTEXT, "/resetachievements - Reset all achievements for all players")
+		Log.Info(CONTEXT, "/resetxp - Reset XP and level for all players")
+		Log.Info(CONTEXT, "/resetall - Reset ALL stats and achievements for all players")
+		Log.Info(CONTEXT, "")
+		Log.Info(CONTEXT, "-- LUCKY BLOCKS (Testing) --")
+		Log.Info(CONTEXT, "/spawnlball - Spawn one of each rarity lucky block (preview only)")
+		Log.Info(CONTEXT, "/testlbroll [rare|vr|ur] [count] - Test lucky block animal selection")
+		Log.Info(CONTEXT, "")
+		
+		-- Show place-specific commands if handler is registered
+		if placeServices.showPlaceHelp then
+			placeServices.showPlaceHelp(player)
+		else
+			Log.Info(CONTEXT, "-- PLACE-SPECIFIC COMMANDS --")
+			Log.Info(CONTEXT, "Type /debughelparena or /debughelplobby for place-specific commands")
+		end
 		return
 	end
 	

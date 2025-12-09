@@ -11,6 +11,7 @@ local FavoriteAnimalsService = require(Server:WaitForChild("FavoriteAnimalsServi
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local InventoryService = require(Shared:WaitForChild("services"):WaitForChild("InventoryService"))
+local AchievementsService = require(Shared:WaitForChild("services"):WaitForChild("AchievementsService"))
 local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
 local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
@@ -56,10 +57,11 @@ local function onPlayerAdded(player: Player)
 	-- Small delay to ensure data is loaded
 	task.wait(0.1)
 	
-	-- Initialize InventoryService with the loaded inventory data
+	-- Initialize services with the loaded data
 	local data = FavoriteAnimalsService.GetPlayerData(player)
 	if data then
 		InventoryService.InitPlayer(player, data.Inventory)
+		AchievementsService.InitPlayer(player, data.Stats, data.Achievements)
 	end
 	
 	-- Send data to client
@@ -68,14 +70,26 @@ end
 
 -- Player leaving
 local function onPlayerRemoving(player: Player)
-	-- Save inventory changes back to player data before cleanup
+	-- Save changes back to player data before cleanup
 	local inventory = InventoryService.GetInventory(player)
+	local stats = AchievementsService.GetStats(player)
+	local achievements = AchievementsService.GetAchievements(player)
 	local data = FavoriteAnimalsService.GetPlayerData(player)
-	if inventory and data then
-		data.Inventory = inventory
+	
+	if data then
+		if inventory then
+			data.Inventory = inventory
+		end
+		if stats then
+			data.Stats = stats
+		end
+		if achievements then
+			data.Achievements = achievements
+		end
 	end
 	
 	InventoryService.CleanupPlayer(player)
+	AchievementsService.CleanupPlayer(player)
 	FavoriteAnimalsService.CleanupPlayer(player)
 end
 

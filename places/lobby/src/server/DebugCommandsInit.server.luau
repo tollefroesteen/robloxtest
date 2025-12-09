@@ -78,15 +78,34 @@ local function getMatchmakingZoneService()
 	return MatchmakingZoneService
 end
 
+-- Show lobby-specific help
+local function showLobbyHelp(player: Player)
+	Log.Info(CONTEXT, "-- LOBBY-SPECIFIC COMMANDS --")
+	Log.Info(CONTEXT, "")
+	Log.Info(CONTEXT, "Lucky Blocks:")
+	Log.Info(CONTEXT, "  /spawnluckyblock [rarity] - Spawn lucky block for you")
+	Log.Info(CONTEXT, "  /giveluckyblock [rarity] - Give yourself a lucky block item")
+	Log.Info(CONTEXT, "")
+	Log.Info(CONTEXT, "Pets:")
+	Log.Info(CONTEXT, "  /setactivepet <animalID> - Set your active pet")
+	Log.Info(CONTEXT, "  /clearpet - Remove your active pet")
+	Log.Info(CONTEXT, "")
+	Log.Info(CONTEXT, "Favorites:")
+	Log.Info(CONTEXT, "  /addfavorite <animalID> - Add animal to favorites")
+	Log.Info(CONTEXT, "  /removefavorite <slot> - Remove favorite from slot")
+	Log.Info(CONTEXT, "  /listfavorites - Show your favorite animals")
+	Log.Info(CONTEXT, "")
+	Log.Info(CONTEXT, "Matchmaking:")
+	Log.Info(CONTEXT, "  /joinqueue [mode] - Join matchmaking queue")
+	Log.Info(CONTEXT, "  /leavequeue - Leave matchmaking queue")
+	Log.Info(CONTEXT, "  /queuestatus - Show queue status")
+end
+
 -- Lobby-specific command handler
 local function handleLobbyCommand(player: Player, message: string, lowerMessage: string)
-	-- /debughelplobby - show lobby-specific commands
+	-- /debughelplobby - show lobby-specific commands only
 	if lowerMessage == "/debughelplobby" then
-		Log.Info(CONTEXT, "=== Lobby Debug Commands ===")
-		Log.Info(CONTEXT, "Lucky Blocks: /spawnluckyblock [rarity], /giveluckyblock [rarity]")
-		Log.Info(CONTEXT, "Pets: /setactivepet <animalID>, /clearpet, /listpets")
-		Log.Info(CONTEXT, "Favorites: /addfavorite <animalID>, /removefavorite <slot>, /listfavorites")
-		Log.Info(CONTEXT, "Matchmaking: /joinqueue [mode], /leavequeue, /queuestatus")
+		showLobbyHelp(player)
 		return
 	end
 	
@@ -186,12 +205,21 @@ local function handleLobbyCommand(player: Player, message: string, lowerMessage:
 		local favSvc = getFavoriteAnimalsService()
 		if favSvc and favSvc.GetFavorites then
 			local favorites = favSvc.GetFavorites(player)
-			Log.Info(CONTEXT, string.format("%s's favorite animals:", player.Name))
-			if favorites then
-				for slot, animalID in favorites do
-					Log.Info(CONTEXT, string.format("  Slot %d: %s", slot, animalID or "empty"))
+			Log.Info(CONTEXT, string.format("=== %s's Favorite Animals ===", player.Name))
+			if favorites and next(favorites) ~= nil then
+				for slot = 1, 3 do
+					local animalID = favorites[slot]
+					if animalID then
+						Log.Info(CONTEXT, string.format("  Slot %d: %s", slot, animalID))
+					else
+						Log.Info(CONTEXT, string.format("  Slot %d: (empty)", slot))
+					end
 				end
+			else
+				Log.Info(CONTEXT, "  No favorites set")
 			end
+		else
+			Log.Warn(CONTEXT, "FavoriteAnimalsService or GetFavorites not available")
 		end
 		return
 	end
@@ -234,8 +262,9 @@ end
 DebugCommands.RegisterServices({
 	PetBuilder = getPetBuilder(),
 	handleCommand = handleLobbyCommand,
+	showPlaceHelp = showLobbyHelp,
 })
 
 DebugCommands.Init()
 
-Log.Info(CONTEXT, "Lobby debug commands initialized")
+Log.Info(CONTEXT, "Lobby debug commands initialized. Type /debughelp to see all commands.")

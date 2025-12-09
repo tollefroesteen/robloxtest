@@ -31,3 +31,6 @@ Shots that scare animals on impact
 Scare and shots should damange shield
 Unshielded gets player shocked using scare
 XP counter more dynamically and allways happening
+
+Bug: Both lucky blocks and gifts spawned by the UFO tend to get stuck in the GetAttribute
+Bug: Some animals spawn under the terrain when the UFO spawns them

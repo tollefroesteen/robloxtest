@@ -196,10 +196,87 @@ function LobbyLuckyBlockService.OnRevealRequest(player: Player, blockID: string)
 		animalPreview:Destroy()
 	end
 	
+	-- Spawn a final static display of the animal
+	if animalBody then
+		local finalAnimalDisplay = Instance.new("Model")
+		finalAnimalDisplay.Name = "FinalAnimalDisplay_" .. blockID
+		
+		local finalBody = PetBuilder.BuildPet(selectedAnimal.Template, selectedAnimal.Color, blockData.Position + Vector3.new(0, 4, 0))
+		if finalBody then
+			finalBody.Parent = finalAnimalDisplay
+			finalAnimalDisplay.PrimaryPart = finalBody
+			
+			-- Make it anchored and visible
+			finalBody.Anchored = true
+			finalBody.CanCollide = false
+			
+			-- Add name label
+			local billboardGui = Instance.new("BillboardGui")
+			billboardGui.Size = UDim2.new(0, 200, 0, 50)
+			billboardGui.StudsOffset = Vector3.new(0, 3, 0)
+			billboardGui.AlwaysOnTop = true
+			billboardGui.Parent = finalBody
+			
+			local nameLabel = Instance.new("TextLabel")
+			nameLabel.Size = UDim2.new(1, 0, 1, 0)
+			nameLabel.BackgroundTransparency = 1
+			nameLabel.Text = "✨ " .. selectedAnimal.Name .. " ✨"
+			nameLabel.TextColor3 = Color3.new(1, 1, 1)
+			nameLabel.TextScaled = true
+			nameLabel.Font = Enum.Font.GothamBold
+			nameLabel.TextStrokeTransparency = 0.5
+			nameLabel.Parent = billboardGui
+			
+			finalAnimalDisplay.Parent = Workspace
+			
+			-- Clean up after display time
+			task.delay(5, function()
+				if finalAnimalDisplay and finalAnimalDisplay.Parent then
+					finalAnimalDisplay:Destroy()
+				end
+			end)
+		end
+	end
+	
 	-- Award the animal to player (add to captured index)
 	local dataService = getFavoriteAnimalsService()
 	if dataService and dataService.AddAnimalToIndex then
 		dataService.AddAnimalToIndex(player, selectedAnimal.ID)
+	end
+	
+	-- Add to favorites automatically
+	if dataService then
+		local playerData = dataService.GetPlayerData(player)
+		if playerData then
+			local favorites = playerData.Stats.FavoriteAnimals or {}
+			
+			-- Check if already in favorites
+			local alreadyFavorite = false
+			for _, favAnimalID in ipairs(favorites) do
+				if favAnimalID == selectedAnimal.ID then
+					alreadyFavorite = true
+					break
+				end
+			end
+			
+			if not alreadyFavorite then
+				-- If favorites are full, remove the first one
+				if #favorites >= 3 then
+					table.remove(favorites, 1)
+					print("[LobbyLuckyBlockService] Removed oldest favorite to make room")
+				end
+				
+				-- Add new animal to favorites
+				table.insert(favorites, selectedAnimal.ID)
+				playerData.Stats.FavoriteAnimals = favorites
+				
+				-- Save and sync
+				dataService.SavePlayerData(player)
+				dataService.SyncFavoritesToClient(player, true)
+				
+				print("[LobbyLuckyBlockService] Auto-added", selectedAnimal.Name, "to", player.Name, "'s favorites")
+			end
+		end
 	end
 	
 	-- Notify all clients of completion (everyone sees who got what)

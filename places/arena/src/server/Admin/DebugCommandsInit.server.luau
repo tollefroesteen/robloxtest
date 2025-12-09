@@ -69,19 +69,6 @@ local function getGameEndService()
 	return GameEndService
 end
 
-local AchievementsService: any = nil
-local function getAchievementsService()
-	if not AchievementsService then
-		local success, service = pcall(function()
-			return require(ServerScriptService.Server.Player.AchievementsService)
-		end)
-		if success then
-			AchievementsService = service
-		end
-	end
-	return AchievementsService
-end
-
 local TeamService: any = nil
 local function getTeamService()
 	if not TeamService then
@@ -203,20 +190,39 @@ local function grantItemToAll(itemID: string, amount: number, grantedBy: Player)
 	Log.Info(CONTEXT, string.format("%s granted %dx %s to %d players", grantedBy.Name, amount, itemID, count))
 end
 
+-- Show arena-specific help
+local function showArenaHelp(player: Player)
+	Log.Info(CONTEXT, "-- ARENA-SPECIFIC COMMANDS --")
+	Log.Info(CONTEXT, "")
+	Log.Info(CONTEXT, "Lucky Blocks:")
+	Log.Info(CONTEXT, "  /spawnluckyblock [rarity] - Spawn lucky block in front of you")
+	Log.Info(CONTEXT, "  /clearluckyblocks - Clear all active lucky blocks")
+	Log.Info(CONTEXT, "  /startluckyloop - Start automatic lucky block spawning")
+	Log.Info(CONTEXT, "  /stopluckyloop - Stop automatic lucky block spawning")
+	Log.Info(CONTEXT, "")
+	Log.Info(CONTEXT, "Animals:")
+	Log.Info(CONTEXT, "  /spawnanimal <id> [delay] - Spawn specific animal")
+	Log.Info(CONTEXT, "  /spawnrandom [count] [delay] - Spawn random animals")
+	Log.Info(CONTEXT, "  /listanimals - List all available animal IDs")
+	Log.Info(CONTEXT, "")
+	Log.Info(CONTEXT, "Player:")
+	Log.Info(CONTEXT, "  /shield - Activate shield instantly")
+	Log.Info(CONTEXT, "  /grantshield <amt> - Give shields to all players")
+	Log.Info(CONTEXT, "")
+	Log.Info(CONTEXT, "Game & Teams:")
+	Log.Info(CONTEXT, "  /endgame - Force end the current game")
+	Log.Info(CONTEXT, "  /setredscore <n> - Set red team score")
+	Log.Info(CONTEXT, "  /setbluescore <n> - Set blue team score")
+	Log.Info(CONTEXT, "  /resetscores - Reset both team scores")
+	Log.Info(CONTEXT, "  /switchteam [red|blue] - Switch teams")
+	Log.Info(CONTEXT, "  /teamstatus - Show team status")
+end
+
 -- Arena-specific command handler
 local function handleArenaCommand(player: Player, message: string, lowerMessage: string)
-	-- /debughelparena - show arena-specific commands
+	-- /debughelparena - show arena-specific commands only
 	if lowerMessage == "/debughelparena" then
-		Log.Info(CONTEXT, "=== Arena Debug Commands ===")
-		Log.Info(CONTEXT, "Player: /shield, /grantshield <amt>")
-		Log.Info(CONTEXT, "Game: /endgame, /resetachievements, /resetxp, /resetall")
-		Log.Info(CONTEXT, "Achievements: /grantachievement <id>, /listachievements, /myachievements")
-		Log.Info(CONTEXT, "Achievements: /setachievementprogress <id> <val>, /grantallbonusachievements, /setlevel <lvl>")
-		Log.Info(CONTEXT, "Scores: /setredscore <n>, /setbluescore <n>, /setscore <red> <blue>, /resetscores")
-		Log.Info(CONTEXT, "Teams: /switchteam [red|blue], /teamstatus, /setgameactive <true|false>, /simulateforfeit <red|blue>")
-		Log.Info(CONTEXT, "Animals: /spawnanimal <id> [delay], /spawnrandom [count] [delay], /spawnall [delay], /listanimals")
-		Log.Info(CONTEXT, "Lucky Blocks: /spawnluckyblock [rarity], /clearluckyblocks, /startluckyloop, /stopluckyloop")
-		Log.Info(CONTEXT, "Other: /spawnfood [attract], /spawngift")
+		showArenaHelp(player)
 		return
 	end
 	
@@ -356,42 +362,6 @@ local function handleArenaCommand(player: Player, message: string, lowerMessage:
 		return
 	end
 	
-	-- /resetachievements
-	if lowerMessage == "/resetachievements" then
-		local achievementsSvc = getAchievementsService()
-		if achievementsSvc then
-			for _, p in Players:GetPlayers() do
-				achievementsSvc.ResetAchievements(p)
-			end
-			Log.Info(CONTEXT, string.format("%s reset achievements for all players", player.Name))
-		end
-		return
-	end
-	
-	-- /resetxp
-	if lowerMessage == "/resetxp" then
-		local achievementsSvc = getAchievementsService()
-		if achievementsSvc then
-			for _, p in Players:GetPlayers() do
-				achievementsSvc.ResetXP(p)
-			end
-			Log.Info(CONTEXT, string.format("%s reset XP for all players", player.Name))
-		end
-		return
-	end
-	
-	-- /resetall
-	if lowerMessage == "/resetall" then
-		local achievementsSvc = getAchievementsService()
-		if achievementsSvc then
-			for _, p in Players:GetPlayers() do
-				achievementsSvc.ResetAllStats(p)
-			end
-			Log.Info(CONTEXT, string.format("%s reset all stats for all players", player.Name))
-		end
-		return
-	end
-	
 	-- /setredscore <score>
 	local redScoreMatch = lowerMessage:match("^/setredscore%s+(%d+)$")
 	if redScoreMatch then
@@ -487,6 +457,7 @@ end
 DebugCommands.RegisterServices({
 	AnimalBuilder = getAnimalBuilder(),
 	handleCommand = handleArenaCommand,
+	showPlaceHelp = showArenaHelp,
 })
 
 DebugCommands.Init()

@@ -21,8 +21,8 @@ MatchmakingConfig.ZONE_RADIUS = 6 -- Radius of trigger cylinder
 MatchmakingConfig.ZONE_HEIGHT = 20 -- Height of trigger cylinder
 
 -- Multiple zones configuration
-MatchmakingConfig.NUM_1V1_ZONES = 6 -- Number of 1v1 cylinders
-MatchmakingConfig.NUM_2V2_ZONES = 6 -- Number of 2v2 cylinders
+MatchmakingConfig.NUM_1V1_ZONES = 3 -- Number of 1v1 cylinders
+MatchmakingConfig.NUM_2V2_ZONES = 3 -- Number of 2v2 cylinders
 
 -- Zone layout - zones arranged in two rows
 -- 1v1 zones on one side (negative X), 2v2 zones on other side (positive X)

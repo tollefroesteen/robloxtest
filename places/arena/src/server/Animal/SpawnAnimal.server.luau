@@ -29,7 +29,6 @@ local spawnInterval = SpawnConfig.INTERVAL
 local burstSize = SpawnConfig.BURST_SIZE
 local maxConcurrent = SpawnConfig.MAX_CONCURRENT
 local startDelay = SpawnConfig.START_DELAY
-local spawnHeight = 10
 local partSize = Vector3.new(2, 2, 4)
 
 -- Telemetry: track spawn statistics (UFO-10)
@@ -42,6 +41,51 @@ spawnFolder.Name = "Flock"
 spawnFolder.Parent = workspace
 
 local RunService = game:GetService("RunService")
+
+-- Raycast to find TERRAIN surface position only
+local function getTerrainSurfacePosition(x: number, z: number, startY: number): Vector3
+	local rayOrigin = Vector3.new(x, startY + 100, z)
+	local rayDirection = Vector3.new(0, -300, 0)
+	
+	-- Only hit terrain, ignore all other objects
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Include
+	raycastParams.FilterDescendantsInstances = { workspace.Terrain }
+	raycastParams.IgnoreWater = false
+	
+	local result = workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+	
+	if result then
+		local terrainY = result.Position.Y + 2  -- 2 studs above terrain
+		
+		-- Check if there's an obstacle at this position
+		local checkParams = RaycastParams.new()
+		checkParams.FilterType = Enum.RaycastFilterType.Exclude
+		checkParams.FilterDescendantsInstances = { workspace.Terrain, spawnFolder, UFOModel }
+		
+		local obstacleCheck = workspace:Raycast(
+			Vector3.new(x, terrainY + 10, z),
+			Vector3.new(0, -12, 0),
+			checkParams
+		)
+		
+		if obstacleCheck then
+			-- There's something here, try a slight offset
+			local offsetAngle = math.random() * math.pi * 2
+			local offsetDist = 3 + math.random() * 4
+			return Vector3.new(
+				x + math.cos(offsetAngle) * offsetDist,
+				terrainY,
+				z + math.sin(offsetAngle) * offsetDist
+			)
+		end
+		
+		return Vector3.new(x, terrainY, z)
+	end
+	
+	-- Fallback
+	return Vector3.new(x, startY, z)
+end
 
 local function canSpawn(): boolean
 	local flock = workspace:FindFirstChild("Flock")
@@ -61,7 +105,9 @@ local function spawnPart()
 	end
 	local ufoPos = ufo.Position
 	local chosenType = PartLibrary.GetRandomType()
-	local spawnPos = Vector3.new(ufoPos.X, spawnHeight, ufoPos.Z)
+	
+	-- Use raycasting to find terrain surface
+	local spawnPos = getTerrainSurfacePosition(ufoPos.X, ufoPos.Z, ufoPos.Y)
 
 	local clone
 	

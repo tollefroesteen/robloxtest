@@ -251,25 +251,58 @@ local function spawnGift()
 	-- Spawn position (below UFO, at ground level)
 	local ufoPos = ufo.Position
 	
-	-- Raycast to find actual ground, excluding the UFO and gifts
+	-- Raycast to find TERRAIN only, ignoring all other objects
 	local rayParams = RaycastParams.new()
-	rayParams.FilterType = Enum.RaycastFilterType.Exclude
-	rayParams.FilterDescendantsInstances = { UFOModel, GiftsFolder }
+	rayParams.FilterType = Enum.RaycastFilterType.Include
+	rayParams.FilterDescendantsInstances = { workspace.Terrain }
 	
 	local rayResult = workspace:Raycast(
-		Vector3.new(ufoPos.X, ufoPos.Y, ufoPos.Z),
-		Vector3.new(0, -200, 0),
+		Vector3.new(ufoPos.X, ufoPos.Y + 50, ufoPos.Z),  -- Start from above UFO
+		Vector3.new(0, -300, 0),
 		rayParams
 	)
 	
 	local spawnPos
 	if rayResult then
-		-- Spawn 2 studs above ground
-		spawnPos = rayResult.Position + Vector3.new(0, 2, 0)
+		-- Check if there's anything blocking this spot (objects on terrain)
+		local checkParams = RaycastParams.new()
+		checkParams.FilterType = Enum.RaycastFilterType.Exclude
+		checkParams.FilterDescendantsInstances = { workspace.Terrain, UFOModel, GiftsFolder }
+		
+		local obstacleCheck = workspace:Raycast(
+			rayResult.Position + Vector3.new(0, 10, 0),
+			Vector3.new(0, -12, 0),
+			checkParams
+		)
+		
+		if obstacleCheck then
+			-- There's an object here, offset and re-raycast terrain at new position
+			local offsetAngle = math.random() * math.pi * 2
+			local offsetDist = 5 + math.random() * 5
+			local newX = ufoPos.X + math.cos(offsetAngle) * offsetDist
+			local newZ = ufoPos.Z + math.sin(offsetAngle) * offsetDist
+			
+			-- Re-raycast terrain at the offset position to get correct height
+			local retryResult = workspace:Raycast(
+				Vector3.new(newX, ufoPos.Y + 50, newZ),
+				Vector3.new(0, -300, 0),
+				rayParams
+			)
+			
+			if retryResult then
+				spawnPos = retryResult.Position + Vector3.new(0, 2, 0)
+			else
+				-- Fallback to original terrain hit + offset
+				spawnPos = Vector3.new(newX, rayResult.Position.Y + 2, newZ)
+			end
+		else
+			-- Clear spot, spawn 2 studs above terrain
+			spawnPos = rayResult.Position + Vector3.new(0, 2, 0)
+		end
 	else
 		-- Fallback: use terrain base level
 		spawnPos = Vector3.new(ufoPos.X, 2, ufoPos.Z)
-		Log.Warn(CONTEXT, "Raycast failed to find ground, using fallback position")
+		Log.Warn(CONTEXT, "Raycast failed to find terrain, using fallback position")
 	end
 	
 	-- Create the gift model

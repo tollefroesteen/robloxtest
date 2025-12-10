@@ -100,7 +100,59 @@ function LuckyBlockService.SelectAnimalForBlock(blockRarity: LuckyBlockTypes.Luc
 	return weightedList[#weightedList].Animal
 end
 
--- Generate a random spawn position within arena bounds
+-- Raycast to find TERRAIN surface position only
+local function getTerrainSurfacePosition(x: number, z: number, startY: number): number
+	local Workspace = game:GetService("Workspace")
+	
+	local rayOrigin = Vector3.new(x, startY + 100, z)
+	local rayDirection = Vector3.new(0, -300, 0)
+	
+	-- Only hit terrain, ignore all other objects
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Include
+	raycastParams.FilterDescendantsInstances = { Workspace.Terrain }
+	raycastParams.IgnoreWater = false
+	
+	local result = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+	
+	if result then
+		local terrainY = result.Position.Y + 2  -- 2 studs above terrain
+		
+		-- Check if there's an obstacle at this position
+		local checkParams = RaycastParams.new()
+		checkParams.FilterType = Enum.RaycastFilterType.Exclude
+		checkParams.FilterDescendantsInstances = { Workspace.Terrain }
+		
+		local obstacleCheck = Workspace:Raycast(
+			Vector3.new(x, terrainY + 10, z),
+			Vector3.new(0, -12, 0),
+			checkParams
+		)
+		
+		if obstacleCheck then
+			-- There's something here, try a slight offset and re-raycast terrain
+			local offsetAngle = math.random() * math.pi * 2
+			local offsetDist = 4 + math.random() * 4
+			local newX = x + math.cos(offsetAngle) * offsetDist
+			local newZ = z + math.sin(offsetAngle) * offsetDist
+			
+			local retryResult = Workspace:Raycast(
+				Vector3.new(newX, startY + 100, newZ),
+				rayDirection,
+				raycastParams
+			)
+			if retryResult then
+				return retryResult.Position.Y + 2
+			end
+		end
+		
+		return terrainY
+	end
+	
+	return startY  -- Fallback to original Y
+end
+
+-- Generate a random spawn position within arena bounds (with terrain raycasting)
 function LuckyBlockService.GenerateArenaSpawnPosition(arenaFolder: Folder): Vector3?
 	-- Look for spawn boundary or use default arena center
 	local spawnZone = arenaFolder:FindFirstChild("LuckyBlockSpawnZone")
@@ -112,9 +164,11 @@ function LuckyBlockService.GenerateArenaSpawnPosition(arenaFolder: Folder): Vect
 		
 		local randomX = pos.X + (math.random() - 0.5) * size.X * 0.8
 		local randomZ = pos.Z + (math.random() - 0.5) * size.Z * 0.8
-		local y = pos.Y + size.Y / 2 + 5  -- Slightly above ground
 		
-		return Vector3.new(randomX, y, randomZ)
+		-- Raycast to find actual terrain height
+		local terrainY = getTerrainSurfacePosition(randomX, randomZ, pos.Y)
+		
+		return Vector3.new(randomX, terrainY, randomZ)
 	else
 		-- Default: spawn at arena center with some randomness
 		local center = Vector3.new(0, 50, 0)
@@ -126,7 +180,10 @@ function LuckyBlockService.GenerateArenaSpawnPosition(arenaFolder: Folder): Vect
 		local x = center.X + math.cos(angle) * distance
 		local z = center.Z + math.sin(angle) * distance
 		
-		return Vector3.new(x, center.Y, z)
+		-- Raycast to find actual terrain height
+		local terrainY = getTerrainSurfacePosition(x, z, center.Y)
+		
+		return Vector3.new(x, terrainY, z)
 	end
 end
 

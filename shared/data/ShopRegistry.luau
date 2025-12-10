@@ -24,6 +24,16 @@ export type CoinBundle = {
 	Featured: boolean?,
 }
 
+export type PermanentUpgrade = {
+	ID: string,
+	Name: string,
+	Description: string,
+	RobuxPrice: number,
+	ProductId: number?,      -- Roblox Developer Product ID (set in game)
+	Category: string,
+	Featured: boolean?,
+}
+
 -- Shop categories
 ShopRegistry.Categories = {
 	Ammo = "Ammo",
@@ -32,6 +42,7 @@ ShopRegistry.Categories = {
 	Materials = "Materials",
 	Bundles = "Bundles",
 	LuckyBlocks = "LuckyBlocks",
+	Upgrades = "Upgrades",
 }
 
 -- Items available for purchase with coins
@@ -182,6 +193,18 @@ ShopRegistry.Items = {
 		Category = "Materials",
 	},
 }
+-- Permanent upgrades available for purchase with Robux
+ShopRegistry.PermanentUpgrades = {
+	UPGRADE_HEAT_SEEKING_AMMO = {
+		ID = "UPGRADE_HEAT_SEEKING_AMMO",
+		Name = "Heat-Seeking Ammo",
+		Description = "Your projectiles will automatically track nearby enemies!",
+		RobuxPrice = 299,
+		ProductId = nil,  -- Set this to your Developer Product ID
+		Category = "Upgrades",
+		Featured = true,
+	},
+}
 
 -- Coin bundles available for purchase with Robux
 ShopRegistry.CoinBundles = {
@@ -270,6 +293,30 @@ function ShopRegistry.GetBundleByProductId(productId: number): CoinBundle?
 	for _, bundle in ShopRegistry.CoinBundles do
 		if bundle.ProductId == productId then
 			return bundle
+		end
+	end
+	return nil
+end
+
+-- Get permanent upgrade by ID
+function ShopRegistry.GetPermanentUpgrade(upgradeID: string): PermanentUpgrade?
+	return ShopRegistry.PermanentUpgrades[upgradeID]
+end
+
+-- Get all permanent upgrades
+function ShopRegistry.GetAllUpgrades(): { PermanentUpgrade }
+	local result = {}
+	for _, upgrade in ShopRegistry.PermanentUpgrades do
+		table.insert(result, upgrade)
+	end
+	return result
+end
+
+-- Get upgrade by product ID
+function ShopRegistry.GetUpgradeByProductId(productId: number): PermanentUpgrade?
+	for _, upgrade in ShopRegistry.PermanentUpgrades do
+		if upgrade.ProductId == productId then
+			return upgrade
 		end
 	end
 	return nil

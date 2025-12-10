@@ -83,6 +83,20 @@ local function getAchievementsService()
 	return AchievementsService
 end
 
+-- Lazy load PlayerUpgradesService
+local PlayerUpgradesService: any = nil
+local function getPlayerUpgradesService()
+	if not PlayerUpgradesService then
+		local success, service = pcall(function()
+			return require(Shared:WaitForChild("services"):WaitForChild("PlayerUpgradesService"))
+		end)
+		if success then
+			PlayerUpgradesService = service
+		end
+	end
+	return PlayerUpgradesService
+end
+
 -- Check if player is admin (or in Studio)
 local function isAdmin(player: Player): boolean
 	-- Always allow in Studio for testing
@@ -421,6 +435,23 @@ local function onPlayerChatted(player: Player, message: string)
 		return
 	end
 	
+	-- /grantheatseek - grant heat-seeking ammo upgrade to all players
+	if lowerMessage == "/grantheatseek" then
+		local upgradesSvc = getPlayerUpgradesService()
+		if upgradesSvc then
+			local count = 0
+			for _, p in Players:GetPlayers() do
+				if upgradesSvc.GrantUpgrade(p, "HeatSeekingAmmo") then
+					count += 1
+				end
+			end
+			Log.Info(CONTEXT, string.format("%s granted Heat-Seeking Ammo to %d players", player.Name, count))
+		else
+			Log.Warn(CONTEXT, "PlayerUpgradesService not available")
+		end
+		return
+	end
+	
 	-- /debughelp - show all available commands
 	if lowerMessage == "/debughelp" then
 		Log.Info(CONTEXT, "=== Debug Commands ===")
@@ -438,6 +469,9 @@ local function onPlayerChatted(player: Player, message: string)
 		Log.Info(CONTEXT, "/resetachievements - Reset all achievements for all players")
 		Log.Info(CONTEXT, "/resetxp - Reset XP and level for all players")
 		Log.Info(CONTEXT, "/resetall - Reset ALL stats and achievements for all players")
+		Log.Info(CONTEXT, "")
+		Log.Info(CONTEXT, "-- UPGRADES --")
+		Log.Info(CONTEXT, "/grantheatseek - Grant Heat-Seeking Ammo upgrade to all players")
 		Log.Info(CONTEXT, "")
 		Log.Info(CONTEXT, "-- LUCKY BLOCKS (Testing) --")
 		Log.Info(CONTEXT, "/spawnlball - Spawn one of each rarity lucky block (preview only)")

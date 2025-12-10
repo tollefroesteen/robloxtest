@@ -45,6 +45,16 @@ RemoteEvents.ShopBuyCoinsRequestEvent.OnServerEvent:Connect(function(player: Pla
 	end
 end)
 
+-- Handle Robux upgrade purchase requests from client
+RemoteEvents.ShopBuyUpgradeRequestEvent.OnServerEvent:Connect(function(player: Player, upgradeID: string)
+	local success, message = ShopService.PromptUpgradePurchase(player, upgradeID)
+	if not success then
+		Log.Warn(CONTEXT, string.format("Failed to prompt upgrade purchase for %s: %s", player.Name, message))
+		-- Optionally notify client
+		RemoteEvents.ShopPurchaseResultEvent:FireClient(player, false, upgradeID, 0, message)
+	end
+end)
+
 -- Handle Developer Product purchases (Robux -> Coins)
 MarketplaceService.ProcessReceipt = function(receiptInfo)
 	local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)

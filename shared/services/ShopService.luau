@@ -19,11 +19,25 @@ local ShopService = {}
 
 -- References to other services (set during init)
 local InventoryService: any = nil
+local PlayerUpgradesService: any = nil
 local LuckyBlockCallback: ((player: Player, shopItemID: string) -> boolean)? = nil
 
 -- Initialize with dependencies
-function ShopService.Init(inventoryServiceRef: any): nil
+function ShopService.Init(inventoryServiceRef: any, upgradesServiceRef: any?): nil
 	InventoryService = inventoryServiceRef
+	
+	-- Try to load PlayerUpgradesService if not provided
+	if upgradesServiceRef then
+		PlayerUpgradesService = upgradesServiceRef
+	else
+		local success, service = pcall(function()
+			return require(Shared:WaitForChild("services"):WaitForChild("PlayerUpgradesService"))
+		end)
+		if success then
+			PlayerUpgradesService = service
+		end
+	end
+	
 	Log.Info(CONTEXT, "ShopService initialized")
 end
 
@@ -126,29 +140,62 @@ function ShopService.ProcessRobuxPurchase(player: Player, productId: number): bo
 		return false
 	end
 	
+	-- Check if it's a coin bundle
 	local bundle = ShopRegistry.GetBundleByProductId(productId)
-	if not bundle then
-		Log.Warn(CONTEXT, string.format("Unknown product ID: %d", productId))
-		return false
+	if bundle then
+		-- Add coins to player's inventory
+		local success, msg = InventoryService.AddItem(player, "COIN", bundle.CoinAmount)
+		if success then
+			Log.Info(CONTEXT, string.format("%s purchased %d coins (Robux bundle: %s)", 
+				player.Name, bundle.CoinAmount, bundle.Name))
+			
+			-- Notify client
+			RemoteEvents.ShopPurchaseResultEvent:FireClient(player, true, bundle.ID, bundle.CoinAmount, "Coins")
+			
+			return true
+		else
+			Log.Warn(CONTEXT, string.format("Failed to add coins for %s: %s", player.Name, msg))
+			return false
+		end
 	end
 	
-	-- Add coins to player's inventory
-	local success, msg = InventoryService.AddItem(player, "COIN", bundle.CoinAmount)
-	if success then
-		Log.Info(CONTEXT, string.format("%s purchased %d coins (Robux bundle: %s)", 
-			player.Name, bundle.CoinAmount, bundle.Name))
+	-- Check if it's a permanent upgrade
+	local upgrade = ShopRegistry.GetUpgradeByProductId(productId)
+	if upgrade then
+		if not PlayerUpgradesService then
+			Log.Warn(CONTEXT, "PlayerUpgradesService not available for upgrade purchase")
+			return false
+		end
 		
-		-- Notify client
-		RemoteEvents.ShopPurchaseResultEvent:FireClient(player, true, bundle.ID, bundle.CoinAmount, "Coins")
-		
-		return true
-	else
-		Log.Warn(CONTEXT, string.format("Failed to add coins for %s: %s", player.Name, msg))
-		return false
+		-- Check if player already has this upgrade
+		if upgrade.ID == "UPGRADE_HEAT_SEEKING_AMMO" then
+			if PlayerUpgradesService.HasUpgrade(player, "HeatSeekingAmmo") then
+				Log.Warn(CONTEXT, string.format("%s already has upgrade: %s", player.Name, upgrade.Name))
+				-- Return true to prevent re-prompting purchase
+				return true
+			end
+			
+			-- Grant the upgrade
+			local success = PlayerUpgradesService.GrantUpgrade(player, "HeatSeekingAmmo")
+			if success then
+				Log.Info(CONTEXT, string.format("%s purchased upgrade: %s", player.Name, upgrade.Name))
+				
+				-- Notify client
+				RemoteEvents.ShopPurchaseResultEvent:FireClient(player, true, upgrade.ID, 1, upgrade.Name)
+				
+				return true
+			else
+				Log.Warn(CONTEXT, string.format("Failed to grant upgrade for %s: %s", player.Name, upgrade.Name))
+				return false
+			end
+		end
 	end
+	
+	Log.Warn(CONTEXT, string.format("Unknown product ID: %d", productId))
+	return false
 end
 
--- Prompt Robux purchase
+-- Prompt Robux purchase for coin bundle
 function ShopService.PromptCoinBundlePurchase(player: Player, bundleID: string): (boolean, string)
 	local bundle = ShopRegistry.GetCoinBundle(bundleID)
 	if not bundle then
@@ -166,6 +213,39 @@ function ShopService.PromptCoinBundlePurchase(player: Player, bundleID: string):
 	
 	if not success then
 		Log.Warn(CONTEXT, string.format("Failed to prompt purchase for %s: %s", player.Name, tostring(err)))
+		return false, "Failed to open purchase dialog"
+	end
+	
+	return true, "Purchase dialog opened"
+end
+
+-- Prompt Robux purchase for permanent upgrade
+function ShopService.PromptUpgradePurchase(player: Player, upgradeID: string): (boolean, string)
+	local upgrade = ShopRegistry.GetPermanentUpgrade(upgradeID)
+	if not upgrade then
+		return false, "Invalid upgrade"
+	end
+	
+	if not upgrade.ProductId then
+		return false, "Upgrade not configured (no Product ID)"
+	end
+	
+	-- Check if player already has this upgrade
+	if PlayerUpgradesService then
+		if upgrade.ID == "UPGRADE_HEAT_SEEKING_AMMO" then
+			if PlayerUpgradesService.HasUpgrade(player, "HeatSeekingAmmo") then
+				return false, "You already own this upgrade!"
+			end
+		end
+	end
+	
+	-- Prompt the purchase through MarketplaceService
+	local success, err = pcall(function()
+		MarketplaceService:PromptProductPurchase(player, upgrade.ProductId)
+	end)
+	
+	if not success then
+		Log.Warn(CONTEXT, string.format("Failed to prompt upgrade purchase for %s: %s", player.Name, tostring(err)))
 		return false, "Failed to open purchase dialog"
 	end
 	

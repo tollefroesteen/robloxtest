@@ -35,6 +35,41 @@ local function getGameEndService()
 	return GameEndService
 end
 
+-- Lazy load PlayerUpgradesService
+local PlayerUpgradesService: any = nil
+local function getPlayerUpgradesService()
+	if not PlayerUpgradesService then
+		local success, service = pcall(function()
+			return require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("services"):WaitForChild("PlayerUpgradesService"))
+		end)
+		if success then
+			PlayerUpgradesService = service
+		end
+	end
+	return PlayerUpgradesService
+end
+
+-- Find nearest enemy player for heat-seeking
+local function findNearestEnemy(shooter: Player, position: Vector3, maxRange: number): Player?
+	local nearestPlayer: Player? = nil
+	local nearestDistance = maxRange
+	
+	for _, player in Players:GetPlayers() do
+		if player ~= shooter and player.Character then
+			local enemyRoot = player.Character:FindFirstChild("HumanoidRootPart")
+			if enemyRoot then
+				local distance = (enemyRoot.Position - position).Magnitude
+				if distance < nearestDistance then
+					nearestPlayer = player
+					nearestDistance = distance
+				end
+			end
+		end
+	end
+	
+	return nearestPlayer
+end
+
 local AMMO_ITEM_ID = "AMMO_BASIC"
 local AMMO_PER_SHOT = 1
 
@@ -45,6 +80,11 @@ local HIT_RADIUS = 2
 local BOUNCE_HEIGHT = 3 -- Height above terrain to maintain
 local GRAVITY_STRENGTH = 6.5 -- How strongly projectile is pulled down
 local BOUNCE_ELASTICITY = 0.7 -- Bounce damping (0-1)
+
+-- Heat-seeking parameters (adjustable for tuning)
+local HEAT_SEEK_RANGE = 50 -- Max range to detect enemies
+local HEAT_SEEK_STRENGTH = 0.15 -- How strongly it turns toward target (0-1, lower = more subtle)
+local HEAT_SEEK_UPDATE_INTERVAL = 0.1 -- How often to update target
 
 local function createProjectile(player)
 	-- Check if game is in end-processing state
@@ -88,16 +128,42 @@ local function createProjectile(player)
 	local direction = (root.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit -- Flatten Y component
 	local verticalVelocity = 0 -- Track vertical momentum
 	local startTime = tick()
-
-	-- Raycast params to ignore the shooting player
-	local rayParams = RaycastParams.new()
-	rayParams.FilterDescendantsInstances = {character}
-	rayParams.FilterType = Enum.RaycastFilterType.Exclude
-
+	
+	-- Check if player has heat-seeking upgrade
+	local upgradesService = getPlayerUpgradesService()
+	local hasHeatSeeking = upgradesService and upgradesService.HasUpgrade(player, "HeatSeekingAmmo") or false
+	local lastSeekUpdate = 0
+	local currentTarget: Player? = nil
 	while tick() - startTime < PROJECTILE_LIFETIME do
 		local dt = task.wait()
+		local currentTime = tick()
+		
+		-- Heat-seeking behavior
+		if hasHeatSeeking and currentTime - lastSeekUpdate >= HEAT_SEEK_UPDATE_INTERVAL then
+			lastSeekUpdate = currentTime
+			currentTarget = findNearestEnemy(player, projectile.Position, HEAT_SEEK_RANGE)
+			
+			if currentTarget and currentTarget.Character then
+				local targetRoot = currentTarget.Character:FindFirstChild("HumanoidRootPart")
+				if targetRoot then
+					-- Calculate direction to target (flatten Y for ground-hugging)
+					local toTarget = (targetRoot.Position - projectile.Position) * Vector3.new(1, 0, 1)
+					if toTarget.Magnitude > 0 then
+						local targetDirection = toTarget.Unit
+						-- Blend current direction with target direction
+						direction = (direction + targetDirection * HEAT_SEEK_STRENGTH).Unit
+					end
+				end
+			end
+		end
 		
 		-- Apply gravity to vertical velocity
+		verticalVelocity = verticalVelocity - GRAVITY_STRENGTH
+		
+		-- Calculate new position with horizontal and vertical components
+		local horizontalMovement = direction * PROJECTILE_SPEED * dt
+		local verticalMovement = Vector3.new(0, verticalVelocity * dt, 0)
+		local newPos = projectile.Position + horizontalMovement + verticalMovement
 		verticalVelocity = verticalVelocity - GRAVITY_STRENGTH
 		
 		-- Calculate new position with horizontal and vertical components

@@ -13,6 +13,7 @@ local TeamService = require(ServerScriptService.Server.Game.TeamService)
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local InventoryService = require(Shared:WaitForChild("services"):WaitForChild("InventoryService"))
+local PlayerUpgradesService = require(Shared:WaitForChild("services"):WaitForChild("PlayerUpgradesService"))
 local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
 local Log = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("util"):WaitForChild("Log"))
 
@@ -42,6 +43,13 @@ Players.PlayerAdded:Connect(function(player)
 		if inventory then
 			RemoteEvents.InventoryUpdatedEvent:FireClient(player, inventory)
 			Log.Info(CONTEXT, string.format("Sent initial inventory to %s", player.Name))
+		end
+		
+		-- Send initial upgrades
+		local upgrades = PlayerUpgradesService.GetPlayerUpgrades(player)
+		if upgrades then
+			RemoteEvents.UpgradesUpdatedEvent:FireClient(player, upgrades)
+			Log.Info(CONTEXT, string.format("Sent initial upgrades to %s", player.Name))
 		end
 		
 		-- Send stats WITH achievements included
@@ -87,6 +95,12 @@ for _, player in Players:GetPlayers() do
 				RemoteEvents.InventoryUpdatedEvent:FireClient(player, inventory)
 			end
 			
+			-- Send initial upgrades
+			local upgrades = PlayerUpgradesService.GetPlayerUpgrades(player)
+			if upgrades then
+				RemoteEvents.UpgradesUpdatedEvent:FireClient(player, upgrades)
+			end
+			
 			-- Send stats WITH achievements included
 			local currentStats = AchievementsService.GetStats(player)
 			local achievements = AchievementsService.GetAchievements(player)
@@ -126,6 +140,12 @@ RemoteEvents.RequestPlayerDataEvent.OnServerEvent:Connect(function(player: Playe
 	local inventory = InventoryService.GetInventory(player)
 	if inventory then
 		RemoteEvents.InventoryUpdatedEvent:FireClient(player, inventory)
+	end
+	
+	-- Send upgrades
+	local upgrades = PlayerUpgradesService.GetPlayerUpgrades(player)
+	if upgrades then
+		RemoteEvents.UpgradesUpdatedEvent:FireClient(player, upgrades)
 	end
 	
 	-- Send stats with achievements

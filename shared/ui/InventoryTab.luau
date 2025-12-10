@@ -96,8 +96,62 @@ local function createInventoryItem(itemData: any, definition: any): Frame
 	return cell
 end
 
+-- Create an upgrade badge
+local function createUpgradeBadge(upgradeName: string, upgradeIcon: string, order: number): Frame
+	local badge = Instance.new("Frame")
+	badge.Name = "Upgrade_" .. upgradeName
+	badge.Size = UDim2.new(0, 80, 0, 90)
+	badge.BackgroundColor3 = Color3.fromRGB(150, 80, 200)
+	badge.BorderSizePixel = 0
+	badge.LayoutOrder = order
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = badge
+	
+	-- Icon
+	local icon = Instance.new("TextLabel")
+	icon.Size = UDim2.new(0, 40, 0, 40)
+	icon.Position = UDim2.new(0.5, -20, 0, 5)
+	icon.BackgroundTransparency = 1
+	icon.Text = upgradeIcon
+	icon.TextSize = 28
+	icon.Font = Enum.Font.GothamBold
+	icon.Parent = badge
+	
+	-- Name label
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, -6, 0, 40)
+	nameLabel.Position = UDim2.new(0, 3, 1, -42)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = upgradeName
+	nameLabel.TextColor3 = Color3.fromRGB(255, 220, 150)
+	nameLabel.TextSize = 10
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextWrapped = true
+	nameLabel.TextYAlignment = Enum.TextYAlignment.Top
+	nameLabel.Parent = badge
+	
+	-- Owned badge
+	local ownedBadge = Instance.new("TextLabel")
+	ownedBadge.Size = UDim2.new(0, 50, 0, 14)
+	ownedBadge.Position = UDim2.new(0.5, -25, 0, 50)
+	ownedBadge.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+	ownedBadge.Text = "OWNED"
+	ownedBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
+	ownedBadge.TextSize = 9
+	ownedBadge.Font = Enum.Font.GothamBold
+	ownedBadge.Parent = badge
+	
+	local ownedCorner = Instance.new("UICorner")
+	ownedCorner.CornerRadius = UDim.new(0, 3)
+	ownedCorner.Parent = ownedBadge
+	
+	return badge
+end
+
 -- Populate the inventory container
-function InventoryTab.populate(container: ScrollingFrame, cachedInventory: { Items: { [string]: any } }?)
+function InventoryTab.populate(container: ScrollingFrame, cachedInventory: { Items: { [string]: any }, Upgrades: { [string]: boolean }? }?)
 	if not container then return end
 	
 	-- Clear existing items
@@ -121,6 +175,17 @@ function InventoryTab.populate(container: ScrollingFrame, cachedInventory: { Ite
 	end
 	
 	local itemCount = 0
+	
+	-- Add owned upgrades first
+	if cachedInventory.Upgrades then
+		if cachedInventory.Upgrades.HeatSeekingAmmo then
+			local badge = createUpgradeBadge("Heat-Seeking Ammo", "⚡", itemCount)
+			badge.Parent = container
+			itemCount += 1
+		end
+	end
+	
+	-- Add regular inventory items
 	for itemID, itemData in cachedInventory.Items do
 		-- Skip coins - they are displayed in Stats tab, not as inventory items
 		if itemID == "COIN" then

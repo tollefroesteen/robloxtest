@@ -38,6 +38,7 @@ RemoteEvents.InventoryUpdatedEvent = getOrCreate("InventoryUpdatedEvent")
 RemoteEvents.StatsUpdatedEvent = getOrCreate("StatsUpdatedEvent")
 RemoteEvents.LevelUpEvent = getOrCreate("LevelUpEvent")
 RemoteEvents.RequestPlayerDataEvent = getOrCreate("RequestPlayerDataEvent")         -- Client -> Server: request inventory/stats refresh
+RemoteEvents.UpgradesUpdatedEvent = getOrCreate("UpgradesUpdatedEvent")             -- Server -> Client: permanent upgrades changed
 
 -- Game end events
 RemoteEvents.GameFreezeEvent = getOrCreate("GameFreezeEvent")
@@ -52,6 +53,7 @@ RemoteEvents.TeamForfeitEvent = getOrCreate("TeamForfeitEvent")
 RemoteEvents.ShopPurchaseRequestEvent = getOrCreate("ShopPurchaseRequestEvent")
 RemoteEvents.ShopPurchaseResultEvent = getOrCreate("ShopPurchaseResultEvent")
 RemoteEvents.ShopBuyCoinsRequestEvent = getOrCreate("ShopBuyCoinsRequestEvent")
+RemoteEvents.ShopBuyUpgradeRequestEvent = getOrCreate("ShopBuyUpgradeRequestEvent")
 
 -- Respawn events
 RemoteEvents.RespawnCountdownEvent = getOrCreate("RespawnCountdownEvent")

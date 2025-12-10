@@ -307,7 +307,9 @@ end
 -- Populate tab content using modular tab components
 local function populateInventory(): nil
 	if inventoryContainer then
-		InventoryTab.populate(inventoryContainer, cachedInventory)
+		-- Use cached inventory with upgrades (populated by UpgradesUpdatedEvent)
+		local inventoryWithUpgrades = cachedInventory or { Items = {} }
+		InventoryTab.populate(inventoryContainer, inventoryWithUpgrades)
 	end
 end
 
@@ -331,6 +333,7 @@ end
 
 local function populateShop(): nil
 	if shopContainer then
+		-- Use cached inventory with upgrades (populated by UpgradesUpdatedEvent)
 		coinBalanceLabel = ShopTab.populate(shopContainer, {
 			cachedInventory = cachedInventory,
 		})
@@ -472,6 +475,13 @@ function PlayerMenuController.Init(): nil
 	
 	Log.Info(CONTEXT, "PlayerMenuController.Init() called")
 	
+	-- Ensure PlayerGui exists before creating menu
+	local playerGui = player:WaitForChild("PlayerGui", 10)
+	if not playerGui then
+		Log.Warn(CONTEXT, "PlayerGui not found! Cannot create menu.")
+		return
+	end
+	
 	createMenuGui()
 	
 	-- Connect input
@@ -487,6 +497,23 @@ function PlayerMenuController.Init(): nil
 				populateShop()
 			elseif currentTab == "Stats" then
 				populateStats()
+			end
+		end
+	end)
+	
+	-- Listen for upgrades updates (permanent upgrades like heat-seeking)
+	RemoteEvents.UpgradesUpdatedEvent.OnClientEvent:Connect(function(upgrades: any)
+		Log.Info(CONTEXT, "Received upgrades update: " .. tostring(upgrades and upgrades.HeatSeekingAmmo))
+		if cachedInventory then
+			cachedInventory.Upgrades = upgrades
+		else
+			cachedInventory = { Items = {}, Upgrades = upgrades }
+		end
+		if isMenuOpen then
+			if currentTab == "Inventory" then
+				populateInventory()
+			elseif currentTab == "Shop" then
+				populateShop()
 			end
 		end
 	end)

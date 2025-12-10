@@ -21,6 +21,7 @@ local HEADER_COLORS = {
 	Tools = Color3.fromRGB(80, 80, 180),
 	Materials = Color3.fromRGB(180, 150, 80),
 	LuckyBlocks = Color3.fromRGB(255, 180, 50),
+	Upgrades = Color3.fromRGB(150, 80, 200),
 }
 
 local HEADER_ICONS = {
@@ -29,6 +30,7 @@ local HEADER_ICONS = {
 	Tools = "🔧",
 	Materials = "🪵",
 	LuckyBlocks = "🎁",
+	Upgrades = "⚡",
 }
 
 -- Create coin balance header card
@@ -390,9 +392,168 @@ local function createCoinBundles(container: ScrollingFrame, order: number): numb
 	return order + 1
 end
 
+-- Create permanent upgrades section (Robux purchases)
+local function createUpgradesSection(container: ScrollingFrame, order: number, playerUpgrades: { [string]: boolean }?): number
+	-- Spacer before upgrades
+	local spacer = Instance.new("Frame")
+	spacer.Size = UDim2.new(1, 0, 0, 15)
+	spacer.BackgroundTransparency = 1
+	spacer.LayoutOrder = order
+	spacer.Parent = container
+	order += 1
+	
+	-- Upgrades header
+	local upgradesHeader = Instance.new("Frame")
+	upgradesHeader.Name = "UpgradesHeader"
+	upgradesHeader.Size = UDim2.new(1, -30, 0, 32)
+	upgradesHeader.BackgroundColor3 = Color3.fromRGB(150, 80, 200)
+	upgradesHeader.BackgroundTransparency = 0.3
+	upgradesHeader.BorderSizePixel = 0
+	upgradesHeader.LayoutOrder = order
+	upgradesHeader.Parent = container
+	
+	local upgradesHeaderCorner = Instance.new("UICorner")
+	upgradesHeaderCorner.CornerRadius = UDim.new(0, 6)
+	upgradesHeaderCorner.Parent = upgradesHeader
+	
+	local upgradesHeaderText = Instance.new("TextLabel")
+	upgradesHeaderText.Size = UDim2.new(1, -10, 1, 0)
+	upgradesHeaderText.Position = UDim2.new(0, 10, 0, 0)
+	upgradesHeaderText.BackgroundTransparency = 1
+	upgradesHeaderText.Text = "⚡ Permanent Upgrades (Robux)"
+	upgradesHeaderText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	upgradesHeaderText.TextSize = 14
+	upgradesHeaderText.Font = Enum.Font.GothamBold
+	upgradesHeaderText.TextXAlignment = Enum.TextXAlignment.Left
+	upgradesHeaderText.Parent = upgradesHeader
+	
+	order += 1
+	
+	-- Get all upgrades
+	local upgrades = ShopRegistry.GetAllUpgrades()
+	for _, upgrade in upgrades do
+		-- Check if player already owns this upgrade
+		local alreadyOwned = false
+		if playerUpgrades and upgrade.ID == "UPGRADE_HEAT_SEEKING_AMMO" then
+			alreadyOwned = playerUpgrades.HeatSeekingAmmo == true
+		end
+		
+		local upgradeRow = Instance.new("Frame")
+		upgradeRow.Name = upgrade.ID
+		upgradeRow.Size = UDim2.new(1, -30, 0, 75)
+		upgradeRow.BackgroundColor3 = if alreadyOwned then Color3.fromRGB(40, 60, 40) elseif upgrade.Featured then Color3.fromRGB(60, 45, 70) else Color3.fromRGB(50, 50, 55)
+		upgradeRow.BorderSizePixel = 0
+		upgradeRow.LayoutOrder = order
+		upgradeRow.Parent = container
+		
+		local upgradeCorner = Instance.new("UICorner")
+		upgradeCorner.CornerRadius = UDim.new(0, 8)
+		upgradeCorner.Parent = upgradeRow
+		
+		-- Featured badge
+		if upgrade.Featured then
+			local featuredBadge = Instance.new("TextLabel")
+			featuredBadge.Name = "Featured"
+			featuredBadge.Size = UDim2.new(0, 60, 0, 14)
+			featuredBadge.Position = UDim2.new(1, -65, 0, 3)
+			featuredBadge.BackgroundColor3 = Color3.fromRGB(255, 180, 50)
+			featuredBadge.Text = "FEATURED"
+			featuredBadge.TextColor3 = Color3.fromRGB(50, 30, 0)
+			featuredBadge.TextSize = 8
+			featuredBadge.Font = Enum.Font.GothamBold
+			featuredBadge.Parent = upgradeRow
+			
+			local featuredCorner = Instance.new("UICorner")
+			featuredCorner.CornerRadius = UDim.new(0, 3)
+			featuredCorner.Parent = featuredBadge
+		end
+		
+		-- Upgrade icon
+		local upgradeIcon = Instance.new("Frame")
+		upgradeIcon.Name = "UpgradeIcon"
+		upgradeIcon.Size = UDim2.new(0, 50, 0, 50)
+		upgradeIcon.Position = UDim2.new(0, 8, 0.5, -25)
+		upgradeIcon.BackgroundColor3 = Color3.fromRGB(150, 80, 200)
+		upgradeIcon.BorderSizePixel = 0
+		upgradeIcon.Parent = upgradeRow
+		
+		local upgradeIconCorner = Instance.new("UICorner")
+		upgradeIconCorner.CornerRadius = UDim.new(0, 8)
+		upgradeIconCorner.Parent = upgradeIcon
+		
+		local upgradeIconSymbol = Instance.new("TextLabel")
+		upgradeIconSymbol.Size = UDim2.new(1, 0, 1, 0)
+		upgradeIconSymbol.BackgroundTransparency = 1
+		upgradeIconSymbol.Text = "⚡"
+		upgradeIconSymbol.TextSize = 28
+		upgradeIconSymbol.Font = Enum.Font.GothamBold
+		upgradeIconSymbol.Parent = upgradeIcon
+		
+		-- Upgrade name
+		local upgradeNameLabel = Instance.new("TextLabel")
+		upgradeNameLabel.Name = "Name"
+		upgradeNameLabel.Size = UDim2.new(0.5, -70, 0, 20)
+		upgradeNameLabel.Position = UDim2.new(0, 65, 0, 10)
+		upgradeNameLabel.BackgroundTransparency = 1
+		upgradeNameLabel.Text = upgrade.Name
+		upgradeNameLabel.TextColor3 = Color3.fromRGB(255, 220, 150)
+		upgradeNameLabel.TextSize = 14
+		upgradeNameLabel.Font = Enum.Font.GothamBold
+		upgradeNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		upgradeNameLabel.Parent = upgradeRow
+		
+		-- Description
+		local descLabel = Instance.new("TextLabel")
+		descLabel.Name = "Description"
+		descLabel.Size = UDim2.new(0.55, -70, 0, 35)
+		descLabel.Position = UDim2.new(0, 65, 0, 32)
+		descLabel.BackgroundTransparency = 1
+		descLabel.Text = upgrade.Description
+		descLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+		descLabel.TextSize = 11
+		-- Robux price button or Owned badge
+		if alreadyOwned then
+			local ownedBadge = Instance.new("TextLabel")
+			ownedBadge.Name = "OwnedBadge"
+			ownedBadge.Size = UDim2.new(0, 90, 0, 40)
+			ownedBadge.Position = UDim2.new(1, -100, 0.5, -20)
+			ownedBadge.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+			ownedBadge.Text = "✓ OWNED"
+			ownedBadge.TextColor3 = Color3.fromRGB(255, 255, 255)
+			ownedBadge.TextSize = 14
+			ownedBadge.Font = Enum.Font.GothamBold
+			ownedBadge.Parent = upgradeRow
+			
+			local ownedCorner = Instance.new("UICorner")
+			ownedCorner.CornerRadius = UDim.new(0, 8)
+			ownedCorner.Parent = ownedBadge
+		else
+			local robuxButton = UIHelpers.createTextButton(
+				"BuyRobux",
+				"R$ " .. upgrade.RobuxPrice,
+				UDim2.new(0, 90, 0, 40),
+				UDim2.new(1, -100, 0.5, -20),
+				Color3.fromRGB(0, 160, 80),
+				upgradeRow
+			)
+			robuxButton.TextSize = 16
+			
+			local capturedUpgradeID = upgrade.ID
+			robuxButton.MouseButton1Click:Connect(function()
+				RemoteEvents.ShopBuyUpgradeRequestEvent:FireServer(capturedUpgradeID)
+				Log.Info(CONTEXT, "Attempting to purchase upgrade: " .. capturedUpgradeID)
+			end)
+		end
+		
+		order += 1
+	end
+	
+	return order
+end
+
 -- Main populate function
 export type ShopTabData = {
-	cachedInventory: { Items: { [string]: any } }?,
+	cachedInventory: { Items: { [string]: any }, Upgrades: { [string]: boolean }? }?,
 }
 
 function ShopTab.populate(container: ScrollingFrame, data: ShopTabData): TextLabel?
@@ -436,6 +597,11 @@ function ShopTab.populate(container: ScrollingFrame, data: ShopTabData): TextLab
 		end
 	end
 	
+	-- Permanent upgrades section (pass player upgrades for owned state)
+	local playerUpgrades = data.cachedInventory and (data.cachedInventory :: any).Upgrades or nil
+	Log.Info(CONTEXT, "ShopTab upgrades data: " .. tostring(playerUpgrades) .. ", HeatSeekingAmmo=" .. tostring(playerUpgrades and playerUpgrades.HeatSeekingAmmo))
+	order = createUpgradesSection(container, order, playerUpgrades)
+	
 	-- Coin bundles section
 	order = createCoinBundles(container, order)
 	
@@ -448,6 +614,9 @@ function ShopTab.populate(container: ScrollingFrame, data: ShopTabData): TextLab
 			calcHeight += #items * 63 -- items
 		end
 	end
+	calcHeight += 23 + 40 -- spacer + upgrades header
+	local upgrades = ShopRegistry.GetAllUpgrades()
+	calcHeight += #upgrades * 83 -- upgrades
 	calcHeight += 23 + 40 -- spacer + coin header
 	local bundles = ShopRegistry.GetAllCoinBundles()
 	calcHeight += #bundles * 68 -- bundles

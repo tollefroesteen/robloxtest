@@ -12,11 +12,20 @@ local InventoryService = require(Shared:WaitForChild("services"):WaitForChild("I
 local ShopRegistry = require(Shared:WaitForChild("data"):WaitForChild("ShopRegistry"))
 local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
 local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
+local LobbyLuckyBlockService = require(script.Parent.LobbyLuckyBlockService)
 
 local CONTEXT = "ShopServiceInit"
 
 -- Initialize ShopService with dependencies
 ShopService.Init(InventoryService)
+
+-- Register Lucky Block callback
+ShopService.SetLuckyBlockCallback(function(player: Player, shopItemID: string): boolean
+	return LobbyLuckyBlockService.OnPurchaseRequest(player, shopItemID)
+end)
+
+-- Initialize Lucky Block service
+LobbyLuckyBlockService.Initialize()
 
 -- Handle coin purchase requests from client
 RemoteEvents.ShopPurchaseRequestEvent.OnServerEvent:Connect(function(player: Player, shopItemID: string)

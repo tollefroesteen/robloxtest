@@ -27,6 +27,7 @@ ItemRegistry.Categories = {
 	Tools = "Tools",
 	Materials = "Materials",
 	Special = "Special",
+	LuckyBlocks = "LuckyBlocks",
 }
 
 -- All item definitions
@@ -154,6 +155,35 @@ ItemRegistry.Items = {
 		MaxStack = 999999,
 		Tradeable = false,
 		Consumable = false,
+	},
+	
+	-- Lucky Blocks (only obtainable via shop, not stored in traditional inventory)
+	LUCKY_BLOCK_RARE = {
+		ID = "LUCKY_BLOCK_RARE",
+		Name = "Rare Lucky Block",
+		Category = "LuckyBlocks",
+		Description = "A mysterious gift box that spawns a rare animal when opened",
+		MaxStack = 1,
+		Tradeable = false,
+		Consumable = true,
+	},
+	LUCKY_BLOCK_VERY_RARE = {
+		ID = "LUCKY_BLOCK_VERY_RARE",
+		Name = "Very Rare Lucky Block",
+		Category = "LuckyBlocks",
+		Description = "A mysterious gift box with higher chances of very rare animals",
+		MaxStack = 1,
+		Tradeable = false,
+		Consumable = true,
+	},
+	LUCKY_BLOCK_ULTRA_RARE = {
+		ID = "LUCKY_BLOCK_ULTRA_RARE",
+		Name = "Ultra Rare Lucky Block",
+		Category = "LuckyBlocks",
+		Description = "The ultimate gift box with chances of the rarest animals",
+		MaxStack = 1,
+		Tradeable = false,
+		Consumable = true,
 	},
 }
 

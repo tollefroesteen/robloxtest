@@ -18,6 +18,9 @@ local MatchmakingController = require(script.Parent:WaitForChild("MatchmakingCon
 -- Visual Controllers
 local PetFollowController = require(script.Parent:WaitForChild("PetFollowController"))
 
+-- Shared Controllers
+local LuckyBlockController = require(Shared:WaitForChild("controllers"):WaitForChild("LuckyBlockController"))
+
 local CONTEXT = "LobbyClient"
 
 local player = Players.LocalPlayer
@@ -41,5 +44,8 @@ LeaderboardController.Init()
 
 -- Initialize matchmaking controller (1v1 and 2v2 queue UI)
 MatchmakingController.Init()
+
+-- Initialize Lucky Block controller (visual effects and animations)
+LuckyBlockController.Initialize()
 
 Log.Info(CONTEXT, "Lobby client initialized for " .. player.Name)

@@ -31,6 +31,7 @@ ShopRegistry.Categories = {
 	Tools = "Tools",
 	Materials = "Materials",
 	Bundles = "Bundles",
+	LuckyBlocks = "LuckyBlocks",
 }
 
 -- Items available for purchase with coins
@@ -95,6 +96,32 @@ ShopRegistry.Items = {
 		Quantity = 10,
 		CoinPrice = 30,
 		Category = "Food",
+		Featured = true,
+	},
+	
+	-- Lucky Blocks
+	SHOP_LUCKY_BLOCK_RARE = {
+		ID = "SHOP_LUCKY_BLOCK_RARE",
+		ItemID = "LUCKY_BLOCK_RARE",
+		Quantity = 1,
+		CoinPrice = 1,
+		Category = "LuckyBlocks",
+		Featured = true,
+	},
+	SHOP_LUCKY_BLOCK_VERY_RARE = {
+		ID = "SHOP_LUCKY_BLOCK_VERY_RARE",
+		ItemID = "LUCKY_BLOCK_VERY_RARE",
+		Quantity = 1,
+		CoinPrice = 1,
+		Category = "LuckyBlocks",
+		Featured = true,
+	},
+	SHOP_LUCKY_BLOCK_ULTRA_RARE = {
+		ID = "SHOP_LUCKY_BLOCK_ULTRA_RARE",
+		ItemID = "LUCKY_BLOCK_ULTRA_RARE",
+		Quantity = 1,
+		CoinPrice = 1,
+		Category = "LuckyBlocks",
 		Featured = true,
 	},
 	

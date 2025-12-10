@@ -20,6 +20,7 @@ local HEADER_COLORS = {
 	Food = Color3.fromRGB(80, 160, 80),
 	Tools = Color3.fromRGB(80, 80, 180),
 	Materials = Color3.fromRGB(180, 150, 80),
+	LuckyBlocks = Color3.fromRGB(255, 180, 50),
 }
 
 local HEADER_ICONS = {
@@ -27,6 +28,7 @@ local HEADER_ICONS = {
 	Food = "🍎",
 	Tools = "🔧",
 	Materials = "🪵",
+	LuckyBlocks = "🎁",
 }
 
 -- Create coin balance header card
@@ -411,7 +413,7 @@ function ShopTab.populate(container: ScrollingFrame, data: ShopTabData): TextLab
 	order, coinBalanceLabel = createBalanceCard(container, coinBalance, order)
 	
 	-- Get items by category
-	local categories = { "Ammo", "Food", "Tools", "Materials" }
+	local categories = { "LuckyBlocks", "Ammo", "Food", "Tools", "Materials" }
 	
 	for _, category in categories do
 		local items = ShopRegistry.GetItemsByCategory(category)

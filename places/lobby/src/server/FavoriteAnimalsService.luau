@@ -115,7 +115,7 @@ local function hasPlayerCapturedAnimal(player: Player, animalID: string): boolea
 end
 
 -- Get current favorite animals for a player
-local function getFavoriteAnimals(player: Player): { string }
+local function getFavoriteAnimals(player: Player): { [number]: string? }
 	local data = playerDataCache[player]
 	if not data then return {} end
 	
@@ -249,6 +249,87 @@ end
 -- Get cached data for a player (used by PlayerDataLoader)
 function FavoriteAnimalsService.GetPlayerData(player: Player): any
 	return playerDataCache[player]
+end
+
+-- Add an animal to the player's captured index (for Lucky Blocks)
+function FavoriteAnimalsService.AddAnimalToIndex(player: Player, animalID: string): boolean
+	local data = playerDataCache[player]
+	if not data then
+		Log.Warn(CONTEXT, string.format("No data found for player %s", player.Name))
+		return false
+	end
+	
+	-- Check if already captured
+	if data.Stats.CapturedAnimalIndex[animalID] then
+		Log.Info(CONTEXT, string.format("Player %s already has %s in index", player.Name, animalID))
+		return true
+	end
+	
+	-- Add to captured index
+	data.Stats.CapturedAnimalIndex[animalID] = true
+	
+	-- Increment capture count
+	if not data.Stats.AnimalCaptureCount[animalID] then
+		data.Stats.AnimalCaptureCount[animalID] = 0
+	end
+	data.Stats.AnimalCaptureCount[animalID] = data.Stats.AnimalCaptureCount[animalID] + 1
+	
+	-- Increment total captures
+	data.Stats.TotalCaptures = data.Stats.TotalCaptures + 1
+	
+	Log.Info(CONTEXT, string.format("Added %s to %s's captured index", animalID, player.Name))
+	
+	-- Save data
+	savePlayerData(player)
+	
+	-- Sync to client
+	RemoteEvents.StatsUpdatedEvent:FireClient(player, {
+		CapturedAnimalIndex = data.Stats.CapturedAnimalIndex,
+		AnimalCaptureCount = data.Stats.AnimalCaptureCount,
+		TotalCaptures = data.Stats.TotalCaptures,
+	})
+	
+	return true
+end
+
+-- Get player's favorite animals (for debug commands)
+function FavoriteAnimalsService.GetFavorites(player: Player): { [number]: string? }
+	return getFavoriteAnimals(player)
+end
+
+-- Remove animal from a specific favorite slot (for debug commands)
+function FavoriteAnimalsService.RemoveAnimalFromSlot(player: Player, slot: number): boolean
+	local data = playerDataCache[player]
+	if not data then
+		Log.Warn(CONTEXT, string.format("No data found for player %s", player.Name))
+		return false
+	end
+	
+	if slot < 1 or slot > MAX_FAVORITES then
+		Log.Warn(CONTEXT, string.format("Invalid slot %d (must be 1-%d)", slot, MAX_FAVORITES))
+		return false
+	end
+	
+	-- Remove from favorites
+	local favorites = data.Stats.FavoriteAnimals
+	local animalID = favorites[slot]
+	
+	if not animalID then
+		Log.Info(CONTEXT, string.format("Slot %d is already empty for %s", slot, player.Name))
+		return false
+	end
+	
+	favorites[slot] = nil
+	
+	Log.Info(CONTEXT, string.format("Removed %s from slot %d for %s", animalID, slot, player.Name))
+	
+	-- Sync to client
+	FavoriteAnimalsService.SyncFavoritesToClient(player, true)
+	
+	-- Save data
+	savePlayerData(player)
+	
+	return true
 end
 
 -- Initialize

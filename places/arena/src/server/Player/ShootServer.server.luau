@@ -42,6 +42,9 @@ local PROJECTILE_SPEED = 200
 local PROJECTILE_LIFETIME = 2
 local DAMAGE = 25
 local HIT_RADIUS = 2
+local BOUNCE_HEIGHT = 3 -- Height above terrain to maintain
+local GRAVITY_STRENGTH = 6.5 -- How strongly projectile is pulled down
+local BOUNCE_ELASTICITY = 0.7 -- Bounce damping (0-1)
 
 local function createProjectile(player)
 	-- Check if game is in end-processing state
@@ -82,23 +85,52 @@ local function createProjectile(player)
 	projectile.Parent = workspace
 	projectile.Position = root.Position + root.CFrame.LookVector * 2
 
-	local direction = root.CFrame.LookVector.Unit
+	local direction = (root.CFrame.LookVector * Vector3.new(1, 0, 1)).Unit -- Flatten Y component
+	local verticalVelocity = 0 -- Track vertical momentum
 	local startTime = tick()
-	local lastPos = projectile.Position
+
+	-- Raycast params to ignore the shooting player
+	local rayParams = RaycastParams.new()
+	rayParams.FilterDescendantsInstances = {character}
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
 	while tick() - startTime < PROJECTILE_LIFETIME do
 		local dt = task.wait()
-		local newPos = projectile.Position + direction * PROJECTILE_SPEED * dt
+		
+		-- Apply gravity to vertical velocity
+		verticalVelocity = verticalVelocity - GRAVITY_STRENGTH
+		
+		-- Calculate new position with horizontal and vertical components
+		local horizontalMovement = direction * PROJECTILE_SPEED * dt
+		local verticalMovement = Vector3.new(0, verticalVelocity * dt, 0)
+		local newPos = projectile.Position + horizontalMovement + verticalMovement
 
-		-- Raycast for wall/player hit
-		local result = workspace:Raycast(
+		-- Check for terrain/ground below
+		local downRay = workspace:Raycast(
 			projectile.Position,
-			(newPos - projectile.Position),
-			RaycastParams.new()
+			Vector3.new(0, -10, 0),
+			rayParams
 		)
 
-		if result then
-			local hit = result.Instance
+		if downRay then
+			local terrainHeight = downRay.Position.Y
+			
+			-- If projectile would go below bounce height, bounce it back up
+			if newPos.Y < terrainHeight + BOUNCE_HEIGHT then
+				newPos = Vector3.new(newPos.X, terrainHeight + BOUNCE_HEIGHT, newPos.Z)
+				verticalVelocity = math.abs(verticalVelocity) * BOUNCE_ELASTICITY -- Bounce up with damping
+			end
+		end
+
+		-- Raycast for player hits in horizontal direction
+		local forwardRay = workspace:Raycast(
+			projectile.Position,
+			horizontalMovement,
+			rayParams
+		)
+
+		if forwardRay then
+			local hit = forwardRay.Instance
 
 			-- Player hit
 			local hitPlayer = Players:GetPlayerFromCharacter(hit.Parent)
@@ -108,13 +140,27 @@ local function createProjectile(player)
 				return
 			end
 
-			-- Wall/obstacle hit
-			projectile.Position = result.Position
-			projectile:Destroy()
-			return
+			-- Wall/obstacle hit (bounce off)
+			local normal = forwardRay.Normal
+			direction = (direction - 2 * direction:Dot(normal) * normal).Unit
+			projectile.Position = forwardRay.Position
+		else
+			projectile.Position = newPos
 		end
 
-		projectile.Position = newPos
+		-- Additional sphere check for nearby players
+		local region = Region3.new(projectile.Position - Vector3.new(HIT_RADIUS, HIT_RADIUS, HIT_RADIUS), 
+									projectile.Position + Vector3.new(HIT_RADIUS, HIT_RADIUS, HIT_RADIUS))
+		region = region:ExpandToGrid(4)
+		
+		for _, part in workspace:FindPartsInRegion3(region, projectile, 100) do
+			local hitPlayer = Players:GetPlayerFromCharacter(part.Parent)
+			if hitPlayer and hitPlayer ~= player then
+				lifeModule.damagePlayer(hitPlayer, DAMAGE)
+				projectile:Destroy()
+				return
+			end
+		end
 	end
 
 	projectile:Destroy()

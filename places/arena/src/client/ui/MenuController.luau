@@ -371,6 +371,13 @@ function MenuController.Init(): nil
         end
     end)
     
+    -- Request initial inventory data from server
+    -- This ensures actions GUI reflects player inventory immediately on arena entry
+    task.defer(function()
+        Log.Info(CONTEXT, "Requesting initial player data from server")
+        RemoteEvents.RequestPlayerDataEvent:FireServer()
+    end)
+    
     -- Debug: Log UI references found
     Log.Info(CONTEXT, string.format("UI refs - actionButton: %s, textLabel: %s, mainFrame: %s", 
         tostring(actionButtonRef ~= nil),

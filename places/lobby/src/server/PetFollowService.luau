@@ -34,6 +34,10 @@ local TURN_SPEED = 0.15
 local PET_ANGLE_OFFSET = math.rad(45)
 -- Height offset for pets above ground
 local PET_HEIGHT = 0.5
+-- Raycast distance to find ground
+local GROUND_CHECK_DISTANCE = 50
+-- How smoothly pets adjust to terrain height
+local HEIGHT_LERP_SPEED = 0.2
 
 -- ============================================================================
 -- STATE
@@ -48,7 +52,53 @@ local playerPets: { [Player]: { [string]: BasePart } } = {}
 -- Track pet velocities for smooth movement
 local petVelocities: { [BasePart]: Vector3 } = {}
 
+-- Track pet current heights for smooth terrain following
+local petHeights: { [BasePart]: number } = {}
+
+-- Raycast params for ground detection (initialized lazily)
+local groundRaycastParams: RaycastParams? = nil
+
 local PetFollowService = {}
+
+-- Get raycast params for ground detection
+local function getGroundRaycastParams(): RaycastParams
+	if not groundRaycastParams then
+		groundRaycastParams = RaycastParams.new()
+		groundRaycastParams.FilterType = Enum.RaycastFilterType.Exclude
+		groundRaycastParams.FilterDescendantsInstances = {}
+	end
+	
+	-- Update filter to exclude pets folder and player characters
+	local excludeList: { Instance } = {}
+	
+	local folder = petsFolder
+	if folder then
+		table.insert(excludeList, folder)
+	end
+	
+	for _, player in Players:GetPlayers() do
+		if player.Character then
+			table.insert(excludeList, player.Character)
+		end
+	end
+	
+	groundRaycastParams.FilterDescendantsInstances = excludeList
+	return groundRaycastParams :: RaycastParams
+end
+
+-- Get ground height at a position
+local function getGroundHeight(position: Vector3): number?
+	local rayOrigin = Vector3.new(position.X, position.Y + 10, position.Z)
+	local rayDirection = Vector3.new(0, -GROUND_CHECK_DISTANCE, 0)
+	
+	local raycastResult = workspace:Raycast(rayOrigin, rayDirection, getGroundRaycastParams())
+	
+	if raycastResult then
+		return raycastResult.Position.Y + PET_HEIGHT
+	end
+	
+	return nil
+end
 
 -- Ensure pets folder exists
 local function ensurePetsFolder(): Folder
@@ -118,6 +168,7 @@ local function spawnPet(player: Player, animalID: string, petIndex: number, tota
 	
 	-- Initialize velocity
 	petVelocities[pet] = Vector3.zero
+	petHeights[pet] = spawnPos.Y
 	
 	Log.Info(CONTEXT, string.format("Spawned pet %s for %s", animalDef.Name, player.Name))
 	
@@ -127,6 +178,7 @@ end
 -- Remove a specific pet
 local function removePet(pet: BasePart)
 	petVelocities[pet] = nil
+	petHeights[pet] = nil
 	pet:Destroy()
 end
 
@@ -222,7 +274,22 @@ local function updatePetPositions(dt: number)
 				math.cos(petAngle) * FOLLOW_DISTANCE
 			)
 			local targetPos = playerPos + hrp.CFrame:VectorToWorldSpace(localOffset)
-			targetPos = Vector3.new(targetPos.X, playerPos.Y + PET_HEIGHT, targetPos.Z)
+			
+			-- Get ground height at target position for terrain following
+			local groundHeight = getGroundHeight(targetPos)
+			local currentPetHeight = petHeights[pet] or petPos.Y
+			
+			local targetHeight: number
+			if groundHeight then
+				-- Smoothly interpolate to terrain height
+				targetHeight = currentPetHeight + (groundHeight - currentPetHeight) * HEIGHT_LERP_SPEED
+			else
+				-- Fallback to player height if no ground found
+				targetHeight = currentPetHeight + ((playerPos.Y + PET_HEIGHT) - currentPetHeight) * HEIGHT_LERP_SPEED
+			end
+			
+			petHeights[pet] = targetHeight
+			targetPos = Vector3.new(targetPos.X, targetHeight, targetPos.Z)
 			
 			-- Calculate distance to target
 			local toTarget = targetPos - petPos
@@ -230,9 +297,13 @@ local function updatePetPositions(dt: number)
 			
 			-- Teleport if too far
 			if distance > TELEPORT_DISTANCE then
-				pet.CFrame = CFrame.new(targetPos) * CFrame.Angles(0, petAngle + math.pi, 0)
-				pet:SetAttribute("TargetPos", targetPos)
+				-- Get ground height at teleport destination
+				local teleportHeight = getGroundHeight(targetPos) or targetPos.Y
+				local teleportPos = Vector3.new(targetPos.X, teleportHeight, targetPos.Z)
+				pet.CFrame = CFrame.new(teleportPos) * CFrame.Angles(0, petAngle + math.pi, 0)
+				pet:SetAttribute("TargetPos", teleportPos)
 				petVelocities[pet] = Vector3.zero
+				petHeights[pet] = teleportHeight
 				continue
 			end
 			

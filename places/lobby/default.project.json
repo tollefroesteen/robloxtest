@@ -10,6 +10,9 @@
       },
       "Lobby": {
         "$path": "src/shared"
+      },
+      "Models": {
+        "$path": "models"
       }
     },
 
@@ -31,9 +34,7 @@
     },
 
     "Workspace": {
-      "Models": {
-        "$path": "models"
-      }
+      "$className": "Workspace"
     },
     "Lighting": {
       "$properties": {

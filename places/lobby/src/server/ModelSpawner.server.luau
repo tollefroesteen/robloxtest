@@ -13,7 +13,7 @@ local CONTEXT = "ModelSpawner"
 -- Configuration for models to spawn
 -- Add new models here with their spawn position and optional rotation
 export type ModelSpawnConfig = {
-	modelName: string,        -- Name of the model in Workspace.Models
+	modelName: string,        -- Name of the model in ReplicatedStorage.Models
 	position: Vector3,        -- World position to spawn at
 	rotation: Vector3?,       -- Optional rotation in degrees (X, Y, Z)
 	scale: number?,           -- Optional scale factor
@@ -22,8 +22,13 @@ export type ModelSpawnConfig = {
 local MODELS_TO_SPAWN: {ModelSpawnConfig} = {
 	{
 		modelName = "Stabbur",
-		position = Vector3.new(50, 0, 50),
+		position = Vector3.new(50, 5, 50),
 		rotation = Vector3.new(0, 45, 0), -- Rotated 45 degrees on Y axis
+	},
+	{
+		modelName = "Stabbur",
+		position = Vector3.new(-50, 5, -50),
+		rotation = Vector3.new(0, -75, 0), -- Rotated 45 degrees on Y axis
 	},
 	-- Add more models here as needed:
 	-- {
@@ -45,14 +50,19 @@ end
 
 -- Spawn a single model at the specified configuration
 local function spawnModel(config: ModelSpawnConfig): Model?
-	-- Models are stored in Workspace.Models (from the .rbxmx files via Rojo)
-	local modelsFolder = Workspace:FindFirstChild("Models")
+	-- Models are stored in ReplicatedStorage.Models (from the .rbxmx files via Rojo)
+	local modelsFolder = ReplicatedStorage:WaitForChild("Models", 10)
 	if not modelsFolder then
-		Log.Warn(CONTEXT, "Models folder not found in Workspace!")
+		Log.Error(CONTEXT, "Models folder not found in ReplicatedStorage after 10 second wait!")
+		local childNames = {}
+		for _, child in ReplicatedStorage:GetChildren() do
+			table.insert(childNames, child.Name)
+		end
+		Log.Error(CONTEXT, "ReplicatedStorage children: " .. table.concat(childNames, ", "))
 		return nil
 	end
 	
-	local template = modelsFolder:FindFirstChild(config.modelName)
+	local template = modelsFolder:WaitForChild(config.modelName, 5)
 	if not template then
 		Log.Warn(CONTEXT, string.format("Model template '%s' not found!", config.modelName))
 		return nil
@@ -100,9 +110,6 @@ end
 -- Initialize: spawn all configured models
 local function initialize()
 	Log.Info(CONTEXT, "Initializing model spawner...")
-	
-	-- Wait a moment for models to be loaded by Rojo
-	task.wait(0.5)
 	
 	local spawnedCount = 0
 	for _, config in ipairs(MODELS_TO_SPAWN) do

@@ -31,6 +31,9 @@
     },
 
     "Workspace": {
+      "Models": {
+        "$path": "models"
+      }
     },
     "Lighting": {
       "$properties": {

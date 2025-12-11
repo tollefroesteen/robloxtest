@@ -11,6 +11,7 @@ local PlayerUpgradesService = {}
 -- Types
 export type PlayerUpgrades = {
 	HeatSeekingAmmo: boolean,
+	ReinforcedShield: boolean,
 	-- Add more upgrades here in the future
 }
 
@@ -31,6 +32,7 @@ end
 local function getDefaultUpgrades(): PlayerUpgrades
 	return {
 		HeatSeekingAmmo = false,
+		ReinforcedShield = false,
 	}
 end
 

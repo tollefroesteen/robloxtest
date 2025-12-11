@@ -204,6 +204,15 @@ ShopRegistry.PermanentUpgrades = {
 		Category = "Upgrades",
 		Featured = true,
 	},
+	UPGRADE_REINFORCED_SHIELD = {
+		ID = "UPGRADE_REINFORCED_SHIELD",
+		Name = "Reinforced Shield",
+		Description = "Your shields are twice as strong, absorbing 100 damage instead of 50!",
+		RobuxPrice = 199,
+		ProductId = nil,  -- Set this to your Developer Product ID
+		Category = "Upgrades",
+		Featured = true,
+	},
 }
 
 -- Coin bundles available for purchase with Robux

@@ -8,7 +8,8 @@ local RespawnCountdownEvent = RemoteEvents.RespawnCountdownEvent
 
 local MAX_LIFE = 100
 local RESPAWN_DELAY = 5 -- Seconds before respawn
-local SPAWN_PROTECTION_DURATION = 5 -- Seconds of free shield after respawn
+local SPAWN_PROTECTION_SHIELD_HP = 200 -- High HP shield for spawn protection (absorbs multiple hits)
+local SPAWN_PROTECTION_DURATION = 5 -- Seconds spawn protection lasts (time limit)
 
 -- Disable automatic respawn - we handle it manually with countdown
 Players.CharacterAutoLoads = false
@@ -174,11 +175,11 @@ local function startRespawnSequence(player: Player)
 	-- Send reset health to UI
 	HealthEvent:FireClient(player, MAX_LIFE, MAX_LIFE)
 	
-	-- Grant spawn protection shield (free, no item consumed)
+	-- Grant spawn protection shield (free, no item consumed, time-limited)
 	task.delay(0.1, function()  -- Small delay to ensure character is fully loaded
 		local shieldSvc = getShieldService()
 		if shieldSvc then
-			shieldSvc.ActivateShield(player, SPAWN_PROTECTION_DURATION)
+			shieldSvc.ActivateShield(player, SPAWN_PROTECTION_SHIELD_HP, SPAWN_PROTECTION_DURATION)
 		end
 	end)
 	
@@ -233,6 +234,7 @@ Players.PlayerRemoving:Connect(function(player)
 	playerLife[player] = nil
 end)
 
+
 -- Damage function (called by projectile script)
 local function damagePlayer(targetPlayer, amount)
 	if not playerLife[targetPlayer] then return end
@@ -240,15 +242,21 @@ local function damagePlayer(targetPlayer, amount)
 	-- Don't damage if already respawning
 	if playersRespawning[targetPlayer] then return end
 	
-	-- Check if player has active shield
+	-- Check if player has active shield - shield absorbs damage first
 	local shieldSvc = getShieldService()
+	local damageToApply = amount
+	
 	if shieldSvc and shieldSvc.HasShield(targetPlayer) then
-		-- Shield blocks the damage!
-		-- Could add visual/sound feedback here
-		return
+		-- Shield absorbs damage, returns any remaining damage that passes through
+		damageToApply = shieldSvc.DamageShield(targetPlayer, amount)
+		
+		-- If shield absorbed all damage, we're done
+		if damageToApply <= 0 then
+			return
+		end
 	end
 
-	playerLife[targetPlayer] -= amount
+	playerLife[targetPlayer] -= damageToApply
 	local currentLife = math.clamp(playerLife[targetPlayer], 0, MAX_LIFE)
 
 	local character = targetPlayer.Character

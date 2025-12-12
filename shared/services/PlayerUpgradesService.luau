@@ -113,6 +113,12 @@ function PlayerUpgradesService.GetPlayerUpgrades(player: Player): PlayerUpgrades
 	return playerUpgrades[player]
 end
 
+-- Reset all upgrades for a player (for debug/testing)
+function PlayerUpgradesService.ResetUpgrades(player: Player): nil
+	playerUpgrades[player] = getDefaultUpgrades()
+	broadcastUpgrades(player)
+end
+
 -- Server-side initialization
 if RunService:IsServer() then
 	Players.PlayerAdded:Connect(initializePlayer)

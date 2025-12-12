@@ -152,4 +152,15 @@ function InventoryService.GetItemsByCategory(player: Player, category: string): 
 	return result
 end
 
+-- Reset player's inventory to empty state (for debug/testing)
+function InventoryService.ResetInventory(player: Player): nil
+	-- Create a completely empty inventory (no starting items, no coins)
+	playerInventories[player] = {
+		Items = {},
+		MaxSlots = 20,
+	}
+	Log.Info(CONTEXT, string.format("Reset inventory for %s", player.Name))
+	broadcastInventoryUpdate(player)
+end
+
 return InventoryService

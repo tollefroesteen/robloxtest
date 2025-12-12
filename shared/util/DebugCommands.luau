@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TextChatService = game:GetService("TextChatService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -255,10 +256,14 @@ end
 local function onPlayerChatted(player: Player, message: string)
 	if not isAdmin(player) then return end
 	
+	-- Trim whitespace from message (TextChatService may include extra spaces)
+	message = message:match("^%s*(.-)%s*$") or message
 	local lowerMessage = message:lower()
 	
 	-- Only process messages that start with /
 	if not lowerMessage:match("^/") then return end
+	
+	Log.Info(CONTEXT, string.format("Processing command from %s: '%s'", player.Name, lowerMessage))
 	
 	-- /grantcoins <amount>
 	local coinsMatch = lowerMessage:match("^/grantcoins%s+(%d+)$")
@@ -423,14 +428,34 @@ local function onPlayerChatted(player: Player, message: string)
 	
 	-- /resetall - reset all stats for all players
 	if lowerMessage == "/resetall" then
-		local achievementsSvc = getAchievementsService()
-		if achievementsSvc then
+		-- Check if place has a custom reset handler (e.g., lobby with FavoriteAnimalsService)
+		if placeServices.onResetAll then
 			for _, p in Players:GetPlayers() do
-				achievementsSvc.ResetAllStats(p)
+				placeServices.onResetAll(p)
 			end
-			Log.Info(CONTEXT, string.format("%s reset all stats for all players", player.Name))
+			Log.Info(CONTEXT, string.format("%s reset all player data for all players (place-specific)", player.Name))
 		else
-			Log.Warn(CONTEXT, "AchievementsService not available in this place")
+			-- Default reset behavior for places without custom handler
+			local achievementsSvc = getAchievementsService()
+			local invService = getInventoryService()
+			local upgradesSvc = getPlayerUpgradesService()
+			
+			for _, p in Players:GetPlayers() do
+				-- Reset stats and achievements
+				if achievementsSvc then
+					achievementsSvc.ResetAllStats(p)
+				end
+				-- Reset inventory (coins, items)
+				if invService and invService.ResetInventory then
+					invService.ResetInventory(p)
+				end
+				-- Reset upgrades
+				if upgradesSvc and upgradesSvc.ResetUpgrades then
+					upgradesSvc.ResetUpgrades(p)
+				end
+			end
+			
+			Log.Info(CONTEXT, string.format("%s reset all stats, inventory, and upgrades for all players", player.Name))
 		end
 		return
 	end
@@ -513,6 +538,31 @@ function DebugCommands.Init()
 	Players.PlayerAdded:Connect(setupPlayer)
 	for _, player in Players:GetPlayers() do
 		setupPlayer(player)
+	end
+	
+	-- Also listen for TextChatService (newer Roblox chat system)
+	-- This is needed because Player.Chatted may not fire with TextChatService
+	local success, _ = pcall(function()
+		local textChannels = TextChatService:WaitForChild("TextChannels", 5)
+		if textChannels then
+			local rbxGeneral = textChannels:WaitForChild("RBXGeneral", 5)
+			if rbxGeneral then
+				rbxGeneral.MessageReceived:Connect(function(textChatMessage)
+					local textSource = textChatMessage.TextSource
+					if textSource then
+						local player = Players:GetPlayerByUserId(textSource.UserId)
+						if player then
+							onPlayerChatted(player, textChatMessage.Text)
+						end
+					end
+				end)
+				Log.Info(CONTEXT, "TextChatService listener connected")
+			end
+		end
+	end)
+	
+	if not success then
+		Log.Info(CONTEXT, "TextChatService not available, using legacy chat only")
 	end
 	
 	Log.Info(CONTEXT, "DebugCommands initialized (use /debughelp for commands)")

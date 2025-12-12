@@ -83,11 +83,19 @@ local function createInventoryItem(itemData: any, definition: any): Frame
 	-- Quantity badge
 	local quantityBadge = UIHelpers.createRoundedFrame("QuantityBadge", UDim2.new(0, 35, 0, 18), UDim2.new(0.5, -17, 1, -22), Color3.fromRGB(30, 30, 30), cell)
 	
+	-- Handle both number and object format for quantity
+	local quantity = 0
+	if type(itemData) == "number" then
+		quantity = itemData
+	elseif type(itemData) == "table" and itemData.Quantity then
+		quantity = itemData.Quantity
+	end
+	
 	local quantityLabel = Instance.new("TextLabel")
 	quantityLabel.Name = "Quantity"
 	quantityLabel.Size = UDim2.new(1, 0, 1, 0)
 	quantityLabel.BackgroundTransparency = 1
-	quantityLabel.Text = tostring(itemData.Quantity)
+	quantityLabel.Text = tostring(quantity)
 	quantityLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	quantityLabel.TextSize = 12
 	quantityLabel.Font = Enum.Font.GothamBold
@@ -193,7 +201,21 @@ function InventoryTab.populate(container: ScrollingFrame, cachedInventory: { Ite
 		end
 		
 		local definition = ItemRegistry.GetItem(itemID)
-		if definition and itemData.Quantity > 0 then
+		if not definition then
+			continue
+		end
+		
+		-- Handle both number format (legacy) and object format
+		local quantity = 0
+		if type(itemData) == "number" then
+			quantity = itemData
+			-- Convert to object format for createInventoryItem
+			itemData = { ID = itemID, Category = definition.Category, Quantity = quantity }
+		elseif type(itemData) == "table" and itemData.Quantity then
+			quantity = itemData.Quantity
+		end
+		
+		if quantity > 0 then
 			local cell = createInventoryItem(itemData, definition)
 			cell.LayoutOrder = itemCount
 			cell.Parent = container

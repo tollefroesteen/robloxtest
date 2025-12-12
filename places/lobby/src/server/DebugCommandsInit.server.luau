@@ -258,11 +258,23 @@ local function handleLobbyCommand(player: Player, message: string, lowerMessage:
 	end
 end
 
+-- Custom reset handler for lobby (resets FavoriteAnimalsService cached data)
+local function onResetAll(player: Player)
+	local favService = getFavoriteAnimalsService()
+	if favService and favService.ResetPlayerData then
+		favService.ResetPlayerData(player)
+		Log.Info(CONTEXT, string.format("Reset all data for %s via FavoriteAnimalsService", player.Name))
+	else
+		Log.Warn(CONTEXT, "FavoriteAnimalsService.ResetPlayerData not available")
+	end
+end
+
 -- Register lobby services and initialize
 DebugCommands.RegisterServices({
 	PetBuilder = getPetBuilder(),
 	handleCommand = handleLobbyCommand,
 	showPlaceHelp = showLobbyHelp,
+	onResetAll = onResetAll,
 })
 
 DebugCommands.Init()

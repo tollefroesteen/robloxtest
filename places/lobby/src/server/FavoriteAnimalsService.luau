@@ -28,6 +28,48 @@ local function getPetFollowService()
 	return PetFollowService
 end
 
+-- Lazy load InventoryService (shared service)
+local InventoryService: any = nil
+local function getInventoryService()
+	if not InventoryService then
+		local success, service = pcall(function()
+			return require(Shared:WaitForChild("services"):WaitForChild("InventoryService"))
+		end)
+		if success then
+			InventoryService = service
+		end
+	end
+	return InventoryService
+end
+
+-- Lazy load AchievementsService (shared service)
+local AchievementsService: any = nil
+local function getAchievementsService()
+	if not AchievementsService then
+		local success, service = pcall(function()
+			return require(Shared:WaitForChild("services"):WaitForChild("AchievementsService"))
+		end)
+		if success then
+			AchievementsService = service
+		end
+	end
+	return AchievementsService
+end
+
+-- Lazy load PlayerUpgradesService (shared service)
+local PlayerUpgradesService: any = nil
+local function getPlayerUpgradesService()
+	if not PlayerUpgradesService then
+		local success, service = pcall(function()
+			return require(Shared:WaitForChild("services"):WaitForChild("PlayerUpgradesService"))
+		end)
+		if success then
+			PlayerUpgradesService = service
+		end
+	end
+	return PlayerUpgradesService
+end
+
 local CONTEXT = "FavoriteAnimalsService"
 local MAX_FAVORITES = 3
 
@@ -295,6 +337,69 @@ end
 -- Get player's favorite animals (for debug commands)
 function FavoriteAnimalsService.GetFavorites(player: Player): { [number]: string? }
 	return getFavoriteAnimals(player)
+end
+
+-- Reset all player data to defaults (for debug commands)
+function FavoriteAnimalsService.ResetPlayerData(player: Player): boolean
+	local data = playerDataCache[player]
+	if not data then
+		Log.Warn(CONTEXT, string.format("No data found for player %s", player.Name))
+		return false
+	end
+	
+	-- Reset to default data but with empty inventory (no starting items for reset)
+	local defaultData = PlayerDataTypes.CreateDefaultPlayerData()
+	-- Override inventory to be completely empty
+	defaultData.Inventory = {
+		Items = {},
+		MaxSlots = 20,
+	}
+	playerDataCache[player] = defaultData
+	
+	Log.Info(CONTEXT, string.format("Reset all player data for %s", player.Name))
+	
+	-- IMPORTANT: Also reset the shared service caches so they stay in sync
+	local invService = getInventoryService()
+	if invService and invService.ResetInventory then
+		invService.ResetInventory(player)
+		Log.Info(CONTEXT, "Reset InventoryService cache")
+	end
+	
+	local achievementsSvc = getAchievementsService()
+	if achievementsSvc and achievementsSvc.ResetAllStats then
+		achievementsSvc.ResetAllStats(player)
+		Log.Info(CONTEXT, "Reset AchievementsService cache")
+	end
+	
+	local upgradesSvc = getPlayerUpgradesService()
+	if upgradesSvc and upgradesSvc.ResetUpgrades then
+		upgradesSvc.ResetUpgrades(player)
+		Log.Info(CONTEXT, "Reset PlayerUpgradesService cache")
+	end
+	
+	-- Sync favorites to client (which also updates pets)
+	FavoriteAnimalsService.SyncFavoritesToClient(player, true)
+	
+	-- Send full stats update to client
+	RemoteEvents.StatsUpdatedEvent:FireClient(player, {
+		Level = defaultData.Stats.Level,
+		ExperiencePoints = defaultData.Stats.ExperiencePoints,
+		TotalCaptures = defaultData.Stats.TotalCaptures,
+		TotalWins = defaultData.Stats.TotalWins,
+		TotalLosses = defaultData.Stats.TotalLosses,
+		TotalGamesPlayed = defaultData.Stats.TotalGamesPlayed,
+		TotalKills = defaultData.Stats.TotalKills,
+		TotalDeaths = defaultData.Stats.TotalDeaths,
+		Achievements = defaultData.Achievements or {},
+		CapturedAnimalIndex = defaultData.Stats.CapturedAnimalIndex or {},
+		AnimalCaptureCount = defaultData.Stats.AnimalCaptureCount or {},
+		FavoriteAnimals = defaultData.Stats.FavoriteAnimals or {},
+	})
+	
+	-- Send inventory update to client
+	RemoteEvents.InventoryUpdatedEvent:FireClient(player, defaultData.Inventory)
+	
+	return true
 end
 
 -- Remove animal from a specific favorite slot (for debug commands)

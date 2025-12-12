@@ -60,6 +60,7 @@ local function broadcastStatsUpdate(player: Player): nil
 			TotalDeaths = stats.TotalDeaths,
 			CapturedAnimalIndex = stats.CapturedAnimalIndex,
 			AnimalCaptureCount = stats.AnimalCaptureCount,
+			FavoriteAnimals = stats.FavoriteAnimals,
 			Achievements = achievements or {},
 		}
 		RemoteEvents.StatsUpdatedEvent:FireClient(player, payload)

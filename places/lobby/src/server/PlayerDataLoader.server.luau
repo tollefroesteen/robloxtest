@@ -12,6 +12,7 @@ local FavoriteAnimalsService = require(Server:WaitForChild("FavoriteAnimalsServi
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local InventoryService = require(Shared:WaitForChild("services"):WaitForChild("InventoryService"))
 local AchievementsService = require(Shared:WaitForChild("services"):WaitForChild("AchievementsService"))
+local PlayerUpgradesService = require(Shared:WaitForChild("services"):WaitForChild("PlayerUpgradesService"))
 local RemoteEvents = require(Shared:WaitForChild("RemoteEvents"))
 local Log = require(Shared:WaitForChild("util"):WaitForChild("Log"))
 
@@ -45,6 +46,12 @@ local function sendPlayerDataToClient(player: Player)
 	
 	-- Send inventory to client
 	RemoteEvents.InventoryUpdatedEvent:FireClient(player, data.Inventory)
+	
+	-- Send upgrades to client
+	local upgrades = PlayerUpgradesService.GetPlayerUpgrades(player)
+	if upgrades then
+		RemoteEvents.UpgradesUpdatedEvent:FireClient(player, upgrades)
+	end
 	
 	Log.Info(CONTEXT, string.format("Sent display data to %s", player.Name))
 end

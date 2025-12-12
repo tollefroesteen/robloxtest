@@ -80,6 +80,14 @@ function PlayerUpgradesService.HasUpgrade(player: Player, upgradeName: string): 
 	return upgrades[upgradeName] == true
 end
 
+-- Callback to save to DataStore (set by FavoriteAnimalsService in lobby)
+local saveCallback: ((Player) -> ())? = nil
+
+-- Set the save callback (called by FavoriteAnimalsService to register itself)
+function PlayerUpgradesService.SetSaveCallback(callback: (Player) -> ())
+	saveCallback = callback
+end
+
 -- Grant an upgrade to a player
 function PlayerUpgradesService.GrantUpgrade(player: Player, upgradeName: string): boolean
 	if not playerUpgrades[player] then
@@ -96,12 +104,21 @@ function PlayerUpgradesService.GrantUpgrade(player: Player, upgradeName: string)
 	end
 	
 	upgrades[upgradeName] = true
-	-- TODO: Save to DataStore
+	
+	-- Save to DataStore via callback
+	if saveCallback then
+		saveCallback(player)
+	end
 	
 	-- Notify client of upgrade change
 	broadcastUpgrades(player)
 	
 	return true
+end
+
+-- Set upgrades from loaded data (called by FavoriteAnimalsService when loading from DataStore)
+function PlayerUpgradesService.SetPlayerUpgrades(player: Player, upgrades: PlayerUpgrades)
+	playerUpgrades[player] = upgrades
 end
 
 -- Get all upgrades for a player

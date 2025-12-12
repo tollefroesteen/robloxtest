@@ -191,6 +191,11 @@ function InventoryTab.populate(container: ScrollingFrame, cachedInventory: { Ite
 			badge.Parent = container
 			itemCount += 1
 		end
+		if cachedInventory.Upgrades.ReinforcedShield then
+			local badge = createUpgradeBadge("Reinforced Shield", "🛡️", itemCount)
+			badge.Parent = container
+			itemCount += 1
+		end
 	end
 	
 	-- Add regular inventory items

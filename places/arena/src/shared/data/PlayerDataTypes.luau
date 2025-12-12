@@ -44,11 +44,17 @@ export type PlayerStats = {
 	AnimalCaptureCount: { [string]: number },    -- Keyed by animal ID
 }
 
+export type PlayerUpgrades = {
+	HeatSeekingAmmo: boolean,
+	ReinforcedShield: boolean,
+}
+
 export type PlayerData = {
 	Version: number,          -- Schema version for migrations
 	Inventory: Inventory,
 	Stats: PlayerStats,
 	Achievements: { [string]: AchievementProgress },
+	Upgrades: PlayerUpgrades, -- Permanent upgrades (Robux purchases)
 	LastSaved: number,        -- Timestamp
 }
 
@@ -81,12 +87,20 @@ function PlayerDataTypes.CreateDefaultStats(): PlayerStats
 	}
 end
 
+function PlayerDataTypes.CreateDefaultUpgrades(): PlayerUpgrades
+	return {
+		HeatSeekingAmmo = false,
+		ReinforcedShield = false,
+	}
+end
+
 function PlayerDataTypes.CreateDefaultPlayerData(): PlayerData
 	return {
 		Version = 1,
 		Inventory = PlayerDataTypes.CreateDefaultInventory(),
 		Stats = PlayerDataTypes.CreateDefaultStats(),
 		Achievements = {},
+		Upgrades = PlayerDataTypes.CreateDefaultUpgrades(),
 		LastSaved = 0,
 	}
 end

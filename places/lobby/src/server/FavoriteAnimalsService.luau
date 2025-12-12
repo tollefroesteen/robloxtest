@@ -110,14 +110,27 @@ local function loadPlayerData(player: Player): any
 		end)
 		
 		if success and result then
-		data = result
+			data = result
 			Log.Info(CONTEXT, string.format("Loaded data for %s", player.Name))
 		elseif not success then
 			Log.Warn(CONTEXT, string.format("Failed to load data for %s: %s", player.Name, tostring(result)))
 		end
 	end
 	
-	return data or PlayerDataTypes.CreateDefaultPlayerData()
+	-- Start with defaults and merge loaded data to ensure all fields exist
+	local defaultData = PlayerDataTypes.CreateDefaultPlayerData()
+	if data then
+		-- Merge loaded data over defaults (handles missing Upgrades field from old saves)
+		for key, value in pairs(data) do
+			defaultData[key] = value
+		end
+		-- Ensure Upgrades field exists (for players who saved before Upgrades existed)
+		if not defaultData.Upgrades then
+			defaultData.Upgrades = PlayerDataTypes.CreateDefaultUpgrades()
+		end
+	end
+	
+	return defaultData
 end
 
 -- Save player data to DataStore
@@ -126,6 +139,15 @@ local function savePlayerData(player: Player): boolean
 	if not data then
 		Log.Warn(CONTEXT, string.format("No cached data for %s to save", player.Name))
 		return false
+	end
+	
+	-- Sync upgrades from PlayerUpgradesService before saving
+	local upgradesSvc = getPlayerUpgradesService()
+	if upgradesSvc and upgradesSvc.GetPlayerUpgrades then
+		local upgrades = upgradesSvc.GetPlayerUpgrades(player)
+		if upgrades then
+			data.Upgrades = upgrades
+		end
 	end
 	
 	if not dataStore then
@@ -252,6 +274,15 @@ function FavoriteAnimalsService.InitPlayer(player: Player)
 	-- Ensure FavoriteAnimals field exists
 	if not data.Stats.FavoriteAnimals then
 		data.Stats.FavoriteAnimals = {}
+	end
+	
+	-- Load upgrades into PlayerUpgradesService cache
+	local upgradesSvc = getPlayerUpgradesService()
+	if upgradesSvc and upgradesSvc.SetPlayerUpgrades then
+		local upgrades = data.Upgrades or PlayerDataTypes.CreateDefaultUpgrades()
+		upgradesSvc.SetPlayerUpgrades(player, upgrades)
+		Log.Info(CONTEXT, string.format("Loaded upgrades for %s: HeatSeek=%s, Shield=%s", 
+			player.Name, tostring(upgrades.HeatSeekingAmmo), tostring(upgrades.ReinforcedShield)))
 	end
 	
 	Log.Info(CONTEXT, string.format("Initialized player %s with %d favorites", player.Name, #data.Stats.FavoriteAnimals))
@@ -399,6 +430,12 @@ function FavoriteAnimalsService.ResetPlayerData(player: Player): boolean
 	-- Send inventory update to client
 	RemoteEvents.InventoryUpdatedEvent:FireClient(player, defaultData.Inventory)
 	
+	-- Send upgrades update to client
+	RemoteEvents.UpgradesUpdatedEvent:FireClient(player, defaultData.Upgrades)
+	
+	-- Save reset data to DataStore
+	savePlayerData(player)
+	
 	return true
 end
 
@@ -439,6 +476,16 @@ end
 
 -- Initialize
 initDataStore()
+
+-- Register save callback with PlayerUpgradesService so upgrades are persisted
+local upgradesSvc = getPlayerUpgradesService()
+if upgradesSvc and upgradesSvc.SetSaveCallback then
+	upgradesSvc.SetSaveCallback(function(player: Player)
+		savePlayerData(player)
+		Log.Info(CONTEXT, string.format("Saved player data after upgrade grant for %s", player.Name))
+	end)
+	Log.Info(CONTEXT, "Registered save callback with PlayerUpgradesService")
+end
 
 -- Listen for toggle requests
 RemoteEvents.SetFavoriteAnimalEvent.OnServerEvent:Connect(function(player: Player, animalID: string)

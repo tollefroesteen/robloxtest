@@ -477,6 +477,23 @@ local function onPlayerChatted(player: Player, message: string)
 		return
 	end
 	
+	-- /grantshieldupgrade - grant reinforced shield upgrade to all players
+	if lowerMessage == "/grantshieldupgrade" then
+		local upgradesSvc = getPlayerUpgradesService()
+		if upgradesSvc then
+			local count = 0
+			for _, p in Players:GetPlayers() do
+				if upgradesSvc.GrantUpgrade(p, "ReinforcedShield") then
+					count += 1
+				end
+			end
+			Log.Info(CONTEXT, string.format("%s granted Reinforced Shield upgrade to %d players", player.Name, count))
+		else
+			Log.Warn(CONTEXT, "PlayerUpgradesService not available")
+		end
+		return
+	end
+	
 	-- /debughelp - show all available commands
 	if lowerMessage == "/debughelp" then
 		Log.Info(CONTEXT, "=== Debug Commands ===")
@@ -497,6 +514,7 @@ local function onPlayerChatted(player: Player, message: string)
 		Log.Info(CONTEXT, "")
 		Log.Info(CONTEXT, "-- UPGRADES --")
 		Log.Info(CONTEXT, "/grantheatseek - Grant Heat-Seeking Ammo upgrade to all players")
+		Log.Info(CONTEXT, "/grantshieldupgrade - Grant Reinforced Shield upgrade to all players")
 		Log.Info(CONTEXT, "")
 		Log.Info(CONTEXT, "-- LUCKY BLOCKS (Testing) --")
 		Log.Info(CONTEXT, "/spawnlball - Spawn one of each rarity lucky block (preview only)")

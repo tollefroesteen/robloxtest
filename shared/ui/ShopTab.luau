@@ -434,8 +434,12 @@ local function createUpgradesSection(container: ScrollingFrame, order: number, p
 	for _, upgrade in upgrades do
 		-- Check if player already owns this upgrade
 		local alreadyOwned = false
-		if playerUpgrades and upgrade.ID == "UPGRADE_HEAT_SEEKING_AMMO" then
-			alreadyOwned = playerUpgrades.HeatSeekingAmmo == true
+		if playerUpgrades then
+			if upgrade.ID == "UPGRADE_HEAT_SEEKING_AMMO" then
+				alreadyOwned = playerUpgrades.HeatSeekingAmmo == true
+			elseif upgrade.ID == "UPGRADE_REINFORCED_SHIELD" then
+				alreadyOwned = playerUpgrades.ReinforcedShield == true
+			end
 		end
 		
 		local upgradeRow = Instance.new("Frame")
